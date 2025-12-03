@@ -1,11 +1,76 @@
 (function() {
     if (!window.location.pathname.includes('/search')) return;
 
-    let posts = [];
+    // Beispiel-Daten (Posts)
+    let posts = [
+        { title: "Post 1", content: "Inhalt von Post 1", tags: ["News", "Tech"], date: "2025-12-03" },
+        { title: "Post 2", content: "Inhalt von Post 2", tags: ["Blog"], date: "2025-12-02" },
+        { title: "Post 3", content: "Noch ein Post", tags: ["Tech"], date: "2025-12-01" },
+    ];
+
+    // --- Hilfsfunktionen ---
+    function debounce(fn, delay) {
+        let timer;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        }
+    }
+
+    function highlightText(text, query) {
+        if (!query) return text;
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    function createExcerpt(content, query, length = 100) {
+        if (!query) return content.slice(0, length) + (content.length > length ? '…' : '');
+        const idx = content.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return content.slice(0, length) + (content.length > length ? '…' : '');
+        const start = Math.max(0, idx - length / 2);
+        const end = Math.min(content.length, idx + length / 2);
+        return (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '');
+    }
+
+    function displayResults(results, query) {
+        const container = document.getElementById('searchResults');
+        const stats = document.getElementById('searchStats');
+        container.innerHTML = '';
+        stats.textContent = `Gefundene Beiträge: ${results.length}`;
+        results.forEach(post => {
+            const li = document.createElement('li');
+            li.className = 'search-result';
+            li.innerHTML = `
+                <h2>${highlightText(post.title, query)}</h2>
+                <div class="search-result-date">${post.date}</div>
+                <div class="search-result-excerpt">${highlightText(createExcerpt(post.content, query), query)}</div>
+            `;
+            container.appendChild(li);
+        });
+    }
+
+    function search(query) {
+        const results = posts.filter(p =>
+            p.title.toLowerCase().includes(query.toLowerCase()) ||
+            p.content.toLowerCase().includes(query.toLowerCase()) ||
+            (p.tags && p.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
+        );
+        displayResults(results, query);
+    }
+
+    function loadFeed() {
+        const loading = document.getElementById('loading');
+        if (loading) loading.style.display = 'none';
+
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.disabled = false;
+
+        // Zeige initial alle Beiträge
+        displayResults(posts, '');
+    }
 
     function initSearchUI() {
         const main = document.querySelector('main') || document.querySelector('article') || document.body;
-        
         main.innerHTML = `
             <div class="search-container">
                 <input 
@@ -76,13 +141,10 @@
                 }
             </style>
         `;
-
         loadFeed();
     }
 
-    // --- der Rest des Scripts bleibt unverändert ---
-    // loadFeed(), search(), displayResults(), createExcerpt(), highlightText(), escapeRegex(), debounce()
-
+    // --- DOM ready ---
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             initSearchUI();
@@ -104,4 +166,5 @@
             }
         }, 100);
     }
+
 })();
