@@ -1,4 +1,3 @@
-<script>
 // Automatisch die Klasse "fotos-page" hinzufügen wenn URL /fotos/ enthält
 if (window.location.pathname.includes('/fotos')) {
     document.body.classList.add('fotos-page');
@@ -54,4 +53,3 @@ if (document.body.classList.contains('home')) {
         });
     }
 }
-</script>
