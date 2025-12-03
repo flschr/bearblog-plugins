@@ -1,3 +1,8 @@
+// Nur auf /blog/ ausführen
+if (window.location.pathname !== '/blog/') {
+    return;
+}
+
 // Function to format the month and year for headers
 function formatMonthYear(date) {
     return date.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -44,7 +49,7 @@ function organizeBlogPosts() {
     });
 }
 
-// GEÄNDERT: Läuft auf allen Seiten mit .blog-posts, nicht nur auf /blog/
+// Run the organization when the DOM is loaded
 if (document.querySelector(".blog-posts")) {
     document.addEventListener('DOMContentLoaded', organizeBlogPosts); 
 }
