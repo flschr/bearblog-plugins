@@ -106,7 +106,7 @@
         const searchStats = document.getElementById('searchStats');
 
         try {
-            const response = await fetch('/feed/');
+            const response = await fetch('/feed/?type=rss');
             const text = await response.text();
             const parser = new DOMParser();
             const xml = parser.parseFromString(text, 'text/xml');
