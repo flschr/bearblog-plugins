@@ -52,24 +52,108 @@
                 }
             });
 
-            loading.style.display = 'none';
-            searchStats.textContent = `${posts.length} Posts durchsuchbar`;
-            searchInput.disabled = false;
-            searchInput.focus();
+            if (loading) loading.style.display = 'none';
+            if (searchStats) searchStats.textContent = `${posts.length} Posts durchsuchbar`;
+            if (searchInput) {
+                searchInput.disabled = false;
+                searchInput.focus();
+            }
 
             // Query aus URL prüfen
             const urlParams = new URLSearchParams(window.location.search);
             const queryParam = urlParams.get('q');
-            if (queryParam) {
+            if (queryParam && searchInput) {
                 searchInput.value = queryParam;
                 search(queryParam);
             }
 
         } catch (error) {
             console.error('Fehler beim Laden des Feeds:', error);
-            loading.textContent = 'Fehler beim Laden des Feeds. Bitte versuche es später erneut.';
+            if (loading) loading.textContent = 'Fehler beim Laden des Feeds. Bitte versuche es später erneut.';
         }
     }
+
+    // --- Suchlogik ---
+    function search(query) {
+        const searchResults = document.getElementById('searchResults');
+        const searchStats = document.getElementById('searchStats');
+        if (!query || query.trim() === '') {
+            if (searchResults) searchResults.innerHTML = '';
+            if (searchStats) searchStats.textContent = `${posts.length} Posts durchsuchbar`;
+            return;
+        }
+        const searchTerms = query.toLowerCase().trim().split(/\s+/);
+        const results = posts.filter(post => {
+            const text = `${post.title} ${post.content}`.toLowerCase();
+            return searchTerms.every(term => text.includes(term));
+        }).map(post => {
+            let score = 0;
+            const titleLower = post.title.toLowerCase();
+            searchTerms.forEach(term => {
+                if (titleLower.includes(term)) score += 10;
+                if (post.content.toLowerCase().includes(term)) score += 1;
+            });
+            return { ...post, score };
+        }).sort((a,b) => b.score - a.score);
+
+        displayResults(results, query);
+    }
+
+    function displayResults(results, query) {
+        const searchResults = document.getElementById('searchResults');
+        const searchStats = document.getElementById('searchStats');
+        if (results.length === 0) {
+            if (searchResults) searchResults.innerHTML = '<li class="search-no-results">Keine Ergebnisse gefunden.</li>';
+            if (searchStats) searchStats.textContent = '0 Ergebnisse';
+            return;
+        }
+        if (searchStats) searchStats.textContent = `${results.length} Ergebnis${results.length !== 1 ? 'se' : ''}`;
+        if (searchResults) {
+            searchResults.innerHTML = results.map(post => {
+                const date = new Date(post.pubDate).toLocaleDateString('de-DE', { year:'numeric', month:'long', day:'numeric' });
+                const excerpt = createExcerpt(post.content, query, 200);
+                const highlightedTitle = highlightText(post.title, query);
+                return `
+                    <li class="search-result">
+                        <h2><a href="${post.link}">${highlightedTitle}</a></h2>
+                        <div class="search-result-date">${date}</div>
+                        <div class="search-result-excerpt">${excerpt}</div>
+                    </li>
+                `;
+            }).join('');
+        }
+    }
+
+    function createExcerpt(content, query, maxLength) {
+        const searchTerms = query.toLowerCase().trim().split(/\s+/);
+        const contentLower = content.toLowerCase();
+        let firstIndex = -1;
+        searchTerms.forEach(term => {
+            const index = contentLower.indexOf(term);
+            if (index !== -1 && (firstIndex === -1 || index < firstIndex)) firstIndex = index;
+        });
+        if (firstIndex === -1) return highlightText(content.substring(0,maxLength)+'...', query);
+        const start = Math.max(0, firstIndex-100);
+        const end = Math.min(content.length, firstIndex+maxLength);
+        let excerpt = content.substring(start,end);
+        if(start>0) excerpt = '...' + excerpt;
+        if(end<content.length) excerpt = excerpt + '...';
+        return highlightText(excerpt, query);
+    }
+
+    function highlightText(text, query) {
+        if(!query) return text;
+        const terms = query.trim().split(/\s+/);
+        let result = text;
+        terms.forEach(term => {
+            const regex = new RegExp(`(${escapeRegex(term)})`,'gi');
+            result = result.replace(regex,'<span class="search-highlight">$1</span>');
+        });
+        return result;
+    }
+
+    function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+    function debounce(func, wait) { let timeout; return function(...args){ clearTimeout(timeout); timeout=setTimeout(()=>func.apply(this,args),wait); }; }
 
     // --- Suchfeld und UI ---
     function initSearchUI() {
@@ -112,102 +196,22 @@
                 .search-highlight { background-color: #ffeb3b; border-radius: 4px; padding: 0 2px; }
             </style>
         `;
-        loadFeed(); // <-- jetzt existiert loadFeed schon
-    }
-
-    // --- Suchlogik ---
-    function search(query) {
-        const searchResults = document.getElementById('searchResults');
-        const searchStats = document.getElementById('searchStats');
-        if (!query || query.trim() === '') {
-            searchResults.innerHTML = '';
-            searchStats.textContent = `${posts.length} Posts durchsuchbar`;
-            return;
+        
+        // Event Listener direkt hier setzen
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(e => search(e.target.value), 300));
         }
-        const searchTerms = query.toLowerCase().trim().split(/\s+/);
-        const results = posts.filter(post => {
-            const text = `${post.title} ${post.content}`.toLowerCase();
-            return searchTerms.every(term => text.includes(term));
-        }).map(post => {
-            let score = 0;
-            const titleLower = post.title.toLowerCase();
-            searchTerms.forEach(term => {
-                if (titleLower.includes(term)) score += 10;
-                if (post.content.toLowerCase().includes(term)) score += 1;
-            });
-            return { ...post, score };
-        }).sort((a,b) => b.score - a.score);
-
-        displayResults(results, query);
+        
+        // Feed laden nachdem UI erstellt wurde
+        loadFeed();
     }
-
-    function displayResults(results, query) {
-        const searchResults = document.getElementById('searchResults');
-        const searchStats = document.getElementById('searchStats');
-        if (results.length === 0) {
-            searchResults.innerHTML = '<li class="search-no-results">Keine Ergebnisse gefunden.</li>';
-            searchStats.textContent = '0 Ergebnisse';
-            return;
-        }
-        searchStats.textContent = `${results.length} Ergebnis${results.length !== 1 ? 'se' : ''}`;
-        searchResults.innerHTML = results.map(post => {
-            const date = new Date(post.pubDate).toLocaleDateString('de-DE', { year:'numeric', month:'long', day:'numeric' });
-            const excerpt = createExcerpt(post.content, query, 200);
-            const highlightedTitle = highlightText(post.title, query);
-            return `
-                <li class="search-result">
-                    <h2><a href="${post.link}">${highlightedTitle}</a></h2>
-                    <div class="search-result-date">${date}</div>
-                    <div class="search-result-excerpt">${excerpt}</div>
-                </li>
-            `;
-        }).join('');
-    }
-
-    function createExcerpt(content, query, maxLength) {
-        const searchTerms = query.toLowerCase().trim().split(/\s+/);
-        const contentLower = content.toLowerCase();
-        let firstIndex = -1;
-        searchTerms.forEach(term => {
-            const index = contentLower.indexOf(term);
-            if (index !== -1 && (firstIndex === -1 || index < firstIndex)) firstIndex = index;
-        });
-        if (firstIndex === -1) return highlightText(content.substring(0,maxLength)+'...', query);
-        const start = Math.max(0, firstIndex-100);
-        const end = Math.min(content.length, firstIndex+maxLength);
-        let excerpt = content.substring(start,end);
-        if(start>0) excerpt = '...' + excerpt;
-        if(end<content.length) excerpt = excerpt + '...';
-        return highlightText(excerpt, query);
-    }
-
-    function highlightText(text, query) {
-        if(!query) return text;
-        const terms = query.trim().split(/\s+/);
-        let result = text;
-        terms.forEach(term => {
-            const regex = new RegExp(`(${escapeRegex(term)})`,'gi');
-            result = result.replace(regex,'<span class="search-highlight">$1</span>');
-        });
-        return result;
-    }
-
-    function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-    function debounce(func, wait) { let timeout; return function(...args){ clearTimeout(timeout); timeout=setTimeout(()=>func.apply(this,args),wait); }; }
 
     // --- DOM ready ---
-    if(document.readyState==='loading'){
-        document.addEventListener('DOMContentLoaded',()=>{
-            initSearchUI();
-            const searchInput=document.getElementById('searchInput');
-            if(searchInput) searchInput.addEventListener('input',debounce(e=>search(e.target.value),300));
-        });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSearchUI);
     } else {
         initSearchUI();
-        setTimeout(()=>{
-            const searchInput=document.getElementById('searchInput');
-            if(searchInput) searchInput.addEventListener('input',debounce(e=>search(e.target.value),300));
-        },100);
     }
 
 })();
