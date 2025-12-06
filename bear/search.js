@@ -143,7 +143,7 @@
                 };
             });
             
-            loading.classList.add('hidden');
+            loading.style.display = 'none';
             searchStats.textContent = `${posts.length} Posts durchsuchbar`;
             searchInput.disabled = false;
             searchInput.focus();
