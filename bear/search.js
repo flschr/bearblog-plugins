@@ -1,5 +1,4 @@
 // Bear Blog Search Functionality
-// Add this script to your footer
 (function() {
     // Only run on the search page
     if (!window.location.pathname.includes('/search')) {
@@ -31,9 +30,32 @@
                 
                 <ul class="search-results" id="searchResults"></ul>
             </div>
+            
+            <style>
+                .search-container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+                .search-box {
+                    width: 100%; padding: 12px 20px; font-size: 1rem; 
+                    border: 1px solid #ccc; border-radius: 4px;
+                    margin: 1rem 0;
+                }
+                .search-box:focus { outline: none; border-color: #0078d4; }
+                .search-stats { font-size: 0.9rem; color: #555; margin-bottom: 1rem; }
+                .search-loading { font-size: 0.9rem; color: #555; margin: 1rem 0; }
+                .search-results { list-style: none; padding: 0; }
+                .search-result { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
+                .search-result h2 { margin: 0 0 5px; font-size: 1.2rem; }
+                .search-result a { text-decoration: none; color: #0078d4; }
+                .search-result a:hover { text-decoration: underline; }
+                .search-result-date { font-size: 0.85rem; color: #888; margin-bottom: 5px; }
+                .search-result-excerpt { font-size: 0.95rem; color: #333; }
+                .search-highlight { background-color: #ffeb3b; padding: 0 2px; }
+                .search-no-results { color: #888; padding: 2rem 0; text-align: center; }
+            </style>
         `;
 
-        loadFeed();
+        setTimeout(() => {
+            loadFeed();
+        }, 0);
     }
 
     // Parse Atom feed
@@ -42,68 +64,128 @@
         const searchInput = document.getElementById('searchInput');
         const searchStats = document.getElementById('searchStats');
 
+        if (!loading || !searchInput || !searchStats) {
+            console.error('DOM elements not found');
+            return;
+        }
+
         try {
-            const response = await fetch('/feed/?type=rss');
+            console.log('Loading feed from /feed/');
+            
+            const response = await fetch('/feed/');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const text = await response.text();
+            console.log('Feed loaded, length:', text.length);
+            console.log('First 500 chars:', text.substring(0, 500));
+            
             const parser = new DOMParser();
-            const xml = parser.parseFromString(text, 'text/xml');
+            const xml = parser.parseFromString(text, 'application/xml');
             
-            // Check if it's Atom or RSS
-            const entries = xml.querySelectorAll('entry');
-            const items = xml.querySelectorAll('item');
-            const isAtom = entries.length > 0;
+            // Check for parse errors
+            const parseError = xml.querySelector('parsererror');
+            if (parseError) {
+                console.error('Parse error:', parseError.textContent);
+                throw new Error('XML parsing failed');
+            }
             
-            const feedItems = isAtom ? entries : items;
+            // Try to find entries with and without namespace
+            let entries = xml.querySelectorAll('entry');
             
-            posts = Array.from(feedItems).map(item => {
-                if (isAtom) {
-                    // Atom feed parsing
-                    const content = item.querySelector('content')?.textContent || '';
-                    const summary = item.querySelector('summary')?.textContent || '';
+            // If no entries found, try with namespace prefix
+            if (entries.length === 0) {
+                entries = xml.getElementsByTagName('entry');
+            }
+            
+            console.log('Found entries:', entries.length);
+            
+            if (entries.length === 0) {
+                console.error('No entries found. XML structure:', xml.documentElement.tagName);
+                throw new Error('No entries found in feed');
+            }
+            
+            posts = Array.from(entries).map((entry, index) => {
+                console.log(`Processing entry ${index + 1}`);
+                
+                // Helper function to get element text content
+                function getElementText(parent, tagName) {
+                    // Try direct querySelector first
+                    let el = parent.querySelector(tagName);
+                    if (el) return el.textContent;
                     
-                    // Clean HTML tags from content
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = content || summary;
-                    const cleanContent = tempDiv.textContent || tempDiv.innerText || '';
+                    // Try getElementsByTagName
+                    let els = parent.getElementsByTagName(tagName);
+                    if (els.length > 0) return els[0].textContent;
                     
-                    // Get link (Atom uses <link href="...">)
-                    const linkElement = item.querySelector('link[rel="alternate"]') || item.querySelector('link');
-                    const link = linkElement?.getAttribute('href') || '';
-                    
-                    return {
-                        title: item.querySelector('title')?.textContent || '',
-                        link: link,
-                        pubDate: item.querySelector('published')?.textContent || item.querySelector('updated')?.textContent || '',
-                        content: cleanContent,
-                        description: summary
-                    };
-                } else {
-                    // RSS feed parsing
-                    const description = item.querySelector('description')?.textContent || '';
-                    const contentEncoded = item.querySelector('content\\:encoded, encoded')?.textContent || description;
-                    
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = contentEncoded;
-                    const cleanContent = tempDiv.textContent || tempDiv.innerText || '';
-                    
-                    return {
-                        title: item.querySelector('title')?.textContent || '',
-                        link: item.querySelector('link')?.textContent || '',
-                        pubDate: item.querySelector('pubDate')?.textContent || '',
-                        content: cleanContent,
-                        description: description
-                    };
+                    return '';
                 }
+                
+                // Get title
+                const title = getElementText(entry, 'title') || 'Untitled';
+                console.log('  Title:', title);
+                
+                // Get content - try multiple possible tags
+                let rawContent = getElementText(entry, 'content') || 
+                                getElementText(entry, 'summary') || 
+                                getElementText(entry, 'description') || '';
+                
+                // Clean HTML from content
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = rawContent;
+                const cleanContent = tempDiv.textContent || tempDiv.innerText || '';
+                console.log('  Content length:', cleanContent.length);
+                
+                // Get link
+                let link = '';
+                const linkEls = entry.getElementsByTagName('link');
+                if (linkEls.length > 0) {
+                    // Try to find alternate link first
+                    for (let i = 0; i < linkEls.length; i++) {
+                        const rel = linkEls[i].getAttribute('rel');
+                        const href = linkEls[i].getAttribute('href');
+                        if (rel === 'alternate' && href) {
+                            link = href;
+                            break;
+                        }
+                    }
+                    // If no alternate link, use first link with href
+                    if (!link) {
+                        for (let i = 0; i < linkEls.length; i++) {
+                            const href = linkEls[i].getAttribute('href');
+                            if (href) {
+                                link = href;
+                                break;
+                            }
+                        }
+                    }
+                }
+                console.log('  Link:', link);
+                
+                // Get dates
+                const published = getElementText(entry, 'published') || 
+                                 getElementText(entry, 'updated') || 
+                                 getElementText(entry, 'pubDate') || '';
+                console.log('  Date:', published);
+                
+                return {
+                    title: title,
+                    link: link,
+                    pubDate: published,
+                    content: cleanContent
+                };
             });
+            
+            console.log('Posts processed:', posts.length);
             
             loading.style.display = 'none';
             searchStats.textContent = `${posts.length} Posts durchsuchbar`;
-            
-            // Enable search input
             searchInput.disabled = false;
             searchInput.focus();
 
-            // Check for query parameter
+            // Check for query parameter in URL
             const urlParams = new URLSearchParams(window.location.search);
             const queryParam = urlParams.get('q');
             if (queryParam) {
@@ -112,8 +194,9 @@
             }
             
         } catch (error) {
-            console.error('Fehler beim Laden des Feeds:', error);
-            loading.textContent = 'Fehler beim Laden des Feeds. Bitte versuche es später erneut.';
+            console.error('Error loading feed:', error);
+            loading.textContent = 'Fehler beim Laden des Feeds: ' + error.message;
+            loading.style.color = '#c00';
         }
     }
 
@@ -121,6 +204,8 @@
     function search(query) {
         const searchResults = document.getElementById('searchResults');
         const searchStats = document.getElementById('searchStats');
+
+        if (!searchResults || !searchStats) return;
 
         if (!query || query.trim().length === 0) {
             searchResults.innerHTML = '';
@@ -134,7 +219,6 @@
             const searchableText = `${post.title} ${post.content}`.toLowerCase();
             return searchTerms.every(term => searchableText.includes(term));
         }).map(post => {
-            // Calculate relevance score
             let score = 0;
             const titleLower = post.title.toLowerCase();
             
@@ -153,6 +237,8 @@
     function displayResults(results, query) {
         const searchResults = document.getElementById('searchResults');
         const searchStats = document.getElementById('searchStats');
+
+        if (!searchResults || !searchStats) return;
 
         if (results.length === 0) {
             searchResults.innerHTML = '<li class="search-no-results">Keine Ergebnisse gefunden.</li>';
@@ -210,7 +296,7 @@
         return highlightText(excerpt, query);
     }
 
-    // Highlight search terms in text
+    // Highlight search terms
     function highlightText(text, query) {
         if (!query) return text;
         
@@ -225,41 +311,34 @@
         return result;
     }
 
-    // Escape special regex characters
+    // Escape regex special characters
     function escapeRegex(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    // Debounce function
+    // Debounce helper
     function debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+        return function(...args) {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(() => func.apply(this, args), wait);
         };
     }
 
-    // Initialize when DOM is ready
+    // Initialize
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            initSearchUI();
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', debounce(function(e) {
-                    search(e.target.value);
-                }, 300));
-            }
-        });
+        document.addEventListener('DOMContentLoaded', init);
     } else {
+        init();
+    }
+
+    function init() {
         initSearchUI();
+        
         setTimeout(() => {
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
-                searchInput.addEventListener('input', debounce(function(e) {
+                searchInput.addEventListener('input', debounce(e => {
                     search(e.target.value);
                 }, 300));
             }
