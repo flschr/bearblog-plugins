@@ -9,16 +9,50 @@
         const searchInput = document.getElementById('searchInput');
         const searchStats = document.getElementById('searchStats');
 
+        if (!loading || !searchInput || !searchStats) {
+            console.error('DOM-Elemente nicht gefunden!');
+            return;
+        }
+
         try {
-            const response = await fetch('/feed/?type=rss');
+            console.log('Lade Feed von /feed/...');
+            loading.textContent = 'Feed wird geladen...';
+            
+            // Bear Blog verwendet wahrscheinlich /feed/ ohne Parameter
+            const response = await fetch('/feed/');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+            }
+            
             const text = await response.text();
+            console.log('Feed geladen, Länge:', text.length);
+            
+            if (text.length === 0) {
+                throw new Error('Feed ist leer');
+            }
+            
             const parser = new DOMParser();
             const xml = parser.parseFromString(text, 'text/xml');
+            
+            // Prüfe auf Parser-Fehler
+            const parserError = xml.querySelector('parsererror');
+            if (parserError) {
+                console.error('XML Parser Fehler:', parserError.textContent);
+                throw new Error('Feed konnte nicht geparst werden');
+            }
 
+            // Versuche beide Formate (Atom und RSS)
             const entries = xml.querySelectorAll('entry');
             const items = xml.querySelectorAll('item');
             const isAtom = entries.length > 0;
             const feedItems = isAtom ? entries : items;
+            
+            console.log(`Gefunden: ${feedItems.length} Einträge (Format: ${isAtom ? 'Atom' : 'RSS'})`);
+
+            if (feedItems.length === 0) {
+                throw new Error('Keine Einträge im Feed gefunden');
+            }
 
             posts = Array.from(feedItems).map(item => {
                 if (isAtom) {
@@ -52,24 +86,25 @@
                 }
             });
 
-            if (loading) loading.style.display = 'none';
-            if (searchStats) searchStats.textContent = `${posts.length} Posts durchsuchbar`;
-            if (searchInput) {
-                searchInput.disabled = false;
-                searchInput.focus();
-            }
+            console.log('Posts verarbeitet:', posts.length);
+            
+            loading.style.display = 'none';
+            searchStats.textContent = `${posts.length} Posts durchsuchbar`;
+            searchInput.disabled = false;
+            searchInput.focus();
 
             // Query aus URL prüfen
             const urlParams = new URLSearchParams(window.location.search);
             const queryParam = urlParams.get('q');
-            if (queryParam && searchInput) {
+            if (queryParam) {
                 searchInput.value = queryParam;
                 search(queryParam);
             }
 
         } catch (error) {
             console.error('Fehler beim Laden des Feeds:', error);
-            if (loading) loading.textContent = 'Fehler beim Laden des Feeds. Bitte versuche es später erneut.';
+            loading.textContent = `Fehler beim Laden: ${error.message}`;
+            loading.style.color = '#c00';
         }
     }
 
@@ -77,11 +112,15 @@
     function search(query) {
         const searchResults = document.getElementById('searchResults');
         const searchStats = document.getElementById('searchStats');
+        
+        if (!searchResults || !searchStats) return;
+        
         if (!query || query.trim() === '') {
-            if (searchResults) searchResults.innerHTML = '';
-            if (searchStats) searchStats.textContent = `${posts.length} Posts durchsuchbar`;
+            searchResults.innerHTML = '';
+            searchStats.textContent = `${posts.length} Posts durchsuchbar`;
             return;
         }
+        
         const searchTerms = query.toLowerCase().trim().split(/\s+/);
         const results = posts.filter(post => {
             const text = `${post.title} ${post.content}`.toLowerCase();
@@ -102,26 +141,28 @@
     function displayResults(results, query) {
         const searchResults = document.getElementById('searchResults');
         const searchStats = document.getElementById('searchStats');
+        
+        if (!searchResults || !searchStats) return;
+        
         if (results.length === 0) {
-            if (searchResults) searchResults.innerHTML = '<li class="search-no-results">Keine Ergebnisse gefunden.</li>';
-            if (searchStats) searchStats.textContent = '0 Ergebnisse';
+            searchResults.innerHTML = '<li class="search-no-results">Keine Ergebnisse gefunden.</li>';
+            searchStats.textContent = '0 Ergebnisse';
             return;
         }
-        if (searchStats) searchStats.textContent = `${results.length} Ergebnis${results.length !== 1 ? 'se' : ''}`;
-        if (searchResults) {
-            searchResults.innerHTML = results.map(post => {
-                const date = new Date(post.pubDate).toLocaleDateString('de-DE', { year:'numeric', month:'long', day:'numeric' });
-                const excerpt = createExcerpt(post.content, query, 200);
-                const highlightedTitle = highlightText(post.title, query);
-                return `
-                    <li class="search-result">
-                        <h2><a href="${post.link}">${highlightedTitle}</a></h2>
-                        <div class="search-result-date">${date}</div>
-                        <div class="search-result-excerpt">${excerpt}</div>
-                    </li>
-                `;
-            }).join('');
-        }
+        
+        searchStats.textContent = `${results.length} Ergebnis${results.length !== 1 ? 'se' : ''}`;
+        searchResults.innerHTML = results.map(post => {
+            const date = new Date(post.pubDate).toLocaleDateString('de-DE', { year:'numeric', month:'long', day:'numeric' });
+            const excerpt = createExcerpt(post.content, query, 200);
+            const highlightedTitle = highlightText(post.title, query);
+            return `
+                <li class="search-result">
+                    <h2><a href="${post.link}">${highlightedTitle}</a></h2>
+                    <div class="search-result-date">${date}</div>
+                    <div class="search-result-excerpt">${excerpt}</div>
+                </li>
+            `;
+        }).join('');
     }
 
     function createExcerpt(content, query, maxLength) {
@@ -153,10 +194,17 @@
     }
 
     function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-    function debounce(func, wait) { let timeout; return function(...args){ clearTimeout(timeout); timeout=setTimeout(()=>func.apply(this,args),wait); }; }
+    function debounce(func, wait) { 
+        let timeout; 
+        return function(...args){ 
+            clearTimeout(timeout); 
+            timeout=setTimeout(()=>func.apply(this,args),wait); 
+        }; 
+    }
 
     // --- Suchfeld und UI ---
     function initSearchUI() {
+        console.log('Initialisiere Search UI...');
         const main = document.querySelector('main') || document.querySelector('article') || document.body;
         main.innerHTML = `
             <div class="search-container">
@@ -186,6 +234,7 @@
                 .search-box:focus { outline: none; border-color: #0078d4; box-shadow: 0 4px 12px rgba(0,120,212,0.3); }
                 .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #888; pointer-events: none; }
                 .search-stats { margin-top: 10px; font-size: 0.9rem; color: #555; }
+                .search-loading { margin-top: 10px; font-size: 0.9rem; color: #555; }
                 .search-results { list-style: none; padding: 0; margin-top: 20px; }
                 .search-result { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
                 .search-result h2 { margin: 0 0 5px; font-size: 1.2rem; }
@@ -194,17 +243,23 @@
                 .search-result-date { font-size: 0.85rem; color: #888; margin-bottom: 5px; }
                 .search-result-excerpt { font-size: 0.95rem; color: #333; }
                 .search-highlight { background-color: #ffeb3b; border-radius: 4px; padding: 0 2px; }
+                .search-no-results { color: #888; padding: 2rem 0; text-align: center; }
             </style>
         `;
         
-        // Event Listener direkt hier setzen
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', debounce(e => search(e.target.value), 300));
-        }
-        
-        // Feed laden nachdem UI erstellt wurde
-        loadFeed();
+        // Warte kurz, damit DOM sicher gerendert ist
+        setTimeout(() => {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                console.log('Event Listener hinzugefügt');
+                searchInput.addEventListener('input', debounce(e => search(e.target.value), 300));
+            } else {
+                console.error('searchInput nicht gefunden!');
+            }
+            
+            // Feed laden
+            loadFeed();
+        }, 100);
     }
 
     // --- DOM ready ---
