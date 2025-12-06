@@ -4,10 +4,19 @@ if (window.location.pathname.includes('/fotos')) {
     
     // Warte bis DOM geladen ist
     document.addEventListener('DOMContentLoaded', function() {
-        // Finde alle List-Items in der Foto-Galerie
-        const fotoItems = document.querySelectorAll('.fotos-page ul.blog-posts li');
+        // Finde alle List-Items in der Foto-Galerie und füge .photo-card Klasse hinzu
+        const fotoItems = document.querySelectorAll('.fotos-page .blog-posts li');
         
         fotoItems.forEach(item => {
+            // Füge photo-card Klasse hinzu für optimiertes CSS
+            item.classList.add('photo-card');
+            
+            // Füge Wrapper-Klasse zum div hinzu
+            const imageDiv = item.querySelector('div');
+            if (imageDiv) {
+                imageDiv.classList.add('photo-card-image-wrapper');
+            }
+            
             // Finde den Link innerhalb des Items
             const link = item.querySelector('a');
             
@@ -21,7 +30,7 @@ if (window.location.pathname.includes('/fotos')) {
                 });
                 
                 item.addEventListener('mouseleave', function() {
-                    link.style.color = 'var(--color-primary)';
+                    link.style.color = '';
                 });
                 
                 // Click-Event auf die gesamte Kachel
@@ -38,18 +47,29 @@ if (window.location.pathname.includes('/fotos')) {
 
 // Mache das letzte Foto auf der Homepage komplett klickbar
 if (document.body.classList.contains('home')) {
-    const lastPhotoList = document.querySelectorAll('ul.embedded.blog-posts');
-    if (lastPhotoList.length > 0) {
-        const lastList = lastPhotoList[lastPhotoList.length - 1];
-        const photoItems = lastList.querySelectorAll('li');
-        
-        photoItems.forEach(item => {
-            const link = item.querySelector('a');
-            if (link) {
-                item.addEventListener('click', function(e) {
-                    window.location.href = link.href;
-                });
-            }
-        });
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const lastPhotoList = document.querySelectorAll('ul.embedded.blog-posts');
+        if (lastPhotoList.length > 0) {
+            const lastList = lastPhotoList[lastPhotoList.length - 1];
+            const photoItems = lastList.querySelectorAll('li');
+            
+            photoItems.forEach(item => {
+                // Füge photo-card Klasse hinzu
+                item.classList.add('photo-card');
+                
+                // Füge Wrapper-Klasse zum div hinzu
+                const imageDiv = item.querySelector('div');
+                if (imageDiv) {
+                    imageDiv.classList.add('photo-card-image-wrapper');
+                }
+                
+                const link = item.querySelector('a');
+                if (link) {
+                    item.addEventListener('click', function(e) {
+                        window.location.href = link.href;
+                    });
+                }
+            });
+        }
+    });
 }
