@@ -47,8 +47,6 @@
         }
 
         try {
-            console.log('Loading feed from /feed/');
-            
             const response = await fetch('/feed/');
             
             if (!response.ok) {
@@ -56,9 +54,7 @@
             }
             
             const text = await response.text();
-            console.log('Feed loaded, length:', text.length);
-            console.log('First 500 chars:', text.substring(0, 500));
-            
+
             const parser = new DOMParser();
             const xml = parser.parseFromString(text, 'application/xml');
             
@@ -76,17 +72,13 @@
             if (entries.length === 0) {
                 entries = xml.getElementsByTagName('entry');
             }
-            
-            console.log('Found entries:', entries.length);
-            
+
             if (entries.length === 0) {
                 console.error('No entries found. XML structure:', xml.documentElement.tagName);
                 throw new Error('No entries found in feed');
             }
             
             posts = Array.from(entries).map((entry, index) => {
-                console.log(`Processing entry ${index + 1}`);
-                
                 // Helper function to get element text content
                 function getElementText(parent, tagName) {
                     // Try direct querySelector first
@@ -102,8 +94,7 @@
                 
                 // Get title
                 const title = getElementText(entry, 'title') || 'Untitled';
-                console.log('  Title:', title);
-                
+
                 // Get content - try multiple possible tags
                 let rawContent = getElementText(entry, 'content') || 
                                 getElementText(entry, 'summary') || 
@@ -113,8 +104,7 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = rawContent;
                 const cleanContent = tempDiv.textContent || tempDiv.innerText || '';
-                console.log('  Content length:', cleanContent.length);
-                
+
                 // Get link
                 let link = '';
                 const linkEls = entry.getElementsByTagName('link');
@@ -139,14 +129,12 @@
                         }
                     }
                 }
-                console.log('  Link:', link);
-                
+
                 // Get dates
-                const published = getElementText(entry, 'published') || 
-                                 getElementText(entry, 'updated') || 
+                const published = getElementText(entry, 'published') ||
+                                 getElementText(entry, 'updated') ||
                                  getElementText(entry, 'pubDate') || '';
-                console.log('  Date:', published);
-                
+
                 return {
                     title: title,
                     link: link,
@@ -155,9 +143,7 @@
                 };
             });
             
-            console.log('Posts processed:', posts.length);
-            
-            loading.style.display = 'none';
+            loading.classList.add('hidden');
             searchStats.textContent = `${posts.length} Posts durchsuchbar`;
             searchInput.disabled = false;
             searchInput.focus();
@@ -173,7 +159,7 @@
         } catch (error) {
             console.error('Error loading feed:', error);
             loading.textContent = 'Fehler beim Laden des Feeds: ' + error.message;
-            loading.style.color = '#c00';
+            loading.classList.add('error');
         }
     }
 
@@ -184,6 +170,15 @@
 
         if (!searchResults || !searchStats) return;
 
+        // Update URL with search query
+        const url = new URL(window.location);
+        if (query && query.trim().length > 0) {
+            url.searchParams.set('q', query);
+        } else {
+            url.searchParams.delete('q');
+        }
+        window.history.replaceState({}, '', url);
+
         if (!query || query.trim().length === 0) {
             searchResults.innerHTML = '';
             searchStats.textContent = `${posts.length} Posts durchsuchbar`;
@@ -191,21 +186,24 @@
         }
 
         const searchTerms = query.toLowerCase().trim().split(/\s+/);
-        
-        const results = posts.filter(post => {
-            const searchableText = `${post.title} ${post.content}`.toLowerCase();
-            return searchTerms.every(term => searchableText.includes(term));
-        }).map(post => {
-            let score = 0;
+
+        const results = posts.reduce((acc, post) => {
             const titleLower = post.title.toLowerCase();
-            
-            searchTerms.forEach(term => {
-                if (titleLower.includes(term)) score += 10;
-                if (post.content.toLowerCase().includes(term)) score += 1;
-            });
-            
-            return { ...post, score };
-        }).sort((a, b) => b.score - a.score);
+            const contentLower = post.content.toLowerCase();
+            const searchableText = `${titleLower} ${contentLower}`;
+
+            // Check if all search terms are present
+            if (searchTerms.every(term => searchableText.includes(term))) {
+                let score = 0;
+                searchTerms.forEach(term => {
+                    if (titleLower.includes(term)) score += 10;
+                    if (contentLower.includes(term)) score += 1;
+                });
+                acc.push({ ...post, score });
+            }
+
+            return acc;
+        }, []).sort((a, b) => b.score - a.score);
 
         displayResults(results, query);
     }
@@ -234,10 +232,11 @@
 
             const excerpt = createExcerpt(post.content, query, 200);
             const highlightedTitle = highlightText(post.title, query);
+            const safeLink = escapeHTML(post.link);
 
             return `
                 <li class="search-result">
-                    <h2><a href="${post.link}">${highlightedTitle}</a></h2>
+                    <h2><a href="${safeLink}">${highlightedTitle}</a></h2>
                     <div class="search-result-date">${date}</div>
                     <div class="search-result-excerpt">${excerpt}</div>
                 </li>
@@ -291,6 +290,13 @@
     // Escape regex special characters
     function escapeRegex(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     // Debounce helper
