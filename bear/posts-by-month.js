@@ -39,9 +39,10 @@
         });
         
         sortedMonths.forEach(monthYear => {
-            const header = document.createElement('h2');
+            const header = document.createElement('strong');
             header.textContent = monthYear;
             header.className = 'month-header';
+            header.style.display = 'block';
             blogPostsList.appendChild(header);
             
             postsByMonth.get(monthYear).forEach(post => {
