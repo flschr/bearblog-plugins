@@ -13,44 +13,21 @@
         
         main.innerHTML = `
             <div class="search-container">
-                <h1>Suche</h1>
-                
-                <input 
-                    type="search" 
-                    class="search-box" 
-                    id="searchInput" 
+                <input
+                    type="search"
+                    class="search-box"
+                    id="searchInput"
                     placeholder="Suche nach Titeln, Inhalten oder Tags..."
                     autocomplete="off"
                     disabled
                 >
-                
+
                 <div class="search-stats" id="searchStats"></div>
-                
+
                 <div class="search-loading" id="loading">Feed wird geladen...</div>
-                
+
                 <ul class="search-results" id="searchResults"></ul>
             </div>
-            
-            <style>
-                .search-container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
-                .search-box {
-                    width: 100%; padding: 12px 20px; font-size: 1rem; 
-                    border: 1px solid #ccc; border-radius: 4px;
-                    margin: 1rem 0;
-                }
-                .search-box:focus { outline: none; border-color: #0078d4; }
-                .search-stats { font-size: 0.9rem; color: #555; margin-bottom: 1rem; }
-                .search-loading { font-size: 0.9rem; color: #555; margin: 1rem 0; }
-                .search-results { list-style: none; padding: 0; }
-                .search-result { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
-                .search-result h2 { margin: 0 0 5px; font-size: 1.2rem; }
-                .search-result a { text-decoration: none; color: #0078d4; }
-                .search-result a:hover { text-decoration: underline; }
-                .search-result-date { font-size: 0.85rem; color: #888; margin-bottom: 5px; }
-                .search-result-excerpt { font-size: 0.95rem; color: #333; }
-                .search-highlight { background-color: #ffeb3b; padding: 0 2px; }
-                .search-no-results { color: #888; padding: 2rem 0; text-align: center; }
-            </style>
         `;
 
         setTimeout(() => {
