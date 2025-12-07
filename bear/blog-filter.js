@@ -46,6 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const searchInput = controls.querySelector('#blog-search')
 
+  // Infobox für "Keine Ergebnisse" erstellen (aber noch nicht einfügen)
+  const noResultsBox = document.createElement('div')
+  noResultsBox.className = 'infobox-frame'
+  noResultsBox.style.display = 'none'
+  noResultsBox.innerHTML = `
+    <div class="infobox-icon"></div>
+    <div class="infobox-text">
+      <p>Zu der Suche wurden leider keine Ergebnisse gefunden.</p>
+    </div>
+  `
+  list.parentNode.insertBefore(noResultsBox, list)
+
   // Pagination UI
   const pagination = document.createElement('nav')
   pagination.className = 'pagination'
@@ -88,17 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Keine Ergebnisse gefunden
     if (filtered.length === 0 && searchInput.value.trim()) {
-      const noResults = document.createElement('div')
-      noResults.className = 'infobox-frame'
-      noResults.innerHTML = `
-        <div class="infobox-icon"></div>
-        <div class="infobox-text">
-          <p>Zu der Suche wurden leider keine Ergebnisse gefunden.</p>
-        </div>
-      `
-      list.appendChild(noResults)
+      noResultsBox.style.display = 'flex'
+      list.style.display = 'none'
       pagination.style.display = 'none'
       return
+    } else {
+      noResultsBox.style.display = 'none'
+      list.style.display = 'block'
     }
 
     // Fragment für bessere Performance
