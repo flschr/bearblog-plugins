@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const searchInput = controls.querySelector('#blog-search')
 
-  // Infobox für "Keine Ergebnisse" erstellen (aber noch nicht einfügen)
+  // Infobox für "Keine Ergebnisse" erstellen
   const noResultsBox = document.createElement('div')
   noResultsBox.className = 'infobox-frame'
   noResultsBox.style.display = 'none'
@@ -71,42 +71,75 @@ document.addEventListener('DOMContentLoaded', () => {
   const prevBtn = pagination.querySelector('.pagination-prev')
   const nextBtn = pagination.querySelector('.pagination-next')
 
-  let currentPage = 1
   const pageSize = 20
 
+  // URL-Parameter auslesen
+  function getStateFromURL() {
+    const params = new URLSearchParams(window.location.search)
+    return {
+      page: parseInt(params.get('page')) || 1,
+      search: params.get('search') || ''
+    }
+  }
+
+  // URL aktualisieren
+  function updateURL(page, search, replace = false) {
+    const params = new URLSearchParams()
+    if (page > 1) params.set('page', page)
+    if (search) params.set('search', search)
+    
+    const url = params.toString() 
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname
+    
+    if (replace) {
+      window.history.replaceState({ page, search }, '', url)
+    } else {
+      window.history.pushState({ page, search }, '', url)
+    }
+  }
+
   // Filter-Funktion
-  function getFilteredPosts() {
-    const query = searchInput.value.trim().toLowerCase()
-    if (!query) return postData
+  function getFilteredPosts(searchQuery) {
+    if (!searchQuery) return postData
+    const query = searchQuery.toLowerCase()
     return postData.filter(p => p.searchText.includes(query))
   }
 
   // Render-Funktion
-  function render() {
-    const filtered = getFilteredPosts()
+  function render(page, search, updateHistory = false) {
+    const filtered = getFilteredPosts(search)
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
 
     // Seite korrigieren falls nötig
-    if (currentPage > totalPages) {
-      currentPage = totalPages
+    if (page > totalPages) {
+      page = totalPages
     }
 
-    const start = (currentPage - 1) * pageSize
+    const start = (page - 1) * pageSize
     const end = start + pageSize
     const pagePosts = filtered.slice(start, end)
+
+    // Suchfeld synchronisieren (ohne Event auszulösen)
+    if (searchInput.value !== search) {
+      searchInput.value = search
+    }
 
     // Liste leeren
     list.innerHTML = ''
 
     // Keine Ergebnisse gefunden
-    if (filtered.length === 0 && searchInput.value.trim()) {
+    if (filtered.length === 0 && search) {
       noResultsBox.style.display = 'flex'
       list.style.display = 'none'
       pagination.style.display = 'none'
+      if (updateHistory) {
+        updateURL(page, search)
+      }
       return
     } else {
       noResultsBox.style.display = 'none'
-      list.style.display = ''  // Zurück zum Standard (nicht 'block')
+      list.style.display = ''
     }
 
     // Fragment für bessere Performance
@@ -129,19 +162,27 @@ document.addEventListener('DOMContentLoaded', () => {
     list.appendChild(fragment)
 
     // Buttons anzeigen/verstecken
-    if (currentPage <= 1) {
+    if (page <= 1) {
       prevBtn.style.visibility = 'hidden'
     } else {
       prevBtn.style.visibility = 'visible'
     }
     
-    if (currentPage >= totalPages) {
+    if (page >= totalPages) {
       nextBtn.style.visibility = 'hidden'
     } else {
       nextBtn.style.visibility = 'visible'
     }
     
     pagination.style.display = filtered.length > pageSize ? 'flex' : 'none'
+
+    // URL aktualisieren
+    if (updateHistory) {
+      updateURL(page, search)
+    }
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Event-Listener mit Debouncing für Search
@@ -149,52 +190,57 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
-      currentPage = 1
-      render()
+      const search = searchInput.value.trim()
+      render(1, search, true)
     }, 300)
   })
 
   prevBtn.addEventListener('click', event => {
     event.preventDefault()
-    if (currentPage > 1) {
-      currentPage--
-      render()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    const state = getStateFromURL()
+    if (state.page > 1) {
+      render(state.page - 1, state.search, true)
     }
   })
 
   nextBtn.addEventListener('click', event => {
     event.preventDefault()
-    const filtered = getFilteredPosts()
+    const state = getStateFromURL()
+    const filtered = getFilteredPosts(state.search)
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-    if (currentPage < totalPages) {
-      currentPage++
-      render()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (state.page < totalPages) {
+      render(state.page + 1, state.search, true)
     }
+  })
+
+  // Browser Back/Forward Buttons
+  window.addEventListener('popstate', (event) => {
+    const state = event.state || getStateFromURL()
+    render(state.page || 1, state.search || '', false)
   })
 
   // Keyboard Navigation
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, select')) return
     
-    if (e.key === 'ArrowLeft' && currentPage > 1) {
+    const state = getStateFromURL()
+    
+    if (e.key === 'ArrowLeft' && state.page > 1) {
       e.preventDefault()
-      currentPage--
-      render()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      render(state.page - 1, state.search, true)
     } else if (e.key === 'ArrowRight') {
-      const filtered = getFilteredPosts()
+      const filtered = getFilteredPosts(state.search)
       const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-      if (currentPage < totalPages) {
+      if (state.page < totalPages) {
         e.preventDefault()
-        currentPage++
-        render()
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        render(state.page + 1, state.search, true)
       }
     }
   })
 
-  // Initial render
-  render()
+  // Initial render mit URL-State
+  const initialState = getStateFromURL()
+  render(initialState.page, initialState.search, false)
+  // Initialen State in History setzen
+  updateURL(initialState.page, initialState.search, true)
 })
