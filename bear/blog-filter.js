@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
   ]
 
-  // Post-Daten mit Memoization
+  // Post-Daten
   const postData = posts.map(li => {
     const timeEl = li.querySelector('time')
     const linkEl = li.querySelector('a')
@@ -29,23 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // Jahr-Statistiken
-  const totalPosts = postData.length
-  const postsPerYear = postData.reduce((acc, p) => {
-    acc[p.year] = (acc[p.year] || 0) + 1
-    return acc
-  }, {})
-
-  // Controls erstellen
+  // Search Control erstellen
   const controls = document.createElement('div')
   controls.className = 'blog-controls'
   controls.innerHTML = `
-    <div class="blog-controls-row">
-      <label class="sr-only" for="blog-year-filter">Jahr</label>
-      <select id="blog-year-filter" aria-label="Nach Jahr filtern">
-        <option value="">Alle Jahre (${totalPosts})</option>
-      </select>
-    </div>
     <div class="blog-controls-row">
       <label class="sr-only" for="blog-search">Suche</label>
       <input 
@@ -57,17 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   `
   list.parentNode.insertBefore(controls, list)
 
-  const yearSelect = controls.querySelector('#blog-year-filter')
   const searchInput = controls.querySelector('#blog-search')
-
-  // Jahre-Dropdown befüllen
-  const years = [...new Set(postData.map(p => p.year))].sort((a, b) => b - a)
-  years.forEach(y => {
-    const opt = document.createElement('option')
-    opt.value = String(y)
-    opt.textContent = `${y} (${postsPerYear[y]})`
-    yearSelect.appendChild(opt)
-  })
 
   // Pagination UI
   const pagination = document.createElement('nav')
@@ -75,30 +52,21 @@ document.addEventListener('DOMContentLoaded', () => {
   pagination.setAttribute('aria-label', 'Seitennavigation')
   pagination.innerHTML = `
     <a href="#" class="pagination-prev" aria-label="Neuere Artikel">← Neuere Artikel</a>
-    <span class="pagination-info" aria-live="polite"></span>
     <a href="#" class="pagination-next" aria-label="Ältere Artikel">Ältere Artikel →</a>
   `
   list.insertAdjacentElement('afterend', pagination)
 
   const prevBtn = pagination.querySelector('.pagination-prev')
   const nextBtn = pagination.querySelector('.pagination-next')
-  const pageInfo = pagination.querySelector('.pagination-info')
 
   let currentPage = 1
   const pageSize = 20
 
-  // Filter-Funktion (gecacht)
+  // Filter-Funktion
   function getFilteredPosts() {
-    const yearFilter = yearSelect.value
     const query = searchInput.value.trim().toLowerCase()
-
-    if (!yearFilter && !query) return postData
-
-    return postData.filter(p => {
-      if (yearFilter && String(p.year) !== yearFilter) return false
-      if (query && !p.searchText.includes(query)) return false
-      return true
-    })
+    if (!query) return postData
+    return postData.filter(p => p.searchText.includes(query))
   }
 
   // Render-Funktion
@@ -135,10 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     list.innerHTML = ''
     list.appendChild(fragment)
 
-    // Pagination-Status aktualisieren
-    pageInfo.textContent = filtered.length ? `Seite ${currentPage} von ${totalPages}` : ''
-    
-    // Buttons disablen/enablen
+    // Buttons anzeigen/verstecken
     if (currentPage <= 1) {
       prevBtn.style.visibility = 'hidden'
     } else {
@@ -162,11 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
       currentPage = 1
       render()
     }, 300)
-  })
-
-  yearSelect.addEventListener('change', () => {
-    currentPage = 1
-    render()
   })
 
   prevBtn.addEventListener('click', event => {
