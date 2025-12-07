@@ -1,75 +1,81 @@
-// Automatisch die Klasse "fotos-page" hinzufügen wenn URL /fotos/ enthält
-if (window.location.pathname.includes('/fotos')) {
-    document.body.classList.add('fotos-page');
-    
-    // Warte bis DOM geladen ist
-    document.addEventListener('DOMContentLoaded', function() {
-        // Finde alle List-Items in der Foto-Galerie und füge .photo-card Klasse hinzu
-        const fotoItems = document.querySelectorAll('.fotos-page .blog-posts li');
-        
-        fotoItems.forEach(item => {
+(function() {
+    'use strict';
+
+    /**
+     * Macht Foto-Karten vollständig klickbar und fügt notwendige CSS-Klassen hinzu
+     * @param {NodeList|Array} items - Die zu verarbeitenden List-Items
+     * @param {boolean} addHoverEffect - Ob Hover-Effekte hinzugefügt werden sollen
+     */
+    function enhancePhotoCards(items, addHoverEffect) {
+        if (!items || items.length === 0) return;
+
+        items.forEach(item => {
             // Füge photo-card Klasse hinzu für optimiertes CSS
             item.classList.add('photo-card');
-            
+
             // Füge Wrapper-Klasse zum div hinzu
             const imageDiv = item.querySelector('div');
             if (imageDiv) {
                 imageDiv.classList.add('photo-card-image-wrapper');
             }
-            
+
             // Finde den Link innerhalb des Items
             const link = item.querySelector('a');
-            
-            if (link) {
-                // Mache die gesamte Kachel klickbar
-                item.style.cursor = 'pointer';
-                
-                // Hover-Event: Titel bekommt rote Farbe
+            if (!link) return;
+
+            // Mache die gesamte Kachel klickbar
+            item.classList.add('photo-card-clickable');
+
+            if (addHoverEffect) {
+                // Hover-Event: Titel bekommt Accent-Farbe
                 item.addEventListener('mouseenter', function() {
-                    link.style.color = 'var(--color-accent)';
+                    link.classList.add('photo-card-hover');
                 });
-                
+
                 item.addEventListener('mouseleave', function() {
-                    link.style.color = '';
-                });
-                
-                // Click-Event auf die gesamte Kachel
-                item.addEventListener('click', function(e) {
-                    // Verhindere doppeltes Triggern wenn direkt auf Link geklickt wird
-                    if (e.target.tagName !== 'A') {
-                        window.location.href = link.href;
-                    }
+                    link.classList.remove('photo-card-hover');
                 });
             }
-        });
-    });
-}
 
-// Mache das letzte Foto auf der Homepage komplett klickbar
-if (document.body.classList.contains('home')) {
-    document.addEventListener('DOMContentLoaded', function() {
-        const lastPhotoList = document.querySelectorAll('ul.embedded.blog-posts');
-        if (lastPhotoList.length > 0) {
-            const lastList = lastPhotoList[lastPhotoList.length - 1];
-            const photoItems = lastList.querySelectorAll('li');
-            
-            photoItems.forEach(item => {
-                // Füge photo-card Klasse hinzu
-                item.classList.add('photo-card');
-                
-                // Füge Wrapper-Klasse zum div hinzu
-                const imageDiv = item.querySelector('div');
-                if (imageDiv) {
-                    imageDiv.classList.add('photo-card-image-wrapper');
-                }
-                
-                const link = item.querySelector('a');
-                if (link) {
-                    item.addEventListener('click', function(e) {
-                        window.location.href = link.href;
-                    });
+            // Click-Event auf die gesamte Kachel
+            item.addEventListener('click', function(e) {
+                // Verhindere doppeltes Triggern wenn direkt auf Link geklickt wird
+                if (e.target.tagName !== 'A') {
+                    e.preventDefault();
+                    window.location.href = link.href;
                 }
             });
+        });
+    }
+
+    /**
+     * Initialisierung basierend auf der aktuellen Seite
+     */
+    function init() {
+        const pathname = window.location.pathname;
+
+        // Fotos-Seite: Alle Foto-Items verbessern
+        if (pathname.includes('/fotos')) {
+            document.body.classList.add('fotos-page');
+            const fotoItems = document.querySelectorAll('.fotos-page .blog-posts li');
+            enhancePhotoCards(fotoItems, true);
         }
-    });
-}
+
+        // Homepage: Letztes Foto-Album verbessern
+        if (document.body.classList.contains('home')) {
+            const photoLists = document.querySelectorAll('ul.embedded.blog-posts');
+            if (photoLists.length > 0) {
+                const lastList = photoLists[photoLists.length - 1];
+                const photoItems = lastList.querySelectorAll('li');
+                enhancePhotoCards(photoItems, false);
+            }
+        }
+    }
+
+    // Starte wenn DOM bereit ist
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
