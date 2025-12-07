@@ -74,15 +74,15 @@ document.addEventListener('DOMContentLoaded', () => {
   pagination.className = 'pagination'
   pagination.setAttribute('aria-label', 'Seitennavigation')
   pagination.innerHTML = `
-    <a href="#" id="prevPage" aria-label="Vorherige Seite">← Zurück</a>
-    <span id="pageInfo" aria-live="polite"></span>
-    <a href="#" id="nextPage" aria-label="Nächste Seite">Weiter →</a>
+    <a href="#" class="pagination-prev" aria-label="Neuere Artikel">← Neuere Artikel</a>
+    <span class="pagination-info" aria-live="polite"></span>
+    <a href="#" class="pagination-next" aria-label="Ältere Artikel">Ältere Artikel →</a>
   `
   list.insertAdjacentElement('afterend', pagination)
 
-  const prevBtn = pagination.querySelector('#prevPage')
-  const nextBtn = pagination.querySelector('#nextPage')
-  const pageInfo = pagination.querySelector('#pageInfo')
+  const prevBtn = pagination.querySelector('.pagination-prev')
+  const nextBtn = pagination.querySelector('.pagination-next')
+  const pageInfo = pagination.querySelector('.pagination-info')
 
   let currentPage = 1
   const pageSize = 20
@@ -137,14 +137,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pagination-Status aktualisieren
     pageInfo.textContent = filtered.length ? `Seite ${currentPage} von ${totalPages}` : ''
-    prevBtn.toggleAttribute('disabled', currentPage <= 1)
-    nextBtn.toggleAttribute('disabled', currentPage >= totalPages)
-    pagination.style.display = filtered.length > pageSize ? 'flex' : 'none'
-
-    // Accessibility: Fokus zurücksetzen bei Navigation
-    if (document.activeElement === prevBtn || document.activeElement === nextBtn) {
-      list.focus()
+    
+    // Buttons disablen/enablen
+    if (currentPage <= 1) {
+      prevBtn.style.visibility = 'hidden'
+    } else {
+      prevBtn.style.visibility = 'visible'
     }
+    
+    if (currentPage >= totalPages) {
+      nextBtn.style.visibility = 'hidden'
+    } else {
+      nextBtn.style.visibility = 'visible'
+    }
+    
+    pagination.style.display = filtered.length > pageSize ? 'flex' : 'none'
   }
 
   // Event-Listener mit Debouncing für Search
@@ -190,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault()
       currentPage--
       render()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } else if (e.key === 'ArrowRight') {
       const filtered = getFilteredPosts()
       const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
@@ -197,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault()
         currentPage++
         render()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }
   })
