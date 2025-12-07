@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Nur auf /blog/ Seite ausführen
+  if (!window.location.pathname.startsWith('/blog')) return
+
   const list = document.querySelector('.blog-posts')
   if (!list) return
 
@@ -10,50 +13,46 @@ document.addEventListener('DOMContentLoaded', () => {
     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
   ]
 
-  // Base post data
+  // Post-Daten mit Memoization
   const postData = posts.map(li => {
     const timeEl = li.querySelector('time')
     const linkEl = li.querySelector('a')
-
-    const dateStr = timeEl?.getAttribute('datetime') || timeEl?.textContent || ''
+    const dateStr = timeEl?.getAttribute('datetime') || ''
     const date = dateStr ? new Date(dateStr) : new Date()
-    const year = date.getFullYear()
-    const monthIndex = date.getMonth()
-    const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`
-    const monthLabel = `${months[monthIndex]} ${year}`
-
-    const title = linkEl ? linkEl.textContent.trim() : ''
-    const searchText = `${title} ${timeEl ? timeEl.textContent : ''}`.toLowerCase()
-
+    
     return {
       li,
-      year,
-      monthKey,
-      monthLabel,
-      searchText
+      year: date.getFullYear(),
+      monthKey: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      monthLabel: `${months[date.getMonth()]} ${date.getFullYear()}`,
+      searchText: `${linkEl?.textContent.trim() || ''} ${timeEl?.textContent || ''}`.toLowerCase()
     }
   })
 
-  // Year counts
+  // Jahr-Statistiken
   const totalPosts = postData.length
   const postsPerYear = postData.reduce((acc, p) => {
     acc[p.year] = (acc[p.year] || 0) + 1
     return acc
   }, {})
 
-  // Controls (year + search)
+  // Controls erstellen
   const controls = document.createElement('div')
   controls.className = 'blog-controls'
   controls.innerHTML = `
     <div class="blog-controls-row">
-      <label class="small" for="blog-year-filter">Year</label>
-      <select id="blog-year-filter">
-        <option value="">All years</option>
+      <label class="sr-only" for="blog-year-filter">Jahr</label>
+      <select id="blog-year-filter" aria-label="Nach Jahr filtern">
+        <option value="">Alle Jahre (${totalPosts})</option>
       </select>
     </div>
     <div class="blog-controls-row">
-      <label class="small" for="blog-search">Search</label>
-      <input id="blog-search" type="search" placeholder="Search posts…">
+      <label class="sr-only" for="blog-search">Suche</label>
+      <input 
+        id="blog-search" 
+        type="search" 
+        placeholder="Artikel durchsuchen…"
+        aria-label="Artikel durchsuchen">
     </div>
   `
   list.parentNode.insertBefore(controls, list)
@@ -61,27 +60,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const yearSelect = controls.querySelector('#blog-year-filter')
   const searchInput = controls.querySelector('#blog-search')
 
-  // Year dropdown
-  const allYearsOption = yearSelect.querySelector('option[value=""]')
-  if (allYearsOption) {
-    allYearsOption.textContent = `All years (${totalPosts})`
-  }
-
-  const years = Array.from(new Set(postData.map(p => p.year))).sort((a, b) => b - a)
+  // Jahre-Dropdown befüllen
+  const years = [...new Set(postData.map(p => p.year))].sort((a, b) => b - a)
   years.forEach(y => {
     const opt = document.createElement('option')
     opt.value = String(y)
-    opt.textContent = `${y} (${postsPerYear[y] || 0})`
+    opt.textContent = `${y} (${postsPerYear[y]})`
     yearSelect.appendChild(opt)
   })
 
   // Pagination UI
   const pagination = document.createElement('nav')
   pagination.className = 'pagination'
+  pagination.setAttribute('aria-label', 'Seitennavigation')
   pagination.innerHTML = `
-    <a href="#" id="prevPage">Previous</a>
-    <span id="pageInfo"></span>
-    <a href="#" id="nextPage">Next</a>
+    <a href="#" id="prevPage" aria-label="Vorherige Seite">← Zurück</a>
+    <span id="pageInfo" aria-live="polite"></span>
+    <a href="#" id="nextPage" aria-label="Nächste Seite">Weiter →</a>
   `
   list.insertAdjacentElement('afterend', pagination)
 
@@ -92,10 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentPage = 1
   const pageSize = 20
 
-  // Filtering + render
+  // Filter-Funktion (gecacht)
   function getFilteredPosts() {
     const yearFilter = yearSelect.value
     const query = searchInput.value.trim().toLowerCase()
+
+    if (!yearFilter && !query) return postData
 
     return postData.filter(p => {
       if (yearFilter && String(p.year) !== yearFilter) return false
@@ -104,10 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
+  // Render-Funktion
   function render() {
     const filtered = getFilteredPosts()
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
 
+    // Seite korrigieren falls nötig
     if (currentPage > totalPages) {
       currentPage = totalPages
     }
@@ -116,34 +115,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const end = start + pageSize
     const pagePosts = filtered.slice(start, end)
 
-    list.innerHTML = ''
-
+    // Fragment für bessere Performance
+    const fragment = document.createDocumentFragment()
     let lastMonthKey = null
 
     pagePosts.forEach(p => {
+      // Monatsüberschrift einfügen
       if (p.monthKey !== lastMonthKey) {
         const headingLi = document.createElement('li')
         headingLi.className = 'blog-month-heading'
         headingLi.textContent = p.monthLabel
-        list.appendChild(headingLi)
+        headingLi.setAttribute('aria-hidden', 'true')
+        fragment.appendChild(headingLi)
         lastMonthKey = p.monthKey
       }
-      list.appendChild(p.li)
+      fragment.appendChild(p.li)
     })
 
-    pageInfo.textContent = filtered.length ? `Page ${currentPage} of ${totalPages}` : ''
+    list.innerHTML = ''
+    list.appendChild(fragment)
+
+    // Pagination-Status aktualisieren
+    pageInfo.textContent = filtered.length ? `Seite ${currentPage} von ${totalPages}` : ''
     prevBtn.toggleAttribute('disabled', currentPage <= 1)
     nextBtn.toggleAttribute('disabled', currentPage >= totalPages)
     pagination.style.display = filtered.length > pageSize ? 'flex' : 'none'
+
+    // Accessibility: Fokus zurücksetzen bei Navigation
+    if (document.activeElement === prevBtn || document.activeElement === nextBtn) {
+      list.focus()
+    }
   }
 
-  // Events
-  yearSelect.addEventListener('change', () => {
-    currentPage = 1
-    render()
+  // Event-Listener mit Debouncing für Search
+  let searchTimeout
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+      currentPage = 1
+      render()
+    }, 300)
   })
 
-  searchInput.addEventListener('input', () => {
+  yearSelect.addEventListener('change', () => {
     currentPage = 1
     render()
   })
@@ -151,8 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
   prevBtn.addEventListener('click', event => {
     event.preventDefault()
     if (currentPage > 1) {
-      currentPage -= 1
+      currentPage--
       render()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   })
 
@@ -161,8 +176,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtered = getFilteredPosts()
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
     if (currentPage < totalPages) {
-      currentPage += 1
+      currentPage++
       render()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  })
+
+  // Keyboard Navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, select')) return
+    
+    if (e.key === 'ArrowLeft' && currentPage > 1) {
+      e.preventDefault()
+      currentPage--
+      render()
+    } else if (e.key === 'ArrowRight') {
+      const filtered = getFilteredPosts()
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+      if (currentPage < totalPages) {
+        e.preventDefault()
+        currentPage++
+        render()
+      }
     }
   })
 
