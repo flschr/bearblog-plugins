@@ -83,6 +83,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const end = start + pageSize
     const pagePosts = filtered.slice(start, end)
 
+    // Liste leeren
+    list.innerHTML = ''
+
+    // Keine Ergebnisse gefunden
+    if (filtered.length === 0 && searchInput.value.trim()) {
+      const noResults = document.createElement('div')
+      noResults.className = 'infobox-frame'
+      noResults.innerHTML = `
+        <div class="infobox-icon"></div>
+        <div class="infobox-text">
+          <p>Zu der Suche wurden leider keine Ergebnisse gefunden.</p>
+        </div>
+      `
+      list.appendChild(noResults)
+      pagination.style.display = 'none'
+      return
+    }
+
     // Fragment für bessere Performance
     const fragment = document.createDocumentFragment()
     let lastMonthKey = null
@@ -100,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
       fragment.appendChild(p.li)
     })
 
-    list.innerHTML = ''
     list.appendChild(fragment)
 
     // Buttons anzeigen/verstecken
