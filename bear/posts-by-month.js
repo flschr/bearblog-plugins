@@ -57,12 +57,10 @@
             }
         });
 
-        // Sort recent months (newest first)
-        const sortedMonths = Array.from(recentPostsByMonth.keys()).sort((a, b) => {
-            const dateA = new Date(a);
-            const dateB = new Date(b);
-            return dateB - dateA;
-        });
+        // Sort recent months (newest first) using the stored date objects
+        const sortedMonths = Array.from(recentPostsByMonth.entries())
+            .sort((a, b) => b[1].date - a[1].date)
+            .map(entry => entry[0]);
 
         // Sort old years (newest first)
         const sortedYears = Array.from(oldPostsByYear.keys()).sort((a, b) => {
@@ -123,7 +121,14 @@
             header.style.display = 'block';
             blogPostsList.appendChild(header);
 
-            recentPostsByMonth.get(monthYear).posts.forEach(post => {
+            // Sort posts within this month (newest first)
+            const monthPosts = recentPostsByMonth.get(monthYear).posts.sort((a, b) => {
+                const dateA = new Date(a.querySelector('time').getAttribute('datetime'));
+                const dateB = new Date(b.querySelector('time').getAttribute('datetime'));
+                return dateB - dateA;
+            });
+
+            monthPosts.forEach(post => {
                 blogPostsList.appendChild(post);
             });
         });
@@ -146,8 +151,15 @@
             header.style.display = 'block';
             blogPostsList.appendChild(header);
 
+            // Sort posts within this group (newest first)
+            const sortedGroupPosts = group.posts.sort((a, b) => {
+                const dateA = new Date(a.querySelector('time').getAttribute('datetime'));
+                const dateB = new Date(b.querySelector('time').getAttribute('datetime'));
+                return dateB - dateA;
+            });
+
             // Add all posts in this group
-            group.posts.forEach(post => {
+            sortedGroupPosts.forEach(post => {
                 blogPostsList.appendChild(post);
             });
         });
