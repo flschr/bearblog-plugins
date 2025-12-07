@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     } else {
       noResultsBox.style.display = 'none'
-      list.style.display = 'block'
+      list.style.display = ''  // Zurück zum Standard (nicht 'block')
     }
 
     // Fragment für bessere Performance
