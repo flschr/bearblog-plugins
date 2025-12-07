@@ -6,8 +6,11 @@
     const navLinks = document.querySelectorAll('header nav p a');
     navLinks.forEach(link => {
         const linkHref = link.getAttribute('href');
-        // Prüfe ob die canonical URL mit dem Link-Pfad endet
-        if (canonicalUrl.endsWith(linkHref + '/') || canonicalUrl.endsWith(linkHref)) {
+        
+        const normalizedCanonical = canonicalUrl.replace(/\/$/, ''); // Entferne trailing slash
+        const normalizedLink = linkHref.replace(/^\//, '').replace(/\/$/, ''); // Entferne leading/trailing slashes
+        
+        if (normalizedCanonical.endsWith(normalizedLink)) {
             link.classList.add('active-page');
         }
     });
