@@ -1,10 +1,16 @@
 (function() {
+    'use strict';
+
     // Nur auf /blog/ ausführen
     if (window.location.pathname !== '/blog/') {
         return;
     }
 
-    // Posts from this year onwards will be grouped by month, older posts by year
+    /**
+     * Posts ab diesem Jahr werden nach Monat gruppiert,
+     * ältere Posts werden nach Jahr gruppiert.
+     * Anpassen falls gewünscht (z.B. aktuelles Jahr - 5)
+     */
     const YEAR_GROUPING_THRESHOLD = 2020;
 
     // Function to format the month and year for headers
@@ -17,44 +23,91 @@
         return date.getFullYear();
     }
 
-    // Function to organize blog posts by month or year
+    /**
+     * Organisiert Blog-Posts nach Monat (neuere Posts) oder Jahr (ältere Posts)
+     */
     function organizeBlogPosts() {
         const blogPostsList = document.querySelector('.blog-posts');
-        if (!blogPostsList) return;
+        if (!blogPostsList) {
+            console.warn('Blog posts list not found');
+            return;
+        }
 
         const posts = Array.from(blogPostsList.querySelectorAll('li'));
+        if (posts.length === 0) {
+            console.warn('No blog posts found');
+            return;
+        }
+
         const recentPostsByMonth = new Map(); // Posts >= threshold year
         const oldPostsByYear = new Map();     // Posts < threshold year
 
         // Group posts by month (recent) or year (old)
         posts.forEach(post => {
             const timeElement = post.querySelector('time');
-            if (!timeElement) return;
-
-            const date = new Date(timeElement.getAttribute('datetime'));
-            const year = getYear(date);
-
-            if (year >= YEAR_GROUPING_THRESHOLD) {
-                // Recent posts: group by month
-                const monthYear = formatMonthYear(date);
-                if (!recentPostsByMonth.has(monthYear)) {
-                    recentPostsByMonth.set(monthYear, {
-                        posts: [],
-                        date: date
-                    });
-                }
-                recentPostsByMonth.get(monthYear).posts.push(post);
-            } else {
-                // Old posts: group by year
-                const yearStr = year.toString();
-                if (!oldPostsByYear.has(yearStr)) {
-                    oldPostsByYear.set(yearStr, {
-                        posts: [],
-                        year: year
-                    });
-                }
-                oldPostsByYear.get(yearStr).posts.push(post);
+            if (!timeElement) {
+                console.warn('Post without time element found', post);
+                return;
             }
+
+            const datetime = timeElement.getAttribute('datetime');
+            if (!datetime) {
+                console.warn('Time element without datetime attribute', timeElement);
+                return;
+            }
+
+            try {
+                const date = new Date(datetime);
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date:', datetime);
+                    return;
+                }
+
+                const year = getYear(date);
+
+                if (year >= YEAR_GROUPING_THRESHOLD) {
+                    // Recent posts: group by month
+                    const monthYear = formatMonthYear(date);
+                    if (!recentPostsByMonth.has(monthYear)) {
+                        recentPostsByMonth.set(monthYear, {
+                            posts: [],
+                            date: date
+                        });
+                    }
+                    recentPostsByMonth.get(monthYear).posts.push(post);
+                } else {
+                    // Old posts: group by year
+                    const yearStr = year.toString();
+                    if (!oldPostsByYear.has(yearStr)) {
+                        oldPostsByYear.set(yearStr, {
+                            posts: [],
+                            year: year
+                        });
+                    }
+                    oldPostsByYear.get(yearStr).posts.push(post);
+                }
+            } catch (error) {
+                console.error('Error processing post date:', error, post);
+            }
+        });
+
+        // Helper function to sort posts by date (newest first)
+        function sortPostsByDate(posts) {
+            return posts.sort((a, b) => {
+                const dateA = new Date(a.querySelector('time').getAttribute('datetime'));
+                const dateB = new Date(b.querySelector('time').getAttribute('datetime'));
+                return dateB - dateA;
+            });
+        }
+
+        // Sort posts within each month group
+        recentPostsByMonth.forEach(monthData => {
+            monthData.posts = sortPostsByDate(monthData.posts);
+        });
+
+        // Sort posts within each year group
+        oldPostsByYear.forEach(yearData => {
+            yearData.posts = sortPostsByDate(yearData.posts);
         });
 
         // Sort recent months (newest first) using the stored date objects
@@ -121,13 +174,8 @@
             header.style.display = 'block';
             blogPostsList.appendChild(header);
 
-            // Sort posts within this month (newest first)
-            const monthPosts = recentPostsByMonth.get(monthYear).posts.sort((a, b) => {
-                const dateA = new Date(a.querySelector('time').getAttribute('datetime'));
-                const dateB = new Date(b.querySelector('time').getAttribute('datetime'));
-                return dateB - dateA;
-            });
-
+            // Posts are already sorted
+            const monthPosts = recentPostsByMonth.get(monthYear).posts;
             monthPosts.forEach(post => {
                 blogPostsList.appendChild(post);
             });
@@ -151,12 +199,8 @@
             header.style.display = 'block';
             blogPostsList.appendChild(header);
 
-            // Sort posts within this group (newest first)
-            const sortedGroupPosts = group.posts.sort((a, b) => {
-                const dateA = new Date(a.querySelector('time').getAttribute('datetime'));
-                const dateB = new Date(b.querySelector('time').getAttribute('datetime'));
-                return dateB - dateA;
-            });
+            // Posts are already sorted - just need to re-sort the combined group
+            const sortedGroupPosts = sortPostsByDate(group.posts);
 
             // Add all posts in this group
             sortedGroupPosts.forEach(post => {
@@ -166,7 +210,10 @@
     }
 
     // Run the organization when the DOM is loaded
-    if (document.querySelector(".blog-posts")) {
+    if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', organizeBlogPosts);
+    } else {
+        // DOM already loaded
+        organizeBlogPosts();
     }
 })();
