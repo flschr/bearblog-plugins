@@ -76,6 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
+  // Außerhalb klicken zum Schließen
+  document.addEventListener('click', (e) => {
+    if (!isSearchOpen) return
+    
+    // Prüfen ob Klick außerhalb des searchContainer war
+    if (!searchContainer.contains(e.target)) {
+      closeSearch()
+    }
+  })
+
   // Infobox für "Keine Ergebnisse" erstellen
   const noResultsBox = document.createElement('div')
   noResultsBox.className = 'infobox-frame'
@@ -92,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
   endHint.style.cssText = 'text-align: center; padding: 2rem 0; color: var(--text-muted, #666); display: none;'
-  endHint.innerHTML = `<p>Nicht gefunden? <a href="#" id="open-search-link">Nutze die Suche</a></p>`
+  endHint.innerHTML = `<p>That's all! Try <a href="#" id="open-search-link">searching</a> if you didn't find it.</p>`
   list.insertAdjacentElement('afterend', endHint)
 
   const initialLoad = 15
