@@ -105,6 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
   endHint.innerHTML = `<p>That's all! Try <a href="#" id="open-search-link">searching</a> if you didn't find it.</p>`
   list.insertAdjacentElement('afterend', endHint)
 
+  // "Nutze die Suche" Link - mit Event Delegation
+  endHint.addEventListener('click', (e) => {
+    if (e.target.id === 'open-search-link') {
+      e.preventDefault()
+      openSearch()
+    }
+  })
+
   const initialLoad = 15
   const loadMore = 10
   let currentlyShown = 0
@@ -247,13 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.search && !isSearchOpen) {
       openSearch()
     }
-  })
-
-  // "Nutze die Suche" Link
-  const searchLink = endHint.querySelector('#open-search-link')
-  searchLink.addEventListener('click', (e) => {
-    e.preventDefault()
-    openSearch()
   })
 
   // Bei Suchparameter in URL automatisch öffnen
