@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
   endHint.style.cssText = 'text-align: center; padding: 2rem 0; color: var(--text-muted, #666); display: none;'
-  endHint.innerHTML = `<p>That's all! Try <a href="#" id="open-search-link">searching</a> if you didn't find it.</p>`
+  endHint.innerHTML = `<p>You reached the end :)</p>`
   list.insertAdjacentElement('afterend', endHint)
 
   // "Nutze die Suche" Link - mit Event Delegation
