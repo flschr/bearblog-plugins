@@ -54,7 +54,7 @@
         const pathname = window.location.pathname;
         
         // Fotos-Seite: Alle Foto-Items verbessern
-        if (pathname.includes('/fotos') || pathname.includes('/lecker-wars')) {
+        if (pathname.includes('/fotos')) {
             document.body.classList.add('fotos-page');
             const fotoItems = document.querySelectorAll('.fotos-page .blog-posts li');
             enhancePhotoCards(fotoItems, true);
