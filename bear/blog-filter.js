@@ -19,13 +19,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // KEIN Search Control mehr erstellen - nutze existierendes im <details>
-  const searchInput = document.querySelector('#blog-search')
+  // Floating Search UI erstellen
+  const searchContainer = document.createElement('div')
+  searchContainer.className = 'floating-search'
+  searchContainer.innerHTML = `
+    <button class="search-toggle" aria-label="Suche öffnen">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+    </button>
+    <div class="search-input-wrapper" style="display: none;">
+      <input type="search" id="blog-search" placeholder="Suche..." autocomplete="off">
+      <button class="search-close" aria-label="Suche schließen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  `
+  document.body.appendChild(searchContainer)
+
+  const searchToggle = searchContainer.querySelector('.search-toggle')
+  const searchInputWrapper = searchContainer.querySelector('.search-input-wrapper')
+  const searchInput = searchContainer.querySelector('#blog-search')
+  const searchClose = searchContainer.querySelector('.search-close')
+
+  // Toggle Search
+  let isSearchOpen = false
   
-  if (!searchInput) {
-    console.warn('Suchfeld #blog-search nicht gefunden')
-    return
+  function openSearch() {
+    isSearchOpen = true
+    searchToggle.style.display = 'none'
+    searchInputWrapper.style.display = 'flex'
+    searchContainer.classList.add('expanded')
+    setTimeout(() => searchInput.focus(), 100)
   }
+
+  function closeSearch() {
+    isSearchOpen = false
+    searchInputWrapper.style.display = 'none'
+    searchToggle.style.display = 'flex'
+    searchContainer.classList.remove('expanded')
+    searchInput.value = ''
+    render(initialLoad, '', true)
+  }
+
+  searchToggle.addEventListener('click', openSearch)
+  searchClose.addEventListener('click', closeSearch)
+
+  // ESC zum Schließen
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isSearchOpen) {
+      closeSearch()
+    }
+  })
 
   // Infobox für "Keine Ergebnisse" erstellen
   const noResultsBox = document.createElement('div')
@@ -183,33 +232,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('popstate', (event) => {
     const state = event.state || getStateFromURL()
     render(state.shown || initialLoad, state.search || '', false)
+    
+    // Suche öffnen wenn Search-Parameter in URL
+    if (state.search && !isSearchOpen) {
+      openSearch()
+    }
   })
 
   // "Nutze die Suche" Link
   const searchLink = endHint.querySelector('#open-search-link')
   searchLink.addEventListener('click', (e) => {
     e.preventDefault()
-    const details = document.querySelector('details')
-    if (details) {
-      details.open = true
-      setTimeout(() => searchInput.focus(), 100)
-    }
+    openSearch()
   })
 
-  // Details-Element automatisch öffnen wenn Suchparameter in URL
-  const details = document.querySelector('details')
+  // Bei Suchparameter in URL automatisch öffnen
   const initialState = getStateFromURL()
-  if (initialState.search && details) {
-    details.open = true
-  }
-
-  // Focus auf Suchfeld wenn Details geöffnet wird
-  if (details) {
-    details.addEventListener('toggle', () => {
-      if (details.open) {
-        setTimeout(() => searchInput.focus(), 100)
-      }
-    })
+  if (initialState.search) {
+    openSearch()
   }
 
   // Initial render mit URL-State
