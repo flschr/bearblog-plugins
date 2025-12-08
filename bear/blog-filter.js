@@ -29,22 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // Search Control erstellen
-  const controls = document.createElement('div')
-  controls.className = 'blog-controls'
-  controls.innerHTML = `
-    <div class="blog-controls-row">
-      <label class="sr-only" for="blog-search">Suche</label>
-      <input 
-        id="blog-search" 
-        type="search" 
-        placeholder="Artikel durchsuchen…"
-        aria-label="Artikel durchsuchen">
-    </div>
-  `
-  list.parentNode.insertBefore(controls, list)
-
-  const searchInput = controls.querySelector('#blog-search')
+  // KEIN Search Control mehr erstellen - nutze existierendes im <details>
+  const searchInput = document.querySelector('#blog-search')
+  
+  if (!searchInput) {
+    console.warn('Suchfeld #blog-search nicht gefunden')
+    return
+  }
 
   // Infobox für "Keine Ergebnisse" erstellen
   const noResultsBox = document.createElement('div')
@@ -238,8 +229,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // Initial render mit URL-State
+  // Details-Element automatisch öffnen wenn Suchparameter in URL
+  const details = document.querySelector('details')
   const initialState = getStateFromURL()
+  if (initialState.search && details) {
+    details.open = true
+  }
+
+  // Focus auf Suchfeld wenn Details geöffnet wird
+  if (details) {
+    details.addEventListener('toggle', () => {
+      if (details.open) {
+        setTimeout(() => searchInput.focus(), 100)
+      }
+    })
+  }
+
+  // Initial render mit URL-State
   render(initialState.page, initialState.search, false)
   // Initialen State in History setzen
   updateURL(initialState.page, initialState.search, true)
