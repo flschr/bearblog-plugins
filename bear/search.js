@@ -81,13 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // Außerhalb klicken zum Schließen
+  // Außerhalb klicken zum Schließen - NUR wenn kein Suchbegriff eingegeben
   document.addEventListener('click', (e) => {
     if (!isSearchOpen) return
     
     // Prüfen ob Klick außerhalb des searchContainer war
     if (!searchContainer.contains(e.target)) {
-      closeSearch()
+      // Nur schließen wenn kein Suchbegriff eingegeben wurde
+      if (!searchInput.value.trim()) {
+        closeSearch()
+      }
     }
   })
 
