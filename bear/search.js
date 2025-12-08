@@ -62,8 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInputWrapper.style.display = 'none'
     searchToggle.style.display = 'flex'
     searchContainer.classList.remove('expanded')
-    searchInput.value = ''
-    render(initialLoad, '', true)
+    
+    // Nur Suchfeld leeren und re-rendern, wenn wirklich gesucht wurde
+    if (searchInput.value) {
+      searchInput.value = ''
+      const state = getStateFromURL()
+      render(state.shown || currentlyShown, '', true)
+    }
   }
 
   searchToggle.addEventListener('click', openSearch)
