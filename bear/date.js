@@ -1,8 +1,9 @@
 const times = document.querySelectorAll('time');
-const format_string = "d. M Y" || "d. M, Y"
+const format_string = "d. M Y";
 
 times.forEach(time => {
-    time.innerText = formatDate(time.dateTime, format_string)
+    time.innerText = formatDate(time.getAttribute('datetime'), format_string);
+    time.classList.add('loaded');
 });
 
 function formatDate(dateStr, formatStr) {
