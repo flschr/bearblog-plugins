@@ -257,6 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Browser Back/Forward Buttons
   window.addEventListener('popstate', (event) => {
     const state = event.state || getStateFromURL()
+    
+    // Suchfeld mit URL-Suchbegriff synchronisieren
+    searchInput.value = state.search || ''
+    
     render(state.shown || initialLoad, state.search || '', false)
     
     // Suche öffnen wenn Search-Parameter in URL
