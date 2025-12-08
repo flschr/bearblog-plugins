@@ -258,15 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('popstate', (event) => {
     const state = event.state || getStateFromURL()
     
-    // Suchfeld mit URL-Suchbegriff synchronisieren
-    searchInput.value = state.search || ''
-    
-    render(state.shown || initialLoad, state.search || '', false)
-    
-    // Suche öffnen wenn Search-Parameter in URL
+    // Suche öffnen wenn Search-Parameter in URL (VOR dem Setzen des Werts)
     if (state.search && !isSearchOpen) {
       openSearch()
     }
+    
+    // Suchfeld mit URL-Suchbegriff synchronisieren (NACH dem Öffnen)
+    if (searchInput.value !== state.search) {
+      searchInput.value = state.search || ''
+    }
+    
+    render(state.shown || initialLoad, state.search || '', false)
   })
 
   // Bei Suchparameter in URL automatisch öffnen
