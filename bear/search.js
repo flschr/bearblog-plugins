@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
   endHint.style.cssText = 'text-align: center; padding: 2rem 0; color: var(--text-muted, #666); font-family: monospace; display: none;'
-  endHint.innerHTML = `<p>⁓the ʕ•ᴥ•ʔ end⁓</p>`
+  endHint.innerHTML = `<p>ʕ•ᴥ•ʔ end</p>`
   list.insertAdjacentElement('afterend', endHint)
 
 
