@@ -109,18 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // End-of-list Hinweis
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
-  endHint.style.cssText = 'text-align: center; font-size: 0.9em; padding: 2em 0; color: var(--text-muted, #666); display: none;'
-  endHint.innerHTML = `<p>the ʕ•ᴥ•ʔ end</p>`
+  endHint.innerHTML = `<p>un-ʕ•ᴥ•ʔ-lievable, this is the end</p>`
   list.insertAdjacentElement('afterend', endHint)
-
-
-  // "Nutze die Suche" Link - mit Event Delegation
-  endHint.addEventListener('click', (e) => {
-    if (e.target.id === 'open-search-link') {
-      e.preventDefault()
-      openSearch()
-    }
-  })
 
   const initialLoad = 15
   const loadMore = 10
