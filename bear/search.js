@@ -107,9 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
   list.parentNode.insertBefore(noResultsBox, list)
 
   // End-of-list Hinweis
-  const endHint = document.createElement('div')
-  endHint.className = 'blog-end-hint'
-  endHint.innerHTML = `<p>the ʕ•ᴥ•ʔ end</p>`
+  const endHint = document.createElement('hr')
+  endHint.setAttribute('end', '')
   list.insertAdjacentElement('afterend', endHint)
 
   const initialLoad = 15
