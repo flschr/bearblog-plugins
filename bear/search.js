@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // End-of-list Hinweis
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
-  endHint.style.cssText = 'text-align: center; font-size: 0.7em; padding: 2em 0; color: var(--text-muted, #666); display: none;'
+  endHint.style.cssText = 'text-align: center; font-size: 0.9em; padding: 2em 0; color: var(--text-muted, #666); display: none;'
   endHint.innerHTML = `<p>the ʕ•ᴥ•ʔ end</p>`
   list.insertAdjacentElement('afterend', endHint)
 
