@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // End-of-list Hinweis
   const endHint = document.createElement('div')
   endHint.className = 'blog-end-hint'
-  endHint.innerHTML = `<p>un-ʕ•ᴥ•ʔ-lievable, this is the end</p>`
+  endHint.innerHTML = `<p>the ʕ•ᴥ•ʔ end</p>`
   list.insertAdjacentElement('afterend', endHint)
 
   const initialLoad = 15
