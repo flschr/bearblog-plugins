@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 300)
   })
 
-  // Infinite Scroll
+  // Infinite Scroll - VERBESSERT für Windows/Edge
   let isLoading = false
   function checkScroll() {
     if (isLoading) return
@@ -228,9 +228,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Alle Artikel bereits geladen?
     if (currentlyShown >= filtered.length) return
 
-    // 200px vor Ende des Dokuments?
-    const scrollPosition = window.innerHeight + window.scrollY
-    const threshold = document.documentElement.scrollHeight - 200
+    // Cross-browser Scroll-Position (OPTIMIERT FÜR WINDOWS/EDGE!)
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0
+    const scrollPosition = window.innerHeight + scrollTop
+    const documentHeight = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.offsetHeight,
+      document.body.clientHeight,
+      document.documentElement.clientHeight
+    )
+    const threshold = documentHeight - 200
 
     if (scrollPosition >= threshold) {
       isLoading = true
@@ -241,8 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  window.addEventListener('scroll', checkScroll)
-  window.addEventListener('resize', checkScroll)
+  // Event Listeners mit passive flag für bessere Performance
+  window.addEventListener('scroll', checkScroll, { passive: true })
+  window.addEventListener('resize', checkScroll, { passive: true })
 
   // Browser Back/Forward Buttons
   window.addEventListener('popstate', (event) => {
