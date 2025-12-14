@@ -8,29 +8,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const posts = Array.from(list.querySelectorAll('li'))
   if (!posts.length) return
 
-  // Post-Daten
+  // ===== KONFIGURATION =====
+  const CONFIG = {
+    INITIAL_LOAD: 15,
+    LOAD_MORE: 10,
+    SEARCH_DEBOUNCE: 300,
+    SCROLL_THRESHOLD: 200,
+    LOAD_DELAY: 100,
+    MAX_SEARCH_LENGTH: 200
+  }
+
+  // ===== POST-DATEN =====
   const postData = posts.map(li => {
     const linkEl = li.querySelector('a')
     const timeEl = li.querySelector('time')
 
     return {
       li,
+      title: linkEl?.textContent.trim() || '',
       searchText: `${linkEl?.textContent.trim() || ''} ${timeEl?.textContent || ''}`.toLowerCase()
     }
   })
 
-  // Floating Search UI erstellen
+  // ===== FLOATING SEARCH UI =====
   const searchContainer = document.createElement('div')
   searchContainer.className = 'floating-search'
   searchContainer.innerHTML = `
-  <button class="search-toggle" aria-label="Suche öffnen">
+    <button class="search-toggle" aria-label="Suche öffnen">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </svg>
     </button>
     <div class="search-input-wrapper" style="display: none;">
-      <input type="search" id="blog-search" placeholder="Suche..." autocomplete="off">
+      <input type="search" id="blog-search" placeholder="Suche..." autocomplete="off" maxlength="${CONFIG.MAX_SEARCH_LENGTH}">
       <button class="search-close" aria-label="Suche schließen">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -46,9 +57,50 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = searchContainer.querySelector('#blog-search')
   const searchClose = searchContainer.querySelector('.search-close')
 
-  // Toggle Search
+  // ===== INFOBOX FÜR "KEINE ERGEBNISSE" =====
+  const noResultsBox = document.createElement('div')
+  noResultsBox.className = 'infobox-frame'
+  noResultsBox.style.display = 'none'
+  noResultsBox.setAttribute('aria-live', 'polite')
+  noResultsBox.innerHTML = `
+    <div class="infobox-icon"></div>
+    <div class="infobox-text">
+      <p>Zu der Suche wurden leider keine Ergebnisse gefunden.</p>
+    </div>
+  `
+  list.parentNode.insertBefore(noResultsBox, list)
+
+  // ===== SCREENREADER-FEEDBACK =====
+  const srFeedback = document.createElement('div')
+  srFeedback.className = 'sr-only'
+  srFeedback.setAttribute('aria-live', 'polite')
+  srFeedback.setAttribute('aria-atomic', 'true')
+  srFeedback.style.position = 'absolute'
+  srFeedback.style.left = '-10000px'
+  srFeedback.style.width = '1px'
+  srFeedback.style.height = '1px'
+  srFeedback.style.overflow = 'hidden'
+  document.body.appendChild(srFeedback)
+
+  // ===== END-OF-LIST HINWEIS =====
+  const endHint = document.createElement('hr')
+  endHint.setAttribute('end', '')
+  list.insertAdjacentElement('afterend', endHint)
+
+  // ===== SCROLL SENTINEL FÜR INTERSECTION OBSERVER =====
+  const sentinel = document.createElement('div')
+  sentinel.className = 'scroll-sentinel'
+  sentinel.style.height = '1px'
+  sentinel.style.position = 'relative'
+  endHint.insertAdjacentElement('beforebegin', sentinel)
+
+  // ===== STATE =====
+  let currentlyShown = 0
   let isSearchOpen = false
-  
+  let isLoading = false
+  let searchTimeout = null
+
+  // ===== SEARCH TOGGLE FUNKTIONEN =====
   function openSearch() {
     isSearchOpen = true
     searchToggle.style.display = 'none'
@@ -63,14 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
     searchToggle.style.display = 'flex'
     searchContainer.classList.remove('expanded')
     
+    // Focus zurück auf Toggle-Button
+    searchToggle.focus()
+    
     // Nur Suchfeld leeren und re-rendern, wenn wirklich gesucht wurde
-    if (searchInput.value) {
+    if (searchInput.value.trim()) {
       searchInput.value = ''
       const state = getStateFromURL()
       render(state.shown || currentlyShown, '', true)
     }
   }
 
+  // ===== EVENT LISTENERS FÜR SEARCH TOGGLE =====
   searchToggle.addEventListener('click', openSearch)
   searchClose.addEventListener('click', closeSearch)
 
@@ -85,49 +141,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     if (!isSearchOpen) return
     
-    // Prüfen ob Klick außerhalb des searchContainer war
     if (!searchContainer.contains(e.target)) {
-      // Nur schließen wenn kein Suchbegriff eingegeben wurde
       if (!searchInput.value.trim()) {
         closeSearch()
       }
     }
-  })
+  }, { passive: true })
 
-  // Infobox für "Keine Ergebnisse" erstellen
-  const noResultsBox = document.createElement('div')
-  noResultsBox.className = 'infobox-frame'
-  noResultsBox.style.display = 'none'
-  noResultsBox.innerHTML = `
-    <div class="infobox-icon"></div>
-    <div class="infobox-text">
-      <p>Zu der Suche wurden leider keine Ergebnisse gefunden.</p>
-    </div>
-  `
-  list.parentNode.insertBefore(noResultsBox, list)
-
-  // End-of-list Hinweis
-  const endHint = document.createElement('hr')
-  endHint.setAttribute('end', '')
-  list.insertAdjacentElement('afterend', endHint)
-
-  const initialLoad = 15
-  const loadMore = 10
-  let currentlyShown = 0
-
-  // URL-Parameter auslesen
+  // ===== URL MANAGEMENT =====
   function getStateFromURL() {
     const params = new URLSearchParams(window.location.search)
     return {
-      shown: parseInt(params.get('shown')) || initialLoad,
+      shown: parseInt(params.get('shown')) || CONFIG.INITIAL_LOAD,
       search: params.get('search') || ''
     }
   }
 
-  // URL aktualisieren
   function updateURL(shown, search, replace = false) {
     const params = new URLSearchParams()
-    if (shown > initialLoad) params.set('shown', shown)
+    if (shown > CONFIG.INITIAL_LOAD) params.set('shown', shown)
     if (search) params.set('search', search)
 
     const url = params.toString()
@@ -141,23 +173,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Filter-Funktion
+  // ===== FILTER & HIGHLIGHTING =====
   function getFilteredPosts(searchQuery) {
     if (!searchQuery) return postData
-    const query = searchQuery.toLowerCase()
+    const query = searchQuery.toLowerCase().trim()
+    if (!query) return postData
+    
     return postData.filter(p => p.searchText.includes(query))
   }
 
-  // Render-Funktion
+  function highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm) return text
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    return text.replace(regex, '<mark>$1</mark>')
+  }
+
+  // ===== RENDER FUNKTION =====
   function render(shown, search, updateHistory = false) {
-    const filtered = getFilteredPosts(search)
+    const searchTrimmed = search.trim()
+    const filtered = getFilteredPosts(searchTrimmed)
 
     // Anzahl korrigieren falls nötig
     if (shown > filtered.length) {
       shown = filtered.length
     }
-    if (shown < initialLoad) {
-      shown = initialLoad
+    if (shown < CONFIG.INITIAL_LOAD) {
+      shown = CONFIG.INITIAL_LOAD
     }
 
     currentlyShown = shown
@@ -172,10 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
     list.innerHTML = ''
 
     // Keine Ergebnisse gefunden
-    if (filtered.length === 0 && search) {
+    if (filtered.length === 0 && searchTrimmed) {
       noResultsBox.style.display = 'flex'
       list.style.display = 'none'
       endHint.style.display = 'none'
+      sentinel.style.display = 'none'
+      srFeedback.textContent = 'Keine Ergebnisse gefunden'
+      
       if (updateHistory) {
         updateURL(shown, search)
       }
@@ -183,19 +228,37 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       noResultsBox.style.display = 'none'
       list.style.display = ''
+      sentinel.style.display = ''
     }
 
     // Fragment für bessere Performance
     const fragment = document.createDocumentFragment()
 
     displayPosts.forEach(p => {
-      fragment.appendChild(p.li)
+      const clone = p.li.cloneNode(true)
+      
+      // Highlighting anwenden
+      if (searchTrimmed) {
+        const linkEl = clone.querySelector('a')
+        if (linkEl) {
+          linkEl.innerHTML = highlightSearchTerm(p.title, searchTrimmed)
+        }
+      }
+      
+      fragment.appendChild(clone)
     })
 
     list.appendChild(fragment)
 
+    // Screenreader-Feedback
+    if (searchTrimmed) {
+      srFeedback.textContent = `${filtered.length} ${filtered.length === 1 ? 'Ergebnis' : 'Ergebnisse'} gefunden`
+    } else {
+      srFeedback.textContent = ''
+    }
+
     // End-Hinweis anzeigen wenn alle Artikel geladen
-    if (shown >= filtered.length && !search) {
+    if (shown >= filtered.length && !searchTrimmed) {
       endHint.style.display = 'block'
     } else {
       endHint.style.display = 'none'
@@ -207,54 +270,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Event-Listener mit Debouncing für Search
-  let searchTimeout
+  // ===== SEARCH INPUT MIT DEBOUNCING =====
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
       const search = searchInput.value.trim()
-      render(initialLoad, search, true)
-    }, 300)
+      render(CONFIG.INITIAL_LOAD, search, true)
+    }, CONFIG.SEARCH_DEBOUNCE)
   })
 
-  // Infinite Scroll - VERBESSERT für Windows/Edge
-  let isLoading = false
-  function checkScroll() {
+  // ===== INFINITE SCROLL MIT INTERSECTION OBSERVER =====
+  function loadMorePosts() {
     if (isLoading) return
 
     const state = getStateFromURL()
     const filtered = getFilteredPosts(state.search)
 
     // Alle Artikel bereits geladen?
-    if (currentlyShown >= filtered.length) return
-
-    // Cross-browser Scroll-Position (OPTIMIERT FÜR WINDOWS/EDGE!)
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0
-    const scrollPosition = window.innerHeight + scrollTop
-    const documentHeight = Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight,
-      document.body.offsetHeight,
-      document.documentElement.offsetHeight,
-      document.body.clientHeight,
-      document.documentElement.clientHeight
-    )
-    const threshold = documentHeight - 200
-
-    if (scrollPosition >= threshold) {
-      isLoading = true
-      const newShown = Math.min(currentlyShown + loadMore, filtered.length)
-      render(newShown, state.search, true)
-      // Kurze Verzögerung vor nächstem Load
-      setTimeout(() => { isLoading = false }, 100)
+    if (currentlyShown >= filtered.length) {
+      observer.unobserve(sentinel)
+      return
     }
+
+    isLoading = true
+    const newShown = Math.min(currentlyShown + CONFIG.LOAD_MORE, filtered.length)
+    render(newShown, state.search, true)
+    
+    setTimeout(() => { 
+      isLoading = false
+      // Observer reaktivieren falls noch mehr zu laden
+      if (newShown < filtered.length) {
+        observer.observe(sentinel)
+      }
+    }, CONFIG.LOAD_DELAY)
   }
 
-  // Event Listeners mit passive flag für bessere Performance
-  window.addEventListener('scroll', checkScroll, { passive: true })
-  window.addEventListener('resize', checkScroll, { passive: true })
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        loadMorePosts()
+      }
+    })
+  }, { 
+    rootMargin: `${CONFIG.SCROLL_THRESHOLD}px`,
+    threshold: 0
+  })
 
-  // Browser Back/Forward Buttons
+  // ===== BROWSER BACK/FORWARD =====
   window.addEventListener('popstate', (event) => {
     const state = event.state || getStateFromURL()
     
@@ -268,10 +330,13 @@ document.addEventListener('DOMContentLoaded', () => {
       searchInput.value = state.search || ''
     }
     
-    render(state.shown || initialLoad, state.search || '', false)
+    render(state.shown || CONFIG.INITIAL_LOAD, state.search || '', false)
+    
+    // Observer neu starten
+    observer.observe(sentinel)
   })
 
-  // Bei Suchparameter in URL automatisch öffnen
+  // ===== INITIALISIERUNG =====
   const initialState = getStateFromURL()
   if (initialState.search) {
     openSearch()
@@ -281,4 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
   render(initialState.shown, initialState.search, false)
   // Initialen State in History setzen
   updateURL(initialState.shown, initialState.search, true)
+  
+  // Observer starten
+  observer.observe(sentinel)
 })
