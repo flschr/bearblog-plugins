@@ -8,5 +8,7 @@
     
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
+    
+    toggle.blur();
   });
 })();
