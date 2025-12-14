@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, CONFIG.SEARCH_DEBOUNCE)
   })
 
-  // ===== INFINITE SCROLL MIT INTERSECTION OBSERVER =====
+  // ===== INFINITE SCROLL MIT INTERSECTION OBSERVER + FALLBACK =====
   function loadMorePosts() {
     if (isLoading) return
 
@@ -287,10 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtered = getFilteredPosts(state.search)
 
     // Alle Artikel bereits geladen?
-    if (currentlyShown >= filtered.length) {
-      observer.unobserve(sentinel)
-      return
-    }
+    if (currentlyShown >= filtered.length) return
 
     isLoading = true
     const newShown = Math.min(currentlyShown + CONFIG.LOAD_MORE, filtered.length)
@@ -298,13 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setTimeout(() => { 
       isLoading = false
-      // Observer reaktivieren falls noch mehr zu laden
-      if (newShown < filtered.length) {
-        observer.observe(sentinel)
-      }
     }, CONFIG.LOAD_DELAY)
   }
 
+  // IntersectionObserver
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -315,6 +309,41 @@ document.addEventListener('DOMContentLoaded', () => {
     rootMargin: `${CONFIG.SCROLL_THRESHOLD}px`,
     threshold: 0
   })
+
+  // Scroll-Fallback mit requestAnimationFrame
+  let ticking = false
+  function checkScrollFallback() {
+    if (ticking) return
+    
+    ticking = true
+    requestAnimationFrame(() => {
+      const state = getStateFromURL()
+      const filtered = getFilteredPosts(state.search)
+      
+      // Alle bereits geladen?
+      if (currentlyShown >= filtered.length) {
+        ticking = false
+        return
+      }
+
+      // Scroll-Position prüfen
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const scrollPosition = window.innerHeight + scrollTop
+      const documentHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      )
+      const threshold = documentHeight - CONFIG.SCROLL_THRESHOLD
+
+      if (scrollPosition >= threshold) {
+        loadMorePosts()
+      }
+      
+      ticking = false
+    })
+  }
+
+  window.addEventListener('scroll', checkScrollFallback, { passive: true })
 
   // ===== BROWSER BACK/FORWARD =====
   window.addEventListener('popstate', (event) => {
@@ -331,9 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     render(state.shown || CONFIG.INITIAL_LOAD, state.search || '', false)
-    
-    // Observer neu starten
-    observer.observe(sentinel)
   })
 
   // ===== INITIALISIERUNG =====
