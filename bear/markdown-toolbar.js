@@ -1,91 +1,214 @@
+// Optimierte Markdown-Toolbar für Bear Blog Editor
 (function() {
-    const $textarea = document.getElementById('body_content');
-    if (!$textarea) return;
+    'use strict';
     
-    createMarkdownToolbar();
+    // Warte bis DOM vollständig geladen ist
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
     
-    function createMarkdownToolbar() {
-        if (document.querySelector('.markdown-toolbar')) return;
+    function init() {
+        const $textarea = document.getElementById('body_content');
+        if (!$textarea) {
+            console.warn('Textarea #body_content nicht gefunden');
+            return;
+        }
+        
+        // Verhindere doppelte Initialisierung
+        if ($textarea.hasAttribute('data-toolbar-initialized')) {
+            return;
+        }
+        $textarea.setAttribute('data-toolbar-initialized', 'true');
+        
+        createMarkdownToolbar($textarea);
+    }
+    
+    function createMarkdownToolbar($textarea) {
+        // Prüfe ob bereits eine Toolbar existiert
+        if (document.querySelector('.markdown-toolbar')) {
+            return;
+        }
+        
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
         const toolbar = document.createElement('div');
         toolbar.className = 'markdown-toolbar';
+        toolbar.setAttribute('role', 'toolbar');
+        toolbar.setAttribute('aria-label', 'Markdown formatting toolbar');
+        
+        // Optimierte Styles mit CSS Variables
         toolbar.style.cssText = `
             display: flex;
             gap: 5px;
             padding: 8px;
-            background-color: #eceff4;
-            border-bottom: 1px solid lightgrey;
+            background-color: ${isDark ? '#004052' : '#eceff4'};
+            border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
             flex-wrap: wrap;
             position: sticky;
             top: 0;
             z-index: 100;
+            box-sizing: border-box;
         `;
         
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            toolbar.style.backgroundColor = '#004052';
-        }
-        
         const buttons = [
-            { label: 'B', title: 'Bold', syntax: ['**', '**'] },
-            { label: 'I', title: 'Italic', syntax: ['*', '*'] },
-            { label: 'H1', title: 'Heading 1', syntax: ['# ', ''] },
-            { label: 'H2', title: 'Heading 2', syntax: ['## ', ''] },
-            { label: 'H3', title: 'Heading 3', syntax: ['### ', ''] },
-            { label: 'Link', title: 'Link', syntax: ['[', '](url)'] },
-            { label: 'Quote', title: 'Blockquote', syntax: ['> ', ''] },
-            { label: 'Code', title: 'Code', syntax: ['`', '`'] },
-            { label: 'List', title: 'List', syntax: ['- ', ''] },
-            { label: 'HR', title: 'Horizontal Rule', syntax: ['\n---\n', ''] }
+            { label: '𝐁', title: 'Bold (Ctrl+B)', syntax: ['**', '**'], shortcut: 'b' },
+            { label: '𝐼', title: 'Italic (Ctrl+I)', syntax: ['*', '*'], shortcut: 'i' },
+            { label: 'H1', title: 'Heading 1', syntax: ['# ', ''], lineStart: true },
+            { label: 'H2', title: 'Heading 2', syntax: ['## ', ''], lineStart: true },
+            { label: 'H3', title: 'Heading 3', syntax: ['### ', ''], lineStart: true },
+            { label: '🔗', title: 'Link (Ctrl+K)', syntax: ['[', '](url)'], shortcut: 'k' },
+            { label: '❝', title: 'Blockquote', syntax: ['> ', ''], lineStart: true },
+            { label: '⟨⟩', title: 'Code', syntax: ['`', '`'] },
+            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] },
+            { label: '•', title: 'List', syntax: ['- ', ''], lineStart: true },
+            { label: '―', title: 'Horizontal Rule', syntax: ['\n---\n', ''] }
         ];
+        
+        const fragment = document.createDocumentFragment();
         
         buttons.forEach(btn => {
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = btn.label;
             button.title = btn.title;
+            button.setAttribute('aria-label', btn.title);
+            button.className = 'md-btn';
+            
             button.style.cssText = `
                 padding: 5px 10px;
-                background: white;
-                border: 1px solid #ccc;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#ddd' : '#222'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
                 border-radius: 3px;
                 cursor: pointer;
-                font-size: 12px;
-                font-weight: bold;
+                font-size: 13px;
+                font-weight: 600;
+                transition: background-color 0.15s ease;
+                user-select: none;
+                min-width: 32px;
             `;
             
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                button.style.backgroundColor = '#01242e';
-                button.style.color = '#ddd';
-                button.style.borderColor = '#555';
-            }
+            // Event Listener mit passive flag für bessere Performance
+            button.addEventListener('mouseenter', () => {
+                button.style.backgroundColor = isDark ? '#003040' : '#f0f0f0';
+            }, { passive: true });
             
-            button.onclick = (e) => {
+            button.addEventListener('mouseleave', () => {
+                button.style.backgroundColor = isDark ? '#01242e' : 'white';
+            }, { passive: true });
+            
+            button.addEventListener('click', (e) => {
                 e.preventDefault();
-                insertMarkdown(btn.syntax[0], btn.syntax[1]);
-            };
+                insertMarkdown($textarea, btn.syntax[0], btn.syntax[1], btn.lineStart);
+            });
             
-            toolbar.appendChild(button);
+            fragment.appendChild(button);
         });
         
+        toolbar.appendChild(fragment);
+        
+        // Füge Toolbar vor dem Textarea ein
         $textarea.parentNode.insertBefore(toolbar, $textarea);
+        
+        // Keyboard Shortcuts
+        addKeyboardShortcuts($textarea, buttons);
+        
+        // Dark Mode Observer
+        observeDarkMode(toolbar, isDark);
     }
     
-    function insertMarkdown(before, after) {
+    function insertMarkdown($textarea, before, after, lineStart = false) {
         const start = $textarea.selectionStart;
         const end = $textarea.selectionEnd;
         const selectedText = $textarea.value.substring(start, end);
         const beforeText = $textarea.value.substring(0, start);
         const afterText = $textarea.value.substring(end);
         
-        if (selectedText) {
-            $textarea.value = beforeText + before + selectedText + after + afterText;
-            $textarea.selectionStart = start + before.length;
-            $textarea.selectionEnd = end + before.length;
+        let newText, newCursorPos;
+        
+        if (lineStart) {
+            // Für Zeilenanfangs-Syntax (H1, H2, Liste, etc.)
+            const lineStartPos = beforeText.lastIndexOf('\n') + 1;
+            const linePrefix = beforeText.substring(lineStartPos);
+            
+            // Prüfe ob Syntax bereits am Zeilenanfang existiert
+            if (linePrefix.trim().startsWith(before.trim())) {
+                // Entferne existierende Syntax
+                const textBeforeLine = beforeText.substring(0, lineStartPos);
+                const textAfterPrefix = beforeText.substring(lineStartPos + before.length);
+                newText = textBeforeLine + textAfterPrefix + selectedText + after + afterText;
+                newCursorPos = start - before.length;
+            } else {
+                // Füge Syntax am Zeilenanfang hinzu
+                const textBeforeLine = beforeText.substring(0, lineStartPos);
+                const restOfLine = beforeText.substring(lineStartPos);
+                newText = textBeforeLine + before + restOfLine + selectedText + after + afterText;
+                newCursorPos = start + before.length;
+            }
+        } else if (selectedText) {
+            // Wenn Text markiert ist, umschließe ihn
+            newText = beforeText + before + selectedText + after + afterText;
+            newCursorPos = end + before.length + after.length;
         } else {
-            $textarea.value = beforeText + before + after + afterText;
-            $textarea.selectionStart = $textarea.selectionEnd = start + before.length;
+            // Sonst füge die Syntax ein und setze Cursor zwischen die Marker
+            newText = beforeText + before + after + afterText;
+            newCursorPos = start + before.length;
         }
         
+        // Optimierte Textarea-Aktualisierung
+        $textarea.value = newText;
+        $textarea.setSelectionRange(newCursorPos, newCursorPos);
         $textarea.focus();
+        
+        // Trigger input event für Autosave
+        $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
+    function addKeyboardShortcuts($textarea, buttons) {
+        const shortcutMap = {};
+        buttons.forEach(btn => {
+            if (btn.shortcut) {
+                shortcutMap[btn.shortcut] = btn;
+            }
+        });
+        
+        $textarea.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+                const key = e.key.toLowerCase();
+                if (shortcutMap[key]) {
+                    e.preventDefault();
+                    const btn = shortcutMap[key];
+                    insertMarkdown($textarea, btn.syntax[0], btn.syntax[1], btn.lineStart);
+                }
+            }
+        });
+    }
+    
+    function observeDarkMode(toolbar, initialDark) {
+        // Beobachte Dark Mode Änderungen
+        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        const updateColors = (isDark) => {
+            toolbar.style.backgroundColor = isDark ? '#004052' : '#eceff4';
+            toolbar.style.borderBottomColor = isDark ? '#005566' : 'lightgrey';
+            
+            const buttons = toolbar.querySelectorAll('.md-btn');
+            buttons.forEach(btn => {
+                btn.style.backgroundColor = isDark ? '#01242e' : 'white';
+                btn.style.color = isDark ? '#ddd' : '#222';
+                btn.style.borderColor = isDark ? '#555' : '#ccc';
+            });
+        };
+        
+        // Modern Browser
+        if (darkModeQuery.addEventListener) {
+            darkModeQuery.addEventListener('change', (e) => updateColors(e.matches));
+        } 
+        // Fallback für ältere Browser
+        else if (darkModeQuery.addListener) {
+            darkModeQuery.addListener((e) => updateColors(e.matches));
+        }
     }
 })();
