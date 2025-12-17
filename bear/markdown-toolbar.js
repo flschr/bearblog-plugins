@@ -1,11 +1,8 @@
-// ==UserScript==
 // @name         Bear Blog Markdown Toolbar
 // @version      1.0
 // @description  Toolbar with Markdown buttons in the Bear Blog editor
 // @author       René Fischer
-// @match        https://fischr.org
-// @grant        none
-// ==/UserScript==
+// @website      https://fischr.org
 
 (function() {
     'use strict';
@@ -39,13 +36,14 @@
         `;
 
         const buttons = [
-            { label: '𝐁', title: 'Bold', syntax: ['**', '**'] },
-            { label: '𝐼', title: 'Italic', syntax: ['*', '*'] },
+            { label: '𝐁', title: 'Bold (Ctrl+B)', syntax: ['**', '**'], shortcut: 'b' },
+            { label: '𝐼', title: 'Italic (Ctrl+I)', syntax: ['*', '*'], shortcut: 'i' },
             { label: 'H1', title: 'H1', syntax: ['# ', ''], lineStart: true },
             { label: 'H2', title: 'H2', syntax: ['## ', ''], lineStart: true },
             { label: '🔗', title: 'Link (Ctrl+K)', syntax: ['[', ']('], shortcut: 'k' },
             { label: '❝', title: 'Quote', syntax: ['> ', ''], lineStart: true },
             { label: '⟨⟩', title: 'Code', syntax: ['`', '`'] },
+            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] },
             { label: '•', title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: '―', title: 'HR', syntax: ['\n---\n', ''] }
         ];
@@ -54,7 +52,6 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = btn.label;
-            button.className = 'md-btn';
             button.style.cssText = `
                 padding: 5px 10px; background: ${isDark ? '#01242e' : 'white'};
                 color: ${isDark ? '#ddd' : '#222'}; border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -85,20 +82,24 @@
         if (before === '[' && after === '](') {
             let url = '';
             try {
-                const clipText = await navigator.clipboard.readText();
-                if (clipText.startsWith('http') || clipText.includes('.')) {
-                    url = clipText.trim();
+                const clipText = (await navigator.clipboard.readText()).trim();
+                // Nur einfügen, wenn es mit http beginnt
+                if (clipText.toLowerCase().startsWith('http')) {
+                    url = clipText;
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.log('Clipboard-Zugriff verweigert oder leer');
+            }
 
             const linkSuffix = `](${url})`;
             newText = beforeText + before + selectedText + linkSuffix + afterText;
             
-            // Cursor-Positionierung: In die Klammern, wenn kein Clipboard-Inhalt
-            if (!url) {
-                newCursorPos = start + before.length + selectedText.length + 2; 
+            if (url === '') {
+                // Setze Cursor exakt zwischen die Klammern ()
+                newCursorPos = beforeText.length + before.length + selectedText.length + 2;
             } else {
-                newCursorPos = start + before.length + selectedText.length + linkSuffix.length;
+                // Setze Cursor hinter die schließende Klammer )
+                newCursorPos = beforeText.length + before.length + selectedText.length + linkSuffix.length;
             }
         } 
         else if (lineStart) {
