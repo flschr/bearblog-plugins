@@ -36,8 +36,8 @@
         `;
 
         const buttons = [
-            { label: '𝐁', title: 'Bold (Ctrl+B)', syntax: ['**', '**'], shortcut: 'b' },
-            { label: '𝐼', title: 'Italic (Ctrl+I)', syntax: ['*', '*'], shortcut: 'i' },
+            { label: '𝐁', title: 'Bold', syntax: ['**', '**'], shortcut: 'b' },
+            { label: '𝐼', title: 'Italic', syntax: ['*', '*'], shortcut: 'i' },
             { label: 'H1', title: 'H1', syntax: ['# ', ''], lineStart: true },
             { label: 'H2', title: 'H2', syntax: ['## ', ''], lineStart: true },
             { label: '🔗', title: 'Link (Ctrl+K)', syntax: ['[', ']('], shortcut: 'k' },
@@ -45,17 +45,22 @@
             { label: '⟨⟩', title: 'Code', syntax: ['`', '`'] },
             { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] },
             { label: '•', title: 'List', syntax: ['- ', ''], lineStart: true },
-            { label: '―', title: 'HR', syntax: ['\n---\n', ''] }
+            { label: '―', title: 'HR', syntax: ['\n---\n', ''] },
+            // Neue Buttons am Ende
+            { label: 'ⓘ', title: 'Info Box', syntax: ['<div class="infobox-frame info">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'], customCursor: true },
+            { label: '⚠️', title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'], customCursor: true }
         ];
 
         buttons.forEach(btn => {
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = btn.label;
+            button.title = btn.title;
             button.style.cssText = `
                 padding: 5px 10px; background: ${isDark ? '#01242e' : 'white'};
                 color: ${isDark ? '#ddd' : '#222'}; border: 1px solid ${isDark ? '#555' : '#ccc'};
                 border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600;
+                min-width: 32px; display: flex; align-items: center; justify-content: center;
             `;
 
             button.addEventListener('click', async (e) => {
@@ -78,30 +83,25 @@
         
         let newText, newCursorPos;
 
-        // Speziallogik für Links
+        // 1. Link-Speziallogik
         if (before === '[' && after === '](') {
             let url = '';
             try {
                 const clipText = (await navigator.clipboard.readText()).trim();
-                // Nur einfügen, wenn es mit http beginnt
                 if (clipText.toLowerCase().startsWith('http')) {
                     url = clipText;
                 }
-            } catch (err) {
-                console.log('Clipboard-Zugriff verweigert oder leer');
-            }
-
+            } catch (err) {}
             const linkSuffix = `](${url})`;
             newText = beforeText + before + selectedText + linkSuffix + afterText;
-            
-            if (url === '') {
-                // Setze Cursor exakt zwischen die Klammern ()
-                newCursorPos = beforeText.length + before.length + selectedText.length + 2;
-            } else {
-                // Setze Cursor hinter die schließende Klammer )
-                newCursorPos = beforeText.length + before.length + selectedText.length + linkSuffix.length;
-            }
+            newCursorPos = url === '' ? start + before.length + selectedText.length + 2 : start + before.length + selectedText.length + linkSuffix.length;
         } 
+        // 2. Infobox-Speziallogik (Cursor in die Mitte setzen)
+        else if (before.includes('infobox-text')) {
+            newText = beforeText + before + selectedText + after + afterText;
+            newCursorPos = start + before.length;
+        }
+        // 3. Zeilenanfang (H1, Liste, etc.)
         else if (lineStart) {
             const lineStartPos = beforeText.lastIndexOf('\n') + 1;
             const linePrefix = beforeText.substring(lineStartPos);
@@ -112,7 +112,9 @@
                 newText = beforeText.substring(0, lineStartPos) + before + beforeText.substring(lineStartPos) + selectedText + afterText;
                 newCursorPos = start + before.length;
             }
-        } else {
+        } 
+        // 4. Standard (Fett, Kursiv, etc.)
+        else {
             newText = beforeText + before + selectedText + after + afterText;
             newCursorPos = selectedText ? end + before.length + after.length : start + before.length;
         }
