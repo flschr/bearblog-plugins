@@ -1,31 +1,128 @@
-    const restore_btn = document.createElement('button');
-    restore_btn.classList.add('rdb_post_restorer');
-    restore_btn.setAttribute('onclick', "event.preventDefault();rdb_restore_post();");
-    restore_btn.innerText = 'Restore Last Post';
-    document.querySelector('.sticky-controls').appendChild(restore_btn);
-
-    function rdb_restore_post(){
-        var ebody = document.getElementById('body_content');
-        var eheaders = document.getElementById('header_content');
-      
-        if (ebody.value.length > 30){
-            if (!confirm("Overwrite your current post with previous post?"))return;
-        }
-
-        ebody.value= localStorage.getItem('body');
-        eheaders.innerText = localStorage.getItem('headers');
+// Bear Blog Auto-Save zu Drafts (ohne localStorage)
+(function() {
+    'use strict';
+    
+    let autoSaveEnabled = localStorage.getItem('rdb_autosave_enabled') !== 'false';
+    let lastCharCount = 0;
+    let saveTimeout = null;
+    
+    // Toggle-Button erstellen
+    const toggle_btn = document.createElement('button');
+    toggle_btn.classList.add('rdb_autosave_toggle');
+    toggle_btn.style.marginLeft = '10px';
+    toggle_btn.onclick = function(e) {
+        e.preventDefault();
+        toggleAutoSave();
+    };
+    updateButtonState();
+    
+    // Button neben "Save as draft" einfügen
+    const buttons = document.querySelectorAll('button');
+    const saveDraftBtn = Array.from(buttons).find(btn => btn.textContent.includes('Save as draft'));
+    if (saveDraftBtn && saveDraftBtn.parentNode) {
+        saveDraftBtn.parentNode.insertBefore(toggle_btn, saveDraftBtn.nextSibling);
     }
-    function rdb_save_post(){
-        setTimeout(function(){rdb_save_post();}, 10000);
-        console.log(localStorage);
-        var body = document.getElementById('body_content').value;
-        var headers = document.getElementById('header_content').innerText;
-        if (body.length < 50){
-            console.log("Body less than 50 chars. Not saving.");
+
+    function updateButtonState() {
+        if (autoSaveEnabled) {
+            toggle_btn.innerText = '⏸ Auto-Save AN';
+            toggle_btn.style.backgroundColor = '#28a745';
+            toggle_btn.style.color = 'white';
+        } else {
+            toggle_btn.innerText = '▶ Auto-Save AUS';
+            toggle_btn.style.backgroundColor = '#dc3545';
+            toggle_btn.style.color = 'white';
+        }
+    }
+
+    function toggleAutoSave() {
+        autoSaveEnabled = !autoSaveEnabled;
+        localStorage.setItem('rdb_autosave_enabled', autoSaveEnabled);
+        updateButtonState();
+        
+        if (autoSaveEnabled) {
+            console.log('✅ Auto-Save aktiviert');
+            scheduleNextSave();
+        } else {
+            console.log('⏸ Auto-Save deaktiviert');
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+            }
+        }
+    }
+
+    function saveToDraft(){
+        if (!autoSaveEnabled) return;
+        
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const saveDraftBtn = buttons.find(btn => btn.textContent.includes('Save as draft'));
+        
+        if (saveDraftBtn) {
+            console.log('💾 Auto-saving draft...', new Date().toLocaleTimeString());
+            saveDraftBtn.click();
+        }
+    }
+    
+    function checkAndSave(){
+        if (!autoSaveEnabled) {
+            scheduleNextSave();
             return;
         }
-        localStorage.setItem('body', body);
-        localStorage.setItem('headers', headers);
-        console.log("Post saved locally",localStorage);
+        
+        const textarea = document.querySelector('textarea');
+        if (!textarea) {
+            scheduleNextSave();
+            return;
+        }
+        
+        const currentCharCount = textarea.value.length;
+        
+        // Speichern wenn:
+        // 1. +100 Zeichen seit letztem Save
+        // 2. Oder 2 Minuten vergangen
+        const charDifference = currentCharCount - lastCharCount;
+        
+        if (charDifference >= 100) {
+            console.log(`📝 +${charDifference} Zeichen → Auto-Save`);
+            saveToDraft();
+            lastCharCount = currentCharCount;
+        }
+        
+        scheduleNextSave();
     }
-    setTimeout(function(){rdb_save_post();}, 10000);
+    
+    function scheduleNextSave() {
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+        // Prüfe alle 10 Sekunden, aber speichere nur nach Regeln
+        saveTimeout = setTimeout(checkAndSave, 10000);
+    }
+    
+    // Separater Timer für 2-Minuten-Save
+    function regularSave() {
+        if (autoSaveEnabled) {
+            const textarea = document.querySelector('textarea');
+            if (textarea && textarea.value.length > 50) {
+                console.log('⏰ 2-Minuten Auto-Save');
+                saveToDraft();
+                lastCharCount = textarea.value.length;
+            }
+        }
+        setTimeout(regularSave, 120000); // 2 Minuten
+    }
+
+    // Start
+    if (document.querySelector('textarea')) {
+        const textarea = document.querySelector('textarea');
+        lastCharCount = textarea.value.length;
+        
+        if (autoSaveEnabled) {
+            scheduleNextSave();
+            setTimeout(regularSave, 120000);
+            console.log('🚀 Auto-Save aktiviert: alle 2 Min. oder bei +100 Zeichen');
+        } else {
+            console.log('⏸ Auto-Save ist deaktiviert');
+        }
+    }
+})();
