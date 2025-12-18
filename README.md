@@ -11,7 +11,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) writin
 *   **Description**: Adds a powerful Markdown toolbar to the post editor. It includes buttons for text formatting, media uploads, and custom HTML blocks like info/warning boxes.
 *   **Installation**: This is a **dashboard script**. Go to **Dashboard** -> **Settings** and add the following URL to the `Custom dashboard Javascript` field:
     ```
-    https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/markdown-toolbar.js
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/markdown-toolbar.js"></script>
     ```
 
 ### Blog Search & Infinite Scroll
