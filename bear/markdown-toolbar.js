@@ -42,8 +42,8 @@
             { label: 'H2', title: 'H2', syntax: ['## ', ''], lineStart: true },
             { label: '🔗', title: 'Link (Ctrl+K)', syntax: ['[', ']('], shortcut: 'k' },
             { label: '❝', title: 'Quote', syntax: ['> ', ''], lineStart: true },
+            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] }, // Jetzt direkt nach Quote
             { label: '⟨⟩', title: 'Code', syntax: ['`', '`'] },
-            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] },
             { label: '•', title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: '―', title: 'HR', syntax: ['\n---\n', ''] },
             // Neue Buttons am Ende
