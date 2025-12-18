@@ -1,5 +1,5 @@
 // @name         Bear Blog Markdown Toolbar
-// @version      0.1.2
+// @version      0.2.1
 // @description  Markdown Toolbar with Media upload ntegration
 // @author       René Fischer
 
@@ -34,7 +34,7 @@
         toolbar.className = 'markdown-toolbar';
         
         toolbar.style.cssText = `
-            display: flex; gap: 5px; padding: 8px; align-items: center;
+            display: flex; gap: 4px; padding: 8px; align-items: center;
             background-color: ${isDark ? '#004052' : '#eceff4'};
             border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
             flex-wrap: wrap; position: sticky; top: 0; z-index: 100; box-sizing: border-box;
@@ -63,7 +63,7 @@
         buttons.forEach(btn => {
             if (btn.type === 'separator') {
                 const sep = document.createElement('div');
-                sep.style.cssText = `width: 1px; height: 20px; background: ${isDark ? '#555' : '#ccc'}; margin: 0 5px;`;
+                sep.style.cssText = `width: 1px; height: 24px; background: ${isDark ? '#555' : '#ccc'}; margin: 0 4px;`;
                 toolbar.appendChild(sep);
                 return;
             }
@@ -72,11 +72,15 @@
             button.type = 'button';
             button.textContent = btn.label;
             button.title = btn.title;
+            
+            // Einheitliche Maße: 32x32 Pixel
             button.style.cssText = `
-                padding: 5px 10px; background: ${isDark ? '#01242e' : 'white'};
+                width: 32px; height: 32px; padding: 0;
+                background: ${isDark ? '#01242e' : 'white'};
                 color: ${isDark ? '#ddd' : '#222'}; border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600;
-                min-width: 32px; display: flex; align-items: center; justify-content: center;
+                border-radius: 3px; cursor: pointer; font-size: 14px; font-weight: 600;
+                display: flex; align-items: center; justify-content: center;
+                line-height: 1; overflow: hidden;
             `;
 
             button.addEventListener('click', async (e) => {
