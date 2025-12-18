@@ -1,24 +1,11 @@
-// Verhindere, dass das Bearblog-Script läuft
-const originalQuerySelectorAll = document.querySelectorAll;
-let dateScriptRan = false;
-
-document.querySelectorAll = function(selector) {
-    if (selector === 'time' && !dateScriptRan) {
-        return []; // Gibt leeres Array zurück, damit Bearblog-Script nichts findet
-    }
-    return originalQuerySelectorAll.call(document, selector);
-};
-
-// Jetzt unser eigenes Script
-setTimeout(() => {
-    dateScriptRan = true;
-    const times = originalQuerySelectorAll.call(document, 'time');
-    const format_string = "d. M Y";
-
-    times.forEach(time => {
-        time.innerText = formatDate(time.getAttribute('datetime'), format_string);
-    });
-}, 0);
+document.addEventListener('DOMContentLoaded', () => {
+  // Konfiguration für das Datumsformat
+  const format_string = "d. M Y";
+  
+  document.querySelectorAll('time').forEach(time => {
+    time.innerText = formatDate(time.getAttribute('datetime'), format_string);
+  });
+});
 
 function formatDate(dateStr, formatStr) {
     const date = new Date(dateStr);
