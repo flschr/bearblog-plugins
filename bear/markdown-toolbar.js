@@ -1,8 +1,7 @@
 // @name         Bear Blog Markdown Toolbar
-// @version      1.0
-// @description  Toolbar with Markdown buttons in the Bear Blog editor
+// @version      0.1.2
+// @description  Markdown Toolbar with Media upload ntegration
 // @author       René Fischer
-// @website      https://fischr.org
 
 (function() {
     'use strict';
@@ -19,6 +18,12 @@
         
         $textarea.setAttribute('data-toolbar-initialized', 'true');
         createMarkdownToolbar($textarea);
+
+        // Blendet die untere Hilfe-Leiste aus
+        const footerHelp = document.querySelector('.helptext.sticky');
+        if (footerHelp) {
+            footerHelp.style.display = 'none';
+        }
     }
 
     function createMarkdownToolbar($textarea) {
@@ -29,7 +34,7 @@
         toolbar.className = 'markdown-toolbar';
         
         toolbar.style.cssText = `
-            display: flex; gap: 5px; padding: 8px;
+            display: flex; gap: 5px; padding: 8px; align-items: center;
             background-color: ${isDark ? '#004052' : '#eceff4'};
             border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
             flex-wrap: wrap; position: sticky; top: 0; z-index: 100; box-sizing: border-box;
@@ -42,16 +47,27 @@
             { label: 'H2', title: 'H2', syntax: ['## ', ''], lineStart: true },
             { label: '🔗', title: 'Link (Ctrl+K)', syntax: ['[', ']('], shortcut: 'k' },
             { label: '❝', title: 'Quote', syntax: ['> ', ''], lineStart: true },
-            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] }, // Jetzt direkt nach Quote
+            { label: '✎', title: 'Cite', syntax: ['<cite>', '</cite>'] },
+            { label: '🖼️', title: 'Insert Media', action: 'upload' },
             { label: '⟨⟩', title: 'Code', syntax: ['`', '`'] },
             { label: '•', title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: '―', title: 'HR', syntax: ['\n---\n', ''] },
-            // Neue Buttons am Ende
-            { label: 'ⓘ', title: 'Info Box', syntax: ['<div class="infobox-frame info">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'], customCursor: true },
-            { label: '⚠️', title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'], customCursor: true }
+            { label: 'ⓘ', title: 'Info Box', syntax: ['<div class="infobox-frame info">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
+            { label: '⚠️', title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
+            { type: 'separator' },
+            { label: '📁', title: 'Media Gallery', action: 'gallery' },
+            { label: '👁️', title: 'Preview', action: 'preview' },
+            { label: '?', title: 'Markdown Help', action: 'help' }
         ];
 
         buttons.forEach(btn => {
+            if (btn.type === 'separator') {
+                const sep = document.createElement('div');
+                sep.style.cssText = `width: 1px; height: 20px; background: ${isDark ? '#555' : '#ccc'}; margin: 0 5px;`;
+                toolbar.appendChild(sep);
+                return;
+            }
+
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = btn.label;
@@ -65,13 +81,33 @@
 
             button.addEventListener('click', async (e) => {
                 e.preventDefault();
-                await insertMarkdown($textarea, btn.syntax[0], btn.syntax[1], btn.lineStart);
+                if (btn.action) {
+                    handleAction(btn.action);
+                } else {
+                    await insertMarkdown($textarea, btn.syntax[0], btn.syntax[1], btn.lineStart);
+                }
             });
             toolbar.appendChild(button);
         });
 
         $textarea.parentNode.insertBefore(toolbar, $textarea);
-        addKeyboardShortcuts($textarea, buttons);
+    }
+
+    function handleAction(action) {
+        switch(action) {
+            case 'upload':
+                document.getElementById('upload-image').click();
+                break;
+            case 'gallery':
+                window.open('/fischr/dashboard/media/', '_blank');
+                break;
+            case 'preview':
+                document.getElementById('preview').click();
+                break;
+            case 'help':
+                window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank');
+                break;
+        }
     }
 
     async function insertMarkdown($textarea, before, after, lineStart = false) {
@@ -83,26 +119,19 @@
         
         let newText, newCursorPos;
 
-        // 1. Link-Speziallogik
         if (before === '[' && after === '](') {
             let url = '';
             try {
                 const clipText = (await navigator.clipboard.readText()).trim();
-                if (clipText.toLowerCase().startsWith('http')) {
-                    url = clipText;
-                }
+                if (clipText.toLowerCase().startsWith('http')) { url = clipText; }
             } catch (err) {}
             const linkSuffix = `](${url})`;
             newText = beforeText + before + selectedText + linkSuffix + afterText;
             newCursorPos = url === '' ? start + before.length + selectedText.length + 2 : start + before.length + selectedText.length + linkSuffix.length;
-        } 
-        // 2. Infobox-Speziallogik (Cursor in die Mitte setzen)
-        else if (before.includes('infobox-text')) {
+        } else if (before.includes('infobox-text')) {
             newText = beforeText + before + selectedText + after + afterText;
             newCursorPos = start + before.length;
-        }
-        // 3. Zeilenanfang (H1, Liste, etc.)
-        else if (lineStart) {
+        } else if (lineStart) {
             const lineStartPos = beforeText.lastIndexOf('\n') + 1;
             const linePrefix = beforeText.substring(lineStartPos);
             if (linePrefix.trim().startsWith(before.trim())) {
@@ -112,9 +141,7 @@
                 newText = beforeText.substring(0, lineStartPos) + before + beforeText.substring(lineStartPos) + selectedText + afterText;
                 newCursorPos = start + before.length;
             }
-        } 
-        // 4. Standard (Fett, Kursiv, etc.)
-        else {
+        } else {
             newText = beforeText + before + selectedText + after + afterText;
             newCursorPos = selectedText ? end + before.length + after.length : start + before.length;
         }
@@ -123,17 +150,5 @@
         $textarea.setSelectionRange(newCursorPos, newCursorPos);
         $textarea.focus();
         $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    function addKeyboardShortcuts($textarea, buttons) {
-        $textarea.addEventListener('keydown', async (e) => {
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
-                const btn = buttons.find(b => b.shortcut === e.key.toLowerCase());
-                if (btn) {
-                    e.preventDefault();
-                    await insertMarkdown($textarea, btn.syntax[0], btn.syntax[1], btn.lineStart);
-                }
-            }
-        });
     }
 })();
