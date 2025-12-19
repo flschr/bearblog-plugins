@@ -1,5 +1,5 @@
-// @name         Bear Blog Markdown Toolbar (Extended)
-// @version      0.4.6
+// @name         Bear Blog Markdown Toolbar (Basic)
+// @version      0.3.1
 // @author       René Fischer
 
 (function() {
@@ -41,16 +41,11 @@
             h1: 'H1', h2: 'H2', h3: 'H3',
             link: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>',
             quote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/><path d="M14 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/></svg>',
-            cite: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m16 3 4 4L8 19H4v-4L16 3z"/><path d="M2 21h20"/></svg>',
             image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
             code: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-            codeBlock: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 10-2 2 2 2"/><path d="m14 14 2-2-2-2"/></svg>',
             list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
             hr: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
             table: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>',
-            info: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
-            warning: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>',
-            star: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
             more: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
             gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
             preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -65,16 +60,11 @@
             { label: ICONS.h3, title: 'H3', syntax: ['### ', ''], lineStart: true },
             { label: ICONS.link, title: 'Link', syntax: ['[', ']('] },
             { label: ICONS.quote, title: 'Quote', syntax: ['> ', ''], lineStart: true },
-            { label: ICONS.cite, title: 'Cite', syntax: ['<cite>', '</cite>'] },
             { label: ICONS.image, title: 'Insert Media', action: 'upload' },
             { label: ICONS.code, title: 'Code', syntax: ['`', '`'] },
-            { label: ICONS.codeBlock, title: 'Code Block', action: 'codeBlock' },
             { label: ICONS.list, title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: ICONS.hr, title: 'HR', syntax: ['\n---\n', ''] },
-            { label: ICONS.table, title: 'Table', syntax: ['\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1 | Cell 2 |\n', ''] },
-            { label: ICONS.info, title: 'Info Box', syntax: ['<div class="infobox-frame info">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
-            { label: ICONS.warning, title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
-            { label: ICONS.star, title: 'Rating', syntax: ['(★★★☆☆)', ''] }
+            { label: ICONS.table, title: 'Table', syntax: ['\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1 | Cell 2 |\n', ''] }
         ];
 
         const menuItems = [
@@ -145,9 +135,6 @@
             case 'gallery': window.open('/fischr/dashboard/media/', '_blank'); break;
             case 'preview': document.getElementById('preview').click(); break;
             case 'help': window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank'); break;
-            case 'codeBlock':
-                insertMarkdown($textarea, `\n\`\`\`\n`, `\n\`\`\`\n`);
-                break;
         }
     }
 
@@ -166,7 +153,6 @@
             newPos = start + before.length;
         } else {
             newText = $textarea.value.substring(0, start) + before + selected + after + $textarea.value.substring(end);
-            // Cursor-Logik: Falls kein Text markiert ist, in die Mitte springen. Falls markiert, ans Ende des Blocks.
             newPos = selected ? start + before.length + selected.length + after.length : start + before.length;
         }
 
