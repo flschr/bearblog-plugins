@@ -1,5 +1,5 @@
-// @name         Bear Blog Markdown Toolbar Extended
-// @version      0.4.4
+// @name         Bear Blog Markdown Toolbar (Extended)
+// @version      0.4.5
 // @author       René Fischer
 
 (function() {
@@ -36,13 +36,14 @@
             position: sticky; top: 0; z-index: 100; box-sizing: border-box; flex-wrap: wrap;
         `;
 
-        // Icons - H3 und Quote nochmal nachgebessert
+        // Icons - H1, H2, H3 jetzt als Text-Strings
         const ICONS = {
             bold: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M6 12h9a4 4 0 0 1 0 8H6v-8Z"/><path d="M6 4h7a4 4 0 0 1 0 8H6V4Z"/></svg>',
             italic: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>',
-            h1: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M4 12h8M4 18V6M12 18V6M17 12l3-2v8"/></svg>',
-            h2: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M4 12h8M4 18V6M12 18V6M21 18h-4c0-4 4-3 4-6 0-1.5-1.5-2.5-3-2.5-1.5 0-3 1-3 2.5"/></svg>',
-            h3: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>',
+            h1: 'H1',
+            h2: 'H2',
+            h3: 'H3',
+            link: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>',
             quote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/><path d="M14 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/></svg>',
             cite: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m16 3 4 4L8 19H4v-4L16 3z"/><path d="M2 21h20"/></svg>',
             image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
@@ -89,7 +90,13 @@
         const createBtn = (html, title, isDark) => {
             const b = document.createElement('button');
             b.type = 'button'; b.innerHTML = html; b.title = title;
-            b.style.cssText = `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;`;
+            // Styling für Text-Labels (H1-H3)
+            if (html.length <= 2) {
+                b.style.fontWeight = '800';
+                b.style.fontSize = '13px';
+                b.style.fontFamily = 'system-ui, sans-serif';
+            }
+            b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;`;
             return b;
         };
 
@@ -99,6 +106,7 @@
             toolbar.appendChild(b);
         });
 
+        // Menü
         const menuWrapper = document.createElement('div');
         menuWrapper.style.position = 'relative';
         const menuBtn = createBtn(ICONS.more, "More Options", isDark);
@@ -120,16 +128,16 @@
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
 
-        // --- FIXED COUNTER (An Wrapper gebunden, aber fixiert am Viewport) ---
+        // --- FLOATING COUNTER (Fixiert & Kompakt) ---
         const counter = document.createElement('div');
-        counter.id = 'char-counter-fixed';
+        counter.id = 'char-counter-floating';
         counter.style.cssText = `
             position: fixed; bottom: 20px; right: 20px; 
-            padding: 6px 14px; border-radius: 8px; 
-            font-size: 18px; font-weight: 800; font-family: system-ui, sans-serif;
-            pointer-events: none; z-index: 99999; opacity: 0.95; 
+            padding: 4px 12px; border-radius: 6px; 
+            font-size: 16px; font-weight: 700; font-family: ui-sans-serif, system-ui, sans-serif;
+            pointer-events: none; z-index: 999999; opacity: 0.95; 
             border: 1.5px solid ${isDark ? '#555' : '#ccc'};
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;
         `;
         
         const updateCounter = () => {
@@ -150,7 +158,7 @@
         updateCounter();
 
         wrapper.insertBefore(toolbar, $textarea);
-        wrapper.appendChild(counter); // Wieder in den Wrapper verschoben
+        document.body.appendChild(counter); // Sicherstellen, dass es über allem schwebt
     }
 
     function handleAction(action, $textarea) {
