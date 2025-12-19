@@ -1,5 +1,5 @@
 // @name         Bear Blog Markdown Toolbar (Extended)
-// @version      0.4.5
+// @version      0.4.6
 // @author       René Fischer
 
 (function() {
@@ -12,7 +12,6 @@
         $textarea.setAttribute('data-toolbar-initialized', 'true');
         createMarkdownToolbar($textarea);
 
-        // Footer & Hilfe ausblenden
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => el.style.display = 'none');
     };
 
@@ -36,13 +35,10 @@
             position: sticky; top: 0; z-index: 100; box-sizing: border-box; flex-wrap: wrap;
         `;
 
-        // Icons - H1, H2, H3 jetzt als Text-Strings
         const ICONS = {
             bold: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M6 12h9a4 4 0 0 1 0 8H6v-8Z"/><path d="M6 4h7a4 4 0 0 1 0 8H6V4Z"/></svg>',
             italic: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>',
-            h1: 'H1',
-            h2: 'H2',
-            h3: 'H3',
+            h1: 'H1', h2: 'H2', h3: 'H3',
             link: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>',
             quote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/><path d="M14 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 7 4 8 8 8Z"/></svg>',
             cite: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m16 3 4 4L8 19H4v-4L16 3z"/><path d="M2 21h20"/></svg>',
@@ -76,8 +72,8 @@
             { label: ICONS.list, title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: ICONS.hr, title: 'HR', syntax: ['\n---\n', ''] },
             { label: ICONS.table, title: 'Table', syntax: ['\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1 | Cell 2 |\n', ''] },
-            { label: ICONS.info, title: 'Info Box', syntax: ['<div class="infobox-frame info">\n <div class="infobox-icon"></div>\n <div class="infobox-text">', '</div>\n</div>'] },
-            { label: ICONS.warning, title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n <div class="infobox-icon"></div>\n <div class="infobox-text">', '</div>\n</div>'] },
+            { label: ICONS.info, title: 'Info Box', syntax: ['<div class="infobox-frame info">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
+            { label: ICONS.warning, title: 'Warning Box', syntax: ['<div class="infobox-frame warning">\n    <div class="infobox-icon"></div>\n    <div class="infobox-text">', '</div>\n</div>'] },
             { label: ICONS.star, title: 'Rating', syntax: ['(★★★☆☆)', ''] }
         ];
 
@@ -90,11 +86,8 @@
         const createBtn = (html, title, isDark) => {
             const b = document.createElement('button');
             b.type = 'button'; b.innerHTML = html; b.title = title;
-            // Styling für Text-Labels (H1-H3)
             if (html.length <= 2) {
-                b.style.fontWeight = '800';
-                b.style.fontSize = '13px';
-                b.style.fontFamily = 'system-ui, sans-serif';
+                b.style.fontWeight = '800'; b.style.fontSize = '13px'; b.style.fontFamily = 'system-ui, sans-serif';
             }
             b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;`;
             return b;
@@ -106,7 +99,6 @@
             toolbar.appendChild(b);
         });
 
-        // Menü
         const menuWrapper = document.createElement('div');
         menuWrapper.style.position = 'relative';
         const menuBtn = createBtn(ICONS.more, "More Options", isDark);
@@ -128,37 +120,23 @@
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
 
-        // --- FLOATING COUNTER (Fixiert & Kompakt) ---
         const counter = document.createElement('div');
         counter.id = 'char-counter-floating';
-        counter.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px; 
-            padding: 4px 12px; border-radius: 6px; 
-            font-size: 16px; font-weight: 700; font-family: ui-sans-serif, system-ui, sans-serif;
-            pointer-events: none; z-index: 999999; opacity: 0.95; 
-            border: 1.5px solid ${isDark ? '#555' : '#ccc'};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;
-        `;
+        counter.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 4px 12px; border-radius: 6px; font-size: 16px; font-weight: 700; font-family: ui-sans-serif, sans-serif; pointer-events: none; z-index: 999999; opacity: 0.95; border: 1.5px solid ${isDark ? '#555' : '#ccc'}; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;`;
         
         const updateCounter = () => {
             const len = $textarea.value.length;
             counter.innerText = len;
-            if (len >= 300) {
-                counter.style.background = '#d32f2f'; counter.style.color = '#fff'; counter.style.borderColor = '#b71c1c';
-            } else if (len >= 250) {
-                counter.style.background = '#fbc02d'; counter.style.color = '#000'; counter.style.borderColor = '#f9a825';
-            } else {
-                counter.style.background = isDark ? '#01242e' : '#fff';
-                counter.style.color = isDark ? '#aaa' : '#666';
-                counter.style.borderColor = isDark ? '#555' : '#ccc';
-            }
+            if (len >= 300) { counter.style.background = '#d32f2f'; counter.style.color = '#fff'; counter.style.borderColor = '#b71c1c'; }
+            else if (len >= 250) { counter.style.background = '#fbc02d'; counter.style.color = '#000'; counter.style.borderColor = '#f9a825'; }
+            else { counter.style.background = isDark ? '#01242e' : '#fff'; counter.style.color = isDark ? '#aaa' : '#666'; counter.style.borderColor = isDark ? '#555' : '#ccc'; }
         };
 
         $textarea.addEventListener('input', updateCounter);
         updateCounter();
 
         wrapper.insertBefore(toolbar, $textarea);
-        document.body.appendChild(counter); // Sicherstellen, dass es über allem schwebt
+        document.body.appendChild(counter);
     }
 
     function handleAction(action, $textarea) {
@@ -168,8 +146,7 @@
             case 'preview': document.getElementById('preview').click(); break;
             case 'help': window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank'); break;
             case 'codeBlock':
-                const lang = prompt('Language (z.B. js, python):') || '';
-                insertMarkdown($textarea, `\n\`\`\`${lang}\n`, `\n\`\`\`\n`);
+                insertMarkdown($textarea, `\n\`\`\`\n`, `\n\`\`\`\n`);
                 break;
         }
     }
@@ -189,7 +166,8 @@
             newPos = start + before.length;
         } else {
             newText = $textarea.value.substring(0, start) + before + selected + after + $textarea.value.substring(end);
-            newPos = start + before.length + selected.length + after.length;
+            // Cursor-Logik: Falls kein Text markiert ist, in die Mitte springen. Falls markiert, ans Ende des Blocks.
+            newPos = selected ? start + before.length + selected.length + after.length : start + before.length;
         }
 
         $textarea.value = newText;
