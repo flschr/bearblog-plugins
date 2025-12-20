@@ -2,12 +2,17 @@
     'use strict';
 
     // 1. Setup & State
-    let currentMode = localStorage.getItem('bear_toolbar_mode') || 'basic';
+    let currentMode = 'basic';
+    try {
+        currentMode = localStorage.getItem('bear_toolbar_mode') || 'basic';
+    } catch(e) {
+        // Silent fail - localStorage might be unavailable
+    }
 
     const init = () => {
         const $textarea = document.getElementById('body_content');
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
-        
+
         $textarea.setAttribute('data-toolbar-initialized', 'true');
         createMarkdownToolbar($textarea);
 
@@ -16,9 +21,9 @@
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 200));
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        setTimeout(init, 200);
+        init();
     }
 
     function createMarkdownToolbar($textarea) {
@@ -48,13 +53,13 @@
             list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
             hr: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
             table: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>',
-            info: 'i',
-            warning: '!',
-            star: '★',
+            info: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+            warning: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+            star: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
             more: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
-            gallery: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-            preview: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
-            help: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>'
+            gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+            preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+            help: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>'
         };
 
         const allButtons = [
@@ -112,7 +117,11 @@
         toggleItem.onclick = (e) => {
             e.stopPropagation();
             currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
-            localStorage.setItem('bear_toolbar_mode', currentMode);
+            try {
+                localStorage.setItem('bear_toolbar_mode', currentMode);
+            } catch(e) {
+                // Silent fail - localStorage might be unavailable
+            }
             toolbar.querySelectorAll('.adv-btn').forEach(b => b.style.display = currentMode === 'basic' ? 'none' : 'flex');
             toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
             dropdown.style.display = 'none';
@@ -134,7 +143,25 @@
 
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
+
+        // Character Counter (floating)
+        const counter = document.createElement('div');
+        counter.id = 'char-counter-floating';
+        counter.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 4px 12px; border-radius: 6px; font-size: 16px; font-weight: 700; font-family: ui-sans-serif, sans-serif; pointer-events: none; z-index: 999999; opacity: 0.95; border: 1.5px solid ${isDark ? '#555' : '#ccc'}; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;`;
+
+        const updateCounter = () => {
+            const len = $textarea.value.length;
+            counter.innerText = len;
+            if (len >= 300) { counter.style.background = '#d32f2f'; counter.style.color = '#fff'; counter.style.borderColor = '#b71c1c'; }
+            else if (len >= 250) { counter.style.background = '#fbc02d'; counter.style.color = '#000'; counter.style.borderColor = '#f9a825'; }
+            else { counter.style.background = isDark ? '#01242e' : '#fff'; counter.style.color = isDark ? '#aaa' : '#666'; counter.style.borderColor = isDark ? '#555' : '#ccc'; }
+        };
+
+        $textarea.addEventListener('input', updateCounter);
+        updateCounter();
+
         wrapper.insertBefore(toolbar, $textarea);
+        document.body.appendChild(counter);
     }
 
     function handleAction(action, $textarea) {
@@ -147,12 +174,21 @@
         }
     }
 
-    function insertMarkdown($textarea, before, after, lineStart = false) {
+    async function insertMarkdown($textarea, before, after, lineStart = false) {
         const start = $textarea.selectionStart, end = $textarea.selectionEnd;
         const selected = $textarea.value.substring(start, end);
         let newText, newPos;
 
-        if (lineStart) {
+        // Smart clipboard integration for links
+        if (before === '[' && after === '](') {
+            let url = '';
+            try {
+                const clip = await navigator.clipboard.readText();
+                if (clip.trim().startsWith('http')) url = clip.trim();
+            } catch(e) {}
+            newText = $textarea.value.substring(0, start) + '[' + selected + '](' + url + ')' + $textarea.value.substring(end);
+            newPos = url ? start + selected.length + url.length + 3 : start + selected.length + 3;
+        } else if (lineStart) {
             const lineStartPos = $textarea.value.substring(0, start).lastIndexOf('\n') + 1;
             newText = $textarea.value.substring(0, lineStartPos) + before + $textarea.value.substring(lineStartPos, start) + selected + after + $textarea.value.substring(end);
             newPos = start + before.length;
