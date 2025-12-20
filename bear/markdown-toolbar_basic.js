@@ -1,38 +1,29 @@
-// @name         Bear Blog Markdown Toolbar (Unified)
-// @version      0.4.0
-// @author       René Fischer
-
 (function() {
     'use strict';
 
-    // State aus LocalStorage laden (Default: basic)
     let currentMode = localStorage.getItem('bear_toolbar_mode') || 'basic';
 
     const init = () => {
         const $textarea = document.getElementById('body_content');
-        
-        // Prüfen, ob die Textarea da ist und ob wir schon initialisiert haben
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
         
         $textarea.setAttribute('data-toolbar-initialized', 'true');
         renderApp($textarea);
 
-        // Bear Blog Hilfetexte ausblenden für einen cleanen Look
+        // Clean UI
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => el.style.display = 'none');
     };
 
-    // Warten bis DOM bereit ist + kleiner Buffer für Bear Blog Scripte
+    // Robustes Laden
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 150));
     } else {
-        setTimeout(init, 100);
+        setTimeout(init, 150);
     }
 
     function renderApp($textarea) {
-        // Alte Toolbar entfernen, falls vorhanden (wichtig für den Modus-Wechsel)
         const oldToolbar = document.querySelector('.markdown-toolbar');
         if (oldToolbar) oldToolbar.remove();
-        
         createMarkdownToolbar($textarea);
     }
 
@@ -70,7 +61,7 @@
             gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
             preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
             help: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>',
-            settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2l-.2.1a2 2 0 0 1-2.83 0l-.1-.1a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.1.1a2 2 0 0 1 0 2.83l-.1.2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2l.2-.1a2 2 0 0 1 2.83 0l.1.1a2 2 0 0 0 2.83 0l.31-.31a2 2 0 0 0 0-2.83l-.1-.1a2 2 0 0 1 0-2.83l.1-.2a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>'
+            settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
         };
 
         const allButtons = [
@@ -103,7 +94,6 @@
             return b;
         };
 
-        // Buttons filtern basierend auf Modus
         const visibleButtons = currentMode === 'advanced' ? allButtons : allButtons.filter(btn => !btn.advanced);
 
         visibleButtons.forEach(btn => {
@@ -112,22 +102,27 @@
             toolbar.appendChild(b);
         });
 
-        // Dropdown Menü (...)
         const menuWrapper = document.createElement('div');
         menuWrapper.style.position = 'relative';
         const menuBtn = createBtn(ICONS.more, "More Options", isDark);
         const dropdown = document.createElement('div');
         dropdown.style.cssText = `display: none; position: absolute; top: 34px; right: 0; background: ${isDark ? '#01242e' : 'white'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 4px; z-index: 1000; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden;`;
 
+        const dashboardPath = window.location.pathname.split('posts/')[0];
+
         const menuItems = [
-            { label: ICONS.gallery, text: 'Gallery', action: 'gallery' },
-            { label: ICONS.preview, text: 'Preview', action: 'preview' },
-            { label: ICONS.help, text: 'Markdown Help', action: 'help' },
+            { label: ICONS.gallery, text: 'Gallery', action: () => window.open(`${dashboardPath}media/`, '_blank') },
+            { label: ICONS.preview, text: 'Preview', action: () => document.getElementById('preview').click() },
+            { label: ICONS.help, text: 'Markdown Help', action: () => window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank') },
             { divider: true },
             { 
                 label: ICONS.settings, 
                 text: currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic', 
-                action: 'toggleMode' 
+                action: () => {
+                    currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
+                    localStorage.setItem('bear_toolbar_mode', currentMode);
+                    renderApp($textarea);
+                } 
             }
         ];
 
@@ -139,19 +134,9 @@
                 return;
             }
             const div = document.createElement('div');
-            div.style.cssText = `padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${isDark ? '#ddd' : '#444'}; white-space: nowrap;`;
+            div.style.cssText = `padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${isDark ? '#ddd' : '#444'};`;
             div.innerHTML = `${item.label} <span>${item.text}</span>`;
-            div.onclick = (e) => { 
-                e.stopPropagation();
-                if (item.action === 'toggleMode') {
-                    currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
-                    localStorage.setItem('bear_toolbar_mode', currentMode);
-                    renderApp($textarea); 
-                } else {
-                    handleAction(item.action, $textarea);
-                }
-                dropdown.style.display = 'none'; 
-            };
+            div.onclick = (e) => { e.stopPropagation(); item.action(); dropdown.style.display = 'none'; };
             div.onmouseover = () => div.style.backgroundColor = isDark ? '#004052' : '#f5f5f5';
             div.onmouseout = () => div.style.backgroundColor = 'transparent';
             dropdown.appendChild(div);
@@ -162,35 +147,12 @@
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
 
-        // Character Counter
-        if (!document.getElementById('char-counter-floating')) {
-            const counter = document.createElement('div');
-            counter.id = 'char-counter-floating';
-            counter.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 4px 12px; border-radius: 6px; font-size: 16px; font-weight: 700; font-family: ui-sans-serif, sans-serif; pointer-events: none; z-index: 999999; opacity: 0.95; border: 1.5px solid ${isDark ? '#555' : '#ccc'}; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;`;
-            document.body.appendChild(counter);
-            
-            const updateCounter = () => {
-                const len = $textarea.value.length;
-                counter.innerText = len;
-                if (len >= 300) { counter.style.background = '#d32f2f'; counter.style.color = '#fff'; counter.style.borderColor = '#b71c1c'; }
-                else if (len >= 250) { counter.style.background = '#fbc02d'; counter.style.color = '#000'; counter.style.borderColor = '#f9a825'; }
-                else { counter.style.background = isDark ? '#01242e' : '#fff'; counter.style.color = isDark ? '#aaa' : '#666'; counter.style.borderColor = isDark ? '#555' : '#ccc'; }
-            };
-            $textarea.addEventListener('input', updateCounter);
-            updateCounter();
-        }
-
         wrapper.insertBefore(toolbar, $textarea);
     }
 
     function handleAction(action, $textarea) {
-        switch(action) {
-            case 'upload': document.getElementById('upload-image').click(); break;
-            case 'gallery': window.open('/fischr/dashboard/media/', '_blank'); break;
-            case 'preview': document.getElementById('preview').click(); break;
-            case 'help': window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank'); break;
-            case 'codeBlock': insertMarkdown($textarea, `\n\`\`\`\n`, `\n\`\`\`\n`); break;
-        }
+        if (action === 'upload') document.getElementById('upload-image').click();
+        if (action === 'codeBlock') insertMarkdown($textarea, `\n\`\`\`\n`, `\n\`\`\`\n`);
     }
 
     async function insertMarkdown($textarea, before, after, lineStart = false) {
