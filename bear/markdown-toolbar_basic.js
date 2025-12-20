@@ -15,7 +15,6 @@
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => el.style.display = 'none');
     };
 
-    // Warten bis alles bereit ist
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => setTimeout(init, 200));
     } else {
@@ -52,7 +51,10 @@
             info: 'i',
             warning: '!',
             star: '★',
-            more: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
+            more: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+            gallery: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+            preview: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+            help: '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>'
         };
 
         const allButtons = [
@@ -63,28 +65,31 @@
             { label: ICONS.h3, title: 'H3', syntax: ['### ', ''], lineStart: true },
             { label: ICONS.link, title: 'Link', syntax: ['[', ']('] },
             { label: ICONS.quote, title: 'Quote', syntax: ['> ', ''], lineStart: true },
+            { label: ICONS.cite, title: 'Cite', syntax: ['<cite>', '</cite>'], adv: true }, // Cite jetzt hier
             { label: ICONS.image, title: 'Insert Media', action: 'upload' },
             { label: ICONS.code, title: 'Code', syntax: ['`', '`'] },
             { label: ICONS.list, title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: ICONS.hr, title: 'HR', syntax: ['\n---\n', ''] },
             { label: ICONS.table, title: 'Table', syntax: ['\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1 | Cell 2 |\n', ''] },
-            // Advanced Buttons (markiert durch Klasse)
-            { label: ICONS.cite, title: 'Cite', syntax: ['<cite>', '</cite>'], adv: true },
             { label: ICONS.codeBlock, title: 'Code Block', action: 'codeBlock', adv: true },
             { label: ICONS.info, title: 'Info Box', syntax: ['<div class="infobox-frame info"><div class="infobox-icon"></div><div class="infobox-text">', '</div></div>'], adv: true },
             { label: ICONS.warning, title: 'Warning Box', syntax: ['<div class="infobox-frame warning"><div class="infobox-icon"></div><div class="infobox-text">', '</div></div>'], adv: true },
             { label: ICONS.star, title: 'Rating', syntax: ['(★★★☆☆)', ''], adv: true }
         ];
 
+        const menuItems = [
+            { label: ICONS.gallery, text: 'Gallery', action: 'gallery' },
+            { label: ICONS.preview, text: 'Preview', action: 'preview' },
+            { label: ICONS.help, text: 'Markdown Help', action: 'help' }
+        ];
+
         const createBtn = (btnObj) => {
             const b = document.createElement('button');
             b.type = 'button'; b.innerHTML = btnObj.label; b.title = btnObj.title;
             if (btnObj.adv) b.classList.add('adv-btn');
-            
-            // Sichtbarkeit initial einstellen
             if (btnObj.adv && currentMode === 'basic') b.style.display = 'none';
 
-            b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 800;`;
+            b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: system-ui, sans-serif;`;
             
             b.onclick = () => btnObj.action ? handleAction(btnObj.action, $textarea) : insertMarkdown($textarea, btnObj.syntax[0], btnObj.syntax[1], btnObj.lineStart);
             return b;
@@ -98,25 +103,32 @@
         const menuBtn = createBtn({ label: ICONS.more, title: "More" });
         
         const dropdown = document.createElement('div');
-        dropdown.style.cssText = `display: none; position: absolute; top: 34px; right: 0; background: ${isDark ? '#01242e' : 'white'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 4px; z-index: 1000; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);`;
+        dropdown.style.cssText = `display: none; position: absolute; top: 34px; right: 0; background: ${isDark ? '#01242e' : 'white'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 4px; z-index: 1000; min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding: 4px 0;`;
 
         const toggleItem = document.createElement('div');
-        toggleItem.style.cssText = `padding: 10px; cursor: pointer; font-size: 13px; color: ${isDark ? '#ddd' : '#444'};`;
-        toggleItem.innerText = currentMode === 'basic' ? '🚀 Switch to Advanced' : '🌱 Switch to Basic';
+        toggleItem.style.cssText = `padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: ${isDark ? '#ddd' : '#444'}; border-bottom: 1px solid ${isDark ? '#333' : '#eee'};`;
+        toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
         
         toggleItem.onclick = (e) => {
             e.stopPropagation();
             currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
             localStorage.setItem('bear_toolbar_mode', currentMode);
-            
-            // Buttons umschalten ohne Refresh
-            const advButtons = toolbar.querySelectorAll('.adv-btn');
-            advButtons.forEach(b => b.style.display = currentMode === 'basic' ? 'none' : 'flex');
-            toggleItem.innerText = currentMode === 'basic' ? '🚀 Switch to Advanced' : '🌱 Switch to Basic';
+            toolbar.querySelectorAll('.adv-btn').forEach(b => b.style.display = currentMode === 'basic' ? 'none' : 'flex');
+            toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
             dropdown.style.display = 'none';
         };
-
         dropdown.appendChild(toggleItem);
+
+        menuItems.forEach(item => {
+            const div = document.createElement('div');
+            div.style.cssText = `padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${isDark ? '#ddd' : '#444'};`;
+            div.innerHTML = `<span style="display:flex; width:18px;">${item.label}</span> <span>${item.text}</span>`;
+            div.onclick = () => { handleAction(item.action, $textarea); dropdown.style.display = 'none'; };
+            div.onmouseover = () => div.style.backgroundColor = isDark ? '#004052' : '#f5f5f5';
+            div.onmouseout = () => div.style.backgroundColor = 'transparent';
+            dropdown.appendChild(div);
+        });
+
         menuBtn.onclick = (e) => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; };
         document.addEventListener('click', () => dropdown.style.display = 'none');
 
@@ -126,8 +138,13 @@
     }
 
     function handleAction(action, $textarea) {
-        if (action === 'upload') document.getElementById('upload-image').click();
-        if (action === 'codeBlock') insertMarkdown($textarea, '\n```\n', '\n```\n');
+        switch(action) {
+            case 'upload': document.getElementById('upload-image').click(); break;
+            case 'gallery': window.open('/fischr/dashboard/media/', '_blank'); break;
+            case 'preview': document.getElementById('preview').click(); break;
+            case 'help': window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank'); break;
+            case 'codeBlock': insertMarkdown($textarea, '\n```\n', '\n```\n'); break;
+        }
     }
 
     function insertMarkdown($textarea, before, after, lineStart = false) {
