@@ -50,3 +50,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) writin
     ```html
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/date.js" defer></script>
     ```
+
+## License
+This repository is licensed under the [WTFPL](https://www.wtfpl.net/) License.
+Feel free to fork and customize for your own blog!
