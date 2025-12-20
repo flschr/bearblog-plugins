@@ -1,4 +1,5 @@
-// @name         Bear Blog Markdown Toolbar
+// @name         Bear Blog Markdown Toolbar (Unified)
+// @version      0.4.0
 // @author       René Fischer
 
 (function() {
@@ -9,26 +10,30 @@
 
     const init = () => {
         const $textarea = document.getElementById('body_content');
+        
+        // Prüfen, ob die Textarea da ist und ob wir schon initialisiert haben
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
         
         $textarea.setAttribute('data-toolbar-initialized', 'true');
         renderApp($textarea);
 
+        // Bear Blog Hilfetexte ausblenden für einen cleanen Look
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => el.style.display = 'none');
     };
 
+    // Warten bis DOM bereit ist + kleiner Buffer für Bear Blog Scripte
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
+    } else {
+        setTimeout(init, 100);
+    }
+
     function renderApp($textarea) {
-        // Alte Toolbar entfernen, falls vorhanden (für den Switch)
+        // Alte Toolbar entfernen, falls vorhanden (wichtig für den Modus-Wechsel)
         const oldToolbar = document.querySelector('.markdown-toolbar');
         if (oldToolbar) oldToolbar.remove();
         
         createMarkdownToolbar($textarea);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
     }
 
     function createMarkdownToolbar($textarea) {
@@ -107,7 +112,7 @@
             toolbar.appendChild(b);
         });
 
-        // Dropdown Menü
+        // Dropdown Menü (...)
         const menuWrapper = document.createElement('div');
         menuWrapper.style.position = 'relative';
         const menuBtn = createBtn(ICONS.more, "More Options", isDark);
@@ -136,11 +141,12 @@
             const div = document.createElement('div');
             div.style.cssText = `padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${isDark ? '#ddd' : '#444'}; white-space: nowrap;`;
             div.innerHTML = `${item.label} <span>${item.text}</span>`;
-            div.onclick = () => { 
+            div.onclick = (e) => { 
+                e.stopPropagation();
                 if (item.action === 'toggleMode') {
                     currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
                     localStorage.setItem('bear_toolbar_mode', currentMode);
-                    renderApp($textarea); // Toolbar neu rendern
+                    renderApp($textarea); 
                 } else {
                     handleAction(item.action, $textarea);
                 }
@@ -156,7 +162,7 @@
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
 
-        // Counter (nur einmal hinzufügen)
+        // Character Counter
         if (!document.getElementById('char-counter-floating')) {
             const counter = document.createElement('div');
             counter.id = 'char-counter-floating';
