@@ -372,7 +372,12 @@ document.addEventListener('DOMContentLoaded', () => {
   render(initialState.shown, initialState.search, false)
   // Initialen State in History setzen
   updateURL(initialState.shown, initialState.search, true)
-  
+
   // Observer starten
   observer.observe(sentinel)
+
+  // Cleanup: Observer disconnecten bei Seitenwechsel
+  window.addEventListener('beforeunload', () => {
+    observer.disconnect()
+  })
 })
