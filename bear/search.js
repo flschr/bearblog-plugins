@@ -173,20 +173,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ===== UTILITIES =====
+  const HTML_ENTITIES = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, char => HTML_ENTITIES[char]);
+  }
+
   // ===== FILTER & HIGHLIGHTING =====
   function getFilteredPosts(searchQuery) {
     if (!searchQuery) return postData
     const query = searchQuery.toLowerCase().trim()
     if (!query) return postData
-    
+
     return postData.filter(p => p.searchText.includes(query))
   }
 
   function highlightSearchTerm(text, searchTerm) {
-    if (!searchTerm) return text
-    
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-    return text.replace(regex, '<mark>$1</mark>')
+    if (!searchTerm) return escapeHtml(text)
+
+    // Escape HTML entities in both text and search term for safe innerHTML use
+    const safeText = escapeHtml(text)
+    const safeSearchTerm = escapeHtml(searchTerm)
+    const regex = new RegExp(`(${safeSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    return safeText.replace(regex, '<mark>$1</mark>')
   }
 
   // ===== RENDER FUNKTION =====

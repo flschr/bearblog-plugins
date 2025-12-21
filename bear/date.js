@@ -1,19 +1,22 @@
-// Constants to avoid re-allocation on every formatDate call
-const MONTHS_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-const DAYS_FULL = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-const DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+(function() {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Konfiguration für das Datumsformat
-  const format_string = "d. M Y";
+  // Constants for German date/time names
+  const MONTHS_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const MONTHS_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  const DAYS_FULL = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const ORDINALS = ['th', 'st', 'nd', 'rd'];
 
-  document.querySelectorAll('time').forEach(time => {
-    time.innerText = formatDate(time.getAttribute('datetime'), format_string);
-  });
-});
+  // Configuration
+  const FORMAT_STRING = 'd. M Y';
 
-function formatDate(dateStr, formatStr) {
+  function getOrdinal(n) {
+    const v = n % 100;
+    return ORDINALS[(v - 20) % 10] || ORDINALS[v] || ORDINALS[0];
+  }
+
+  function formatDate(dateStr, formatStr) {
     const date = new Date(dateStr);
     const day = date.getUTCDate();
     const month = date.getUTCMonth();
@@ -21,42 +24,36 @@ function formatDate(dateStr, formatStr) {
     const weekday = date.getUTCDay();
     const hours = date.getUTCHours();
     const minutes = date.getUTCMinutes();
-    
-    function getOrdinal(n) {
-        const s = ['th', 'st', 'nd', 'rd'];
-        const v = n % 100;
-        return s[(v - 20) % 10] || s[v] || s[0];
-    }
-    
-    const map = {
-        'd': () => day.toString().padStart(2, '0'),
-        'm': () => (month + 1).toString().padStart(2, '0'),
-        'Y': () => year.toString(),
-        'y': () => year.toString().slice(-2),
-        'F': () => MONTHS_FULL[month],
-        'j': () => day.toString(),
-        'D': () => DAYS_SHORT[weekday],
-        'l': () => DAYS_FULL[weekday],
-        'S': () => getOrdinal(day),
-        'M': () => MONTHS_SHORT[month],
-        'H': () => hours.toString().padStart(2, '0'),
-        'h': () => {
-            let h = hours % 12;
-            h = h === 0 ? 12 : h;
-            return h.toString().padStart(2, '0');
-        },
-        'g': () => {
-            let h = hours % 12;
-            return h === 0 ? '12' : h.toString();
-        },
-        'i': () => minutes.toString().padStart(2, '0'),
-        'a': () => hours < 12 ? 'am' : 'pm',
-        'A': () => hours < 12 ? 'AM' : 'PM',
+
+    const formatters = {
+      'd': () => day.toString().padStart(2, '0'),
+      'j': () => day.toString(),
+      'S': () => getOrdinal(day),
+      'm': () => (month + 1).toString().padStart(2, '0'),
+      'M': () => MONTHS_SHORT[month],
+      'F': () => MONTHS_FULL[month],
+      'Y': () => year.toString(),
+      'y': () => year.toString().slice(-2),
+      'D': () => DAYS_SHORT[weekday],
+      'l': () => DAYS_FULL[weekday],
+      'H': () => hours.toString().padStart(2, '0'),
+      'h': () => ((hours % 12) || 12).toString().padStart(2, '0'),
+      'g': () => ((hours % 12) || 12).toString(),
+      'i': () => minutes.toString().padStart(2, '0'),
+      'a': () => hours < 12 ? 'am' : 'pm',
+      'A': () => hours < 12 ? 'AM' : 'PM'
     };
-    
+
     let result = '';
-    for (let char of formatStr) {
-        result += map[char] ? map[char]() : char;
+    for (const char of formatStr) {
+      result += formatters[char] ? formatters[char]() : char;
     }
     return result;
-}
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('time').forEach(time => {
+      time.textContent = formatDate(time.getAttribute('datetime'), FORMAT_STRING);
+    });
+  });
+})();
