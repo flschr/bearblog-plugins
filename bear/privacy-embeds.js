@@ -3,14 +3,10 @@ document.addEventListener("DOMContentLoaded", function() {
   const lang = navigator.language || navigator.userLanguage || 'de';
   const isEn = lang.startsWith('en');
   
-  // Optional: Console log für Debugging
-  console.log('Detected language:', lang, 'Using English:', isEn);
-  
   // Define translations
   const i18n = {
-    external: isEn ? 'External' : 'Externes',
-    video: isEn ? 'Video' : 'Video',
-    map: isEn ? 'Map' : 'Karte',
+    externalMap: isEn ? 'External Map' : 'Externe Karte',
+    externalVideo: isEn ? 'External Video' : 'Externes Video',
     load: isEn ? 'Load' : 'laden',
     noteStart: isEn ? 'Loading this content will transfer data to' : 'Beim Laden dieses Inhalts werden Daten an',
     noteEnd: isEn ? '.' : ' übertragen.'
@@ -29,7 +25,8 @@ document.addEventListener("DOMContentLoaded", function() {
   iframes.forEach(iframe => {
     const src = iframe.src;
     const isMap = src.includes('maps') || src.includes('googleusercontent');
-    const typeLabel = isMap ? i18n.map : i18n.video;
+    const typeLabel = isMap ? (isEn ? 'Map' : 'Karte') : (isEn ? 'Video' : 'Video');
+    const fullTypeLabel = isMap ? i18n.externalMap : i18n.externalVideo;
     const service = isMap ? 'Google Maps' : 'YouTube';
     
     // Create the overlay wrapper
@@ -37,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function() {
     wrapper.className = 'media-proxy';
     
     wrapper.innerHTML = `
-      <p><strong>${i18n.external} ${typeLabel}</strong><br>
+      <p><strong>${fullTypeLabel}</strong><br>
       ${i18n.noteStart} ${service}${i18n.noteEnd}</p>
       <button>${typeLabel} ${i18n.load}</button>
     `;
