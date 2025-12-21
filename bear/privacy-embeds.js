@@ -1,18 +1,16 @@
 document.addEventListener("DOMContentLoaded", function() {
-  // Sprache erkennen (en oder de)
+  // detect language (en, de)
   const isEn = navigator.language.startsWith('en');
   
-  // Texte definieren
+  // Define texts
   const i18n = {
     video: isEn ? 'Video' : 'Video',
     map: isEn ? 'Map' : 'Karte',
     load: isEn ? 'Load' : 'laden',
-    // Satzbau: "Beim Laden... [Service] übertragen."
     noteStart: isEn ? 'Loading this content will transfer data to' : 'Beim Laden dieses Inhalts werden Daten an',
     noteEnd: isEn ? '.' : ' übertragen.'
   };
 
-  // Selektoren für YouTube und Google Maps (auch für die Bear-Blog-Proxy-Links)
   const selectors = [
     'iframe[src*="youtube.com"]',
     'iframe[src*="youtube-nocookie.com"]',
@@ -31,7 +29,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const wrapper = document.createElement('div');
     wrapper.className = 'media-proxy';
     
-    // Hier wird der Satz jetzt korrekt zusammengesetzt
     wrapper.innerHTML = `
       <p><strong>External ${typeLabel}</strong><br>
       ${i18n.noteStart} ${service}${i18n.noteEnd}</p>
@@ -40,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const btn = wrapper.querySelector('button');
     btn.addEventListener('click', () => {
-      // YouTube-Links auf nocookie umstellen, falls noch nicht geschehen
+      // transform YouTube links to nocookie
       const newSrc = src.replace("youtube.com", "youtube-nocookie.com");
       iframe.src = newSrc;
       wrapper.replaceWith(iframe);
