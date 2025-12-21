@@ -27,7 +27,8 @@
     }
 
     function createMarkdownToolbar($textarea) {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        let isDark = darkModeQuery.matches;
         const wrapper = $textarea.parentElement;
         wrapper.style.position = 'relative';
 
@@ -184,7 +185,13 @@
     function handleAction(action, $textarea) {
         switch(action) {
             case 'upload': document.getElementById('upload-image').click(); break;
-            case 'gallery': window.open('/fischr/dashboard/media/', '_blank'); break;
+            case 'gallery': {
+                // Extract blog slug from current URL (e.g., /fischr/dashboard/... → fischr)
+                const pathParts = window.location.pathname.split('/').filter(Boolean);
+                const blogSlug = pathParts[0] || '';
+                window.open(`/${blogSlug}/dashboard/media/`, '_blank');
+                break;
+            }
             case 'preview': document.getElementById('preview').click(); break;
             case 'help': window.open('https://herman.bearblog.dev/markdown-cheatsheet/', '_blank'); break;
             case 'codeBlock': insertMarkdown($textarea, '\n```\n', '\n```\n'); break;
