@@ -70,16 +70,19 @@
             { label: ICONS.h3, title: 'H3', syntax: ['### ', ''], lineStart: true },
             { label: ICONS.link, title: 'Link', syntax: ['[', ']('] },
             { label: ICONS.quote, title: 'Quote', syntax: ['> ', ''], lineStart: true },
-            { label: ICONS.cite, title: 'Cite', syntax: ['<cite>', '</cite>'], adv: true }, // Cite jetzt hier
+            { label: ICONS.cite, title: 'Cite', syntax: ['<cite>', '</cite>'], adv: true },
             { label: ICONS.image, title: 'Insert Media', action: 'upload' },
-            { label: ICONS.code, title: 'Code', syntax: ['`', '`'] },
             { label: ICONS.list, title: 'List', syntax: ['- ', ''], lineStart: true },
             { label: ICONS.hr, title: 'HR', syntax: ['\n---\n', ''] },
             { label: ICONS.table, title: 'Table', syntax: ['\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1 | Cell 2 |\n', ''] },
-            { label: ICONS.codeBlock, title: 'Code Block', action: 'codeBlock', adv: true },
             { label: ICONS.info, title: 'Info Box', syntax: ['<div class="infobox-frame info"><div class="infobox-icon"></div><div class="infobox-text">', '</div></div>'], adv: true },
             { label: ICONS.warning, title: 'Warning Box', syntax: ['<div class="infobox-frame warning"><div class="infobox-icon"></div><div class="infobox-text">', '</div></div>'], adv: true },
             { label: ICONS.star, title: 'Rating', syntax: ['(★★★☆☆)', ''], adv: true }
+        ];
+
+        const codeButtons = [
+            { label: ICONS.code, title: 'Inline Code', syntax: ['`', '`'] },
+            { label: ICONS.codeBlock, title: 'Code Block', action: 'codeBlock' }
         ];
 
         const menuItems = [
@@ -102,6 +105,19 @@
 
         allButtons.forEach(btn => toolbar.appendChild(createBtn(btn)));
 
+        // Code Button Group (nebeneinander im Advanced Mode)
+        const codeGroup = document.createElement('div');
+        codeGroup.className = 'code-btn-group';
+        codeGroup.style.cssText = `display: ${currentMode === 'basic' ? 'none' : 'flex'}; gap: 2px; padding: 2px; background: ${isDark ? '#003545' : '#dfe3e8'}; border-radius: 4px; border: 1px solid ${isDark ? '#004556' : '#cbd0d6'};`;
+
+        codeButtons.forEach(btn => {
+            const codeBtn = createBtn(btn);
+            codeBtn.style.border = 'none';
+            codeGroup.appendChild(codeBtn);
+        });
+
+        toolbar.appendChild(codeGroup);
+
         // Menu (...)
         const menuWrapper = document.createElement('div');
         menuWrapper.style.position = 'relative';
@@ -123,6 +139,7 @@
                 // Silent fail - localStorage might be unavailable
             }
             toolbar.querySelectorAll('.adv-btn').forEach(b => b.style.display = currentMode === 'basic' ? 'none' : 'flex');
+            toolbar.querySelector('.code-btn-group').style.display = currentMode === 'basic' ? 'none' : 'flex';
             toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
             dropdown.style.display = 'none';
         };
