@@ -1,6 +1,6 @@
 # Bear Blog Plugins
 
-A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) writing and management experience. This repository contains various JavaScript plugins designed to add new features and improve usability on your Bear Blog. To install a plugin, you need to add it to your blog's configuration.
+A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader and writer experience. I mainly use them for my own purposes on [my personal website](https://fischr.org/). But of course, you can use them too. To install a plugin, you need to add it to your header, footer or dashboard configuration. Just follow the instructions below.
 
 ---
 
