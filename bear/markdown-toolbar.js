@@ -98,6 +98,18 @@
         gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
         preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
         help: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+        settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>',
+    };
+
+    // Button categories for settings panel
+    const BUTTON_CATEGORIES = {
+        'Formatting': ['bold', 'italic', 'strikethrough', 'mark'],
+        'Headings': ['h1', 'h2', 'h3'],
+        'Links & Media': ['link', 'image'],
+        'Blocks': ['quote', 'list', 'numberedList', 'hr', 'table'],
+        'Code': ['code', 'codeBlock'],
+        'References': ['footnote'],
+        'Admonitions': ['admonitionInfo', 'admonitionWarning', 'admonitionCaution'],
     };
 
     // ==========================================================================
@@ -237,6 +249,7 @@
         { icon: ICONS.gallery, text: 'Media Gallery', action: 'gallery' },
         { icon: ICONS.preview, text: 'Preview', action: 'preview' },
         { icon: ICONS.help, text: 'Markdown Help', action: 'help' },
+        { icon: ICONS.settings, text: 'Toolbar Settings', action: 'settings', separator: true },
     ];
 
     // ==========================================================================
@@ -246,6 +259,40 @@
     let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     let autosaveTimer = null;
     let $textarea = null;
+    let $toolbar = null;
+
+    // ==========================================================================
+    // USER SETTINGS (localStorage)
+    // ==========================================================================
+
+    const SETTINGS_KEY = 'bear_toolbar_settings';
+
+    function loadUserSettings() {
+        try {
+            const saved = localStorage.getItem(SETTINGS_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function saveUserSettings(enabledButtons) {
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                enabledButtons: enabledButtons,
+                savedAt: Date.now()
+            }));
+        } catch (e) {}
+    }
+
+    function getEnabledButtons() {
+        const userSettings = loadUserSettings();
+        if (userSettings && userSettings.enabledButtons) {
+            return userSettings.enabledButtons;
+        }
+        return CONFIG.enabledButtons;
+    }
 
     // ==========================================================================
     // INITIALIZATION
@@ -283,9 +330,9 @@
         const wrapper = $textarea.parentElement;
         wrapper.style.position = 'relative';
 
-        const toolbar = document.createElement('div');
-        toolbar.className = 'md-toolbar';
-        toolbar.style.cssText = `
+        $toolbar = document.createElement('div');
+        $toolbar.className = 'md-toolbar';
+        $toolbar.style.cssText = `
             display: flex;
             gap: 4px;
             padding: 8px;
@@ -298,24 +345,33 @@
             z-index: 100;
         `;
 
+        renderToolbarButtons();
+
+        wrapper.insertBefore($toolbar, $textarea);
+    }
+
+    function renderToolbarButtons() {
+        // Clear existing buttons (except keep the structure)
+        $toolbar.innerHTML = '';
+
+        const enabledButtons = getEnabledButtons();
+
         // Create enabled buttons
-        CONFIG.enabledButtons.forEach(buttonId => {
+        enabledButtons.forEach(buttonId => {
             const buttonDef = BUTTONS[buttonId];
             if (!buttonDef) return;
 
             const btn = createButton(buttonId, buttonDef);
-            toolbar.appendChild(btn);
+            $toolbar.appendChild(btn);
         });
 
         // Spacer
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
-        toolbar.appendChild(spacer);
+        $toolbar.appendChild(spacer);
 
         // Menu button
-        toolbar.appendChild(createMenuButton());
-
-        wrapper.insertBefore(toolbar, $textarea);
+        $toolbar.appendChild(createMenuButton());
     }
 
     function createButton(id, def) {
@@ -393,6 +449,13 @@
         `;
 
         MENU_ITEMS.forEach(item => {
+            // Add separator before item if specified
+            if (item.separator) {
+                const sep = document.createElement('div');
+                sep.style.cssText = `height: 1px; background: ${isDark ? '#333' : '#eee'}; margin: 4px 0;`;
+                dropdown.appendChild(sep);
+            }
+
             const menuItem = document.createElement('div');
             menuItem.style.cssText = `
                 padding: 10px 14px;
@@ -699,6 +762,234 @@
     }
 
     // ==========================================================================
+    // SETTINGS PANEL
+    // ==========================================================================
+
+    function showSettingsPanel() {
+        // Remove existing panel if any
+        const existing = document.getElementById('md-settings-panel');
+        if (existing) existing.remove();
+
+        const currentEnabled = getEnabledButtons();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'md-settings-panel';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: ${isDark ? '#01242e' : 'white'};
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-family: system-ui, sans-serif;
+        `;
+
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid ${isDark ? '#333' : '#eee'};
+        `;
+        header.innerHTML = `
+            <div>
+                <h2 style="margin:0;font-size:18px;color:${isDark ? '#fff' : '#333'};">Toolbar Settings</h2>
+                <p style="margin:4px 0 0;font-size:12px;color:${isDark ? '#888' : '#666'};">
+                    Choose which buttons to show. Saved per browser.
+                </p>
+            </div>
+        `;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: ${isDark ? '#888' : '#666'};
+            padding: 0;
+            line-height: 1;
+        `;
+        closeBtn.onclick = () => overlay.remove();
+        header.appendChild(closeBtn);
+        panel.appendChild(header);
+
+        // Categories
+        const checkboxes = {};
+
+        Object.entries(BUTTON_CATEGORIES).forEach(([category, buttonIds]) => {
+            const section = document.createElement('div');
+            section.style.cssText = 'margin-bottom: 16px;';
+
+            const catHeader = document.createElement('div');
+            catHeader.style.cssText = `
+                font-weight: 600;
+                font-size: 13px;
+                color: ${isDark ? '#aaa' : '#666'};
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            `;
+            catHeader.textContent = category;
+            section.appendChild(catHeader);
+
+            const grid = document.createElement('div');
+            grid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 8px;
+            `;
+
+            buttonIds.forEach(buttonId => {
+                const buttonDef = BUTTONS[buttonId];
+                if (!buttonDef) return;
+
+                const label = document.createElement('label');
+                label.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 10px;
+                    background: ${isDark ? '#002530' : '#f8f9fa'};
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    color: ${isDark ? '#ddd' : '#444'};
+                    transition: background 0.15s;
+                `;
+                label.onmouseover = () => label.style.background = isDark ? '#003545' : '#eef0f2';
+                label.onmouseout = () => label.style.background = isDark ? '#002530' : '#f8f9fa';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = currentEnabled.includes(buttonId);
+                checkbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+                checkboxes[buttonId] = checkbox;
+
+                const iconSpan = document.createElement('span');
+                iconSpan.style.cssText = 'display: flex; width: 18px; flex-shrink: 0;';
+                if (buttonDef.icon.startsWith('<')) {
+                    iconSpan.innerHTML = buttonDef.icon;
+                } else {
+                    iconSpan.textContent = buttonDef.icon;
+                    iconSpan.style.fontWeight = '800';
+                }
+
+                const textSpan = document.createElement('span');
+                textSpan.textContent = buttonDef.title.replace(/ \(.*\)/, ''); // Remove shortcuts from label
+
+                label.appendChild(checkbox);
+                label.appendChild(iconSpan);
+                label.appendChild(textSpan);
+                grid.appendChild(label);
+            });
+
+            section.appendChild(grid);
+            panel.appendChild(section);
+        });
+
+        // Buttons
+        const actions = document.createElement('div');
+        actions.style.cssText = `
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid ${isDark ? '#333' : '#eee'};
+        `;
+
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset to Default';
+        resetBtn.style.cssText = `
+            padding: 8px 16px;
+            background: transparent;
+            color: ${isDark ? '#888' : '#666'};
+            border: 1px solid ${isDark ? '#444' : '#ccc'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        `;
+        resetBtn.onclick = () => {
+            CONFIG.enabledButtons.forEach(id => {
+                if (checkboxes[id]) checkboxes[id].checked = true;
+            });
+            Object.keys(checkboxes).forEach(id => {
+                if (!CONFIG.enabledButtons.includes(id)) {
+                    checkboxes[id].checked = false;
+                }
+            });
+        };
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save & Apply';
+        saveBtn.style.cssText = `
+            padding: 8px 20px;
+            background: #0969da;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        `;
+        saveBtn.onclick = () => {
+            // Collect enabled buttons in category order
+            const newEnabled = [];
+            Object.values(BUTTON_CATEGORIES).flat().forEach(id => {
+                if (checkboxes[id] && checkboxes[id].checked) {
+                    newEnabled.push(id);
+                }
+            });
+
+            saveUserSettings(newEnabled);
+            renderToolbarButtons();
+            overlay.remove();
+        };
+
+        actions.appendChild(resetBtn);
+        actions.appendChild(saveBtn);
+        panel.appendChild(actions);
+
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        // Close on Escape
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // ==========================================================================
     // TEXT INSERTION (Undo-compatible)
     // ==========================================================================
 
@@ -887,6 +1178,10 @@
             case 'insertFootnote':
                 insertFootnote();
                 break;
+
+            case 'settings':
+                showSettingsPanel();
+                break;
         }
     }
 
@@ -900,10 +1195,12 @@
 
             if (!ctrl) return;
 
+            const enabledButtons = getEnabledButtons();
+
             // Find button with matching shortcut
             for (const [id, def] of Object.entries(BUTTONS)) {
                 if (!def.shortcut) continue;
-                if (!CONFIG.enabledButtons.includes(id)) continue;
+                if (!enabledButtons.includes(id)) continue;
 
                 if (def.shortcut.key === e.key.toLowerCase() && def.shortcut.ctrl === ctrl) {
                     e.preventDefault();
