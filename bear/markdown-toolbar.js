@@ -26,7 +26,7 @@
     //   Links/Media:  'link', 'image'
     //   Blocks:       'quote', 'list', 'numberedList', 'hr', 'table'
     //   Code:         'code', 'codeBlock'
-    //   References:   'footnote'
+    //   References:   'footnote', 'cite'
     //   Admonitions:  'admonitionInfo', 'admonitionWarning', 'admonitionCaution'
     //
     // ==========================================================================
@@ -52,6 +52,7 @@
             'code',
             'codeBlock',
             'footnote',
+            'cite',
             // Admonitions
             'admonitionInfo',
             'admonitionWarning',
@@ -89,6 +90,7 @@
         list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
         numberedList: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>',
         footnote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h8"/><circle cx="18" cy="18" r="2"/></svg>',
+        cite: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m16 3 4 4L8 19H4v-4L16 3z"/><path d="M2 21h20"/></svg>',
         hr: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
         table: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>',
         info: '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>',
@@ -108,7 +110,7 @@
         'Links & Media': ['link', 'image'],
         'Blocks': ['quote', 'list', 'numberedList', 'hr', 'table'],
         'Code': ['code', 'codeBlock'],
-        'References': ['footnote'],
+        'References': ['footnote', 'cite'],
         'Admonitions': ['admonitionInfo', 'admonitionWarning', 'admonitionCaution'],
     };
 
@@ -216,11 +218,16 @@
             action: 'insertCodeBlock'
         },
 
-        // --- Footnote ---
+        // --- References ---
         footnote: {
             icon: ICONS.footnote,
             title: 'Footnote',
             action: 'insertFootnote'
+        },
+        cite: {
+            icon: ICONS.cite,
+            title: 'Citation',
+            syntax: ['<cite>', '</cite>']
         },
 
         // --- Admonitions (GitHub Style) ---
@@ -277,10 +284,10 @@
         return null;
     }
 
-    function saveUserSettings(enabledButtons) {
+    function saveUserSettings(settings) {
         try {
             localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-                enabledButtons: enabledButtons,
+                ...settings,
                 savedAt: Date.now()
             }));
         } catch (e) {}
@@ -292,6 +299,14 @@
             return userSettings.enabledButtons;
         }
         return CONFIG.enabledButtons;
+    }
+
+    function isCharCounterEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showCharCounter === 'boolean') {
+            return userSettings.showCharCounter;
+        }
+        return true; // Default: enabled
     }
 
     // ==========================================================================
@@ -503,6 +518,8 @@
     // ==========================================================================
 
     function createCharCounter() {
+        if (!isCharCounterEnabled()) return;
+
         const counter = document.createElement('div');
         counter.id = 'md-char-counter';
         counter.style.cssText = `
@@ -908,6 +925,61 @@
             panel.appendChild(section);
         });
 
+        // Options Section
+        const optionsSection = document.createElement('div');
+        optionsSection.style.cssText = 'margin-bottom: 16px;';
+
+        const optionsHeader = document.createElement('div');
+        optionsHeader.style.cssText = `
+            font-weight: 600;
+            font-size: 13px;
+            color: ${isDark ? '#aaa' : '#666'};
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        `;
+        optionsHeader.textContent = 'Options';
+        optionsSection.appendChild(optionsHeader);
+
+        const optionsGrid = document.createElement('div');
+        optionsGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+        `;
+
+        // Character Counter Toggle
+        const counterLabel = document.createElement('label');
+        counterLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        counterLabel.onmouseover = () => counterLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        counterLabel.onmouseout = () => counterLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const counterCheckbox = document.createElement('input');
+        counterCheckbox.type = 'checkbox';
+        counterCheckbox.checked = isCharCounterEnabled();
+        counterCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const counterText = document.createElement('span');
+        counterText.textContent = 'Show Character Counter';
+
+        counterLabel.appendChild(counterCheckbox);
+        counterLabel.appendChild(counterText);
+        optionsGrid.appendChild(counterLabel);
+
+        optionsSection.appendChild(optionsGrid);
+        panel.appendChild(optionsSection);
+
         // Buttons
         const actions = document.createElement('div');
         actions.style.cssText = `
@@ -939,6 +1011,7 @@
                     checkboxes[id].checked = false;
                 }
             });
+            counterCheckbox.checked = true; // Default: counter enabled
         };
 
         const saveBtn = document.createElement('button');
@@ -962,8 +1035,20 @@
                 }
             });
 
-            saveUserSettings(newEnabled);
+            saveUserSettings({
+                enabledButtons: newEnabled,
+                showCharCounter: counterCheckbox.checked
+            });
             renderToolbarButtons();
+
+            // Update counter visibility
+            const counter = document.getElementById('md-char-counter');
+            if (counterCheckbox.checked && !counter) {
+                createCharCounter();
+            } else if (!counterCheckbox.checked && counter) {
+                counter.remove();
+            }
+
             overlay.remove();
         };
 
