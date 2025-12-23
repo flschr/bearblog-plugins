@@ -26,7 +26,7 @@
     //   Links/Media:  'link', 'image'
     //   Blocks:       'quote', 'list', 'numberedList', 'hr', 'table'
     //   Code:         'code', 'codeBlock'
-    //   References:   'footnote', 'cite'
+    //   References:   'footnote'
     //   Admonitions:  'admonitionInfo', 'admonitionWarning', 'admonitionCaution'
     //
     // ==========================================================================
@@ -52,7 +52,6 @@
             'code',
             'codeBlock',
             'footnote',
-            'cite',
             // Admonitions
             'admonitionInfo',
             'admonitionWarning',
@@ -90,7 +89,6 @@
         list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
         numberedList: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>',
         footnote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h8"/><circle cx="18" cy="18" r="2"/></svg>',
-        cite: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m16 3 4 4L8 19H4v-4L16 3z"/><path d="M2 21h20"/></svg>',
         hr: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
         table: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>',
         info: '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>',
@@ -110,7 +108,7 @@
         'Links & Media': ['link', 'image'],
         'Blocks': ['quote', 'list', 'numberedList', 'hr', 'table'],
         'Code': ['code', 'codeBlock'],
-        'References': ['footnote', 'cite'],
+        'References': ['footnote'],
         'Admonitions': ['admonitionInfo', 'admonitionWarning', 'admonitionCaution'],
     };
 
@@ -223,11 +221,6 @@
             icon: ICONS.footnote,
             title: 'Footnote',
             action: 'insertFootnote'
-        },
-        cite: {
-            icon: ICONS.cite,
-            title: 'Citation',
-            syntax: ['<cite>', '</cite>']
         },
 
         // --- Admonitions (GitHub Style) ---
