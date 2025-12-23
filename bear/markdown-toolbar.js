@@ -100,6 +100,12 @@
         preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         help: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
         settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        fullscreen: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>',
+        exitFullscreen: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/></svg>',
+        // Action buttons
+        publish: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
+        save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
+        eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
     };
 
     // Button categories for settings panel
@@ -247,6 +253,7 @@
 
     // Menu items (always in dropdown)
     const MENU_ITEMS = [
+        { icon: ICONS.fullscreen, text: 'Fullscreen Editor', action: 'fullscreen', conditional: 'fullscreen' },
         { icon: ICONS.gallery, text: 'Media Gallery', action: 'gallery' },
         { icon: ICONS.preview, text: 'Preview', action: 'preview' },
         { icon: ICONS.help, text: 'Markdown Help', action: 'help' },
@@ -303,6 +310,30 @@
         return true; // Default: enabled
     }
 
+    function isFullscreenButtonEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showFullscreenButton === 'boolean') {
+            return userSettings.showFullscreenButton;
+        }
+        return true; // Default: enabled
+    }
+
+    function isActionButtonsEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showActionButtons === 'boolean') {
+            return userSettings.showActionButtons;
+        }
+        return false; // Default: disabled (use original Bear Blog controls)
+    }
+
+    function isAutosaveEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.enableAutosave === 'boolean') {
+            return userSettings.enableAutosave;
+        }
+        return CONFIG.autosave.enabled; // Default from config
+    }
+
     // ==========================================================================
     // INITIALIZATION
     // ==========================================================================
@@ -321,14 +352,24 @@
 
         createToolbar();
         createCharCounter();
-        setupAutosave();
+        if (isAutosaveEnabled()) {
+            setupAutosave();
+            checkForDraft();
+        }
         setupKeyboardShortcuts();
-        checkForDraft();
 
         // Hide Bear Blog default elements
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => {
             el.style.display = 'none';
         });
+
+        // Hide sticky controls if action buttons are shown in toolbar
+        if (isActionButtonsEnabled()) {
+            const stickyControls = document.querySelector('.sticky-controls');
+            if (stickyControls) {
+                stickyControls.style.display = 'none';
+            }
+        }
     }
 
     // ==========================================================================
@@ -362,6 +403,49 @@
     function renderToolbarButtons() {
         // Clear existing buttons (except keep the structure)
         $toolbar.innerHTML = '';
+
+        // Add action buttons (Publish, Save, Preview) if enabled
+        if (isActionButtonsEnabled()) {
+            const actionButtons = [
+                { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#2e7d32' },
+                { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost' },
+                { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost' },
+            ];
+
+            actionButtons.forEach(actionDef => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'md-btn md-action-btn';
+                btn.dataset.buttonId = actionDef.id;
+                btn.title = actionDef.title;
+                btn.innerHTML = actionDef.icon;
+                btn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    flex-shrink: 0;
+                    background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
+                    color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
+                    border: 1px solid ${isDark ? '#555' : '#ccc'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                btn.addEventListener('click', () => handleAction(actionDef.action));
+                $toolbar.appendChild(btn);
+            });
+
+            // Separator after action buttons
+            const separator = document.createElement('div');
+            separator.style.cssText = `
+                width: 1px;
+                height: 24px;
+                background: ${isDark ? '#555' : '#ccc'};
+                margin: 0 8px;
+            `;
+            $toolbar.appendChild(separator);
+        }
 
         const enabledButtons = getEnabledButtons();
 
@@ -458,6 +542,11 @@
         `;
 
         MENU_ITEMS.forEach(item => {
+            // Check conditional visibility
+            if (item.conditional === 'fullscreen' && !isFullscreenButtonEnabled()) {
+                return; // Skip this item
+            }
+
             // Add separator before item if specified
             if (item.separator) {
                 const sep = document.createElement('div');
@@ -971,6 +1060,93 @@
         counterLabel.appendChild(counterText);
         optionsGrid.appendChild(counterLabel);
 
+        // Fullscreen Button Toggle
+        const fullscreenLabel = document.createElement('label');
+        fullscreenLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        fullscreenLabel.onmouseover = () => fullscreenLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        fullscreenLabel.onmouseout = () => fullscreenLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const fullscreenCheckbox = document.createElement('input');
+        fullscreenCheckbox.type = 'checkbox';
+        fullscreenCheckbox.checked = isFullscreenButtonEnabled();
+        fullscreenCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const fullscreenText = document.createElement('span');
+        fullscreenText.textContent = 'Show Fullscreen Button';
+
+        fullscreenLabel.appendChild(fullscreenCheckbox);
+        fullscreenLabel.appendChild(fullscreenText);
+        optionsGrid.appendChild(fullscreenLabel);
+
+        // Action Buttons Toggle (Publish, Save, Preview)
+        const actionLabel = document.createElement('label');
+        actionLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        actionLabel.onmouseover = () => actionLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        actionLabel.onmouseout = () => actionLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const actionCheckbox = document.createElement('input');
+        actionCheckbox.type = 'checkbox';
+        actionCheckbox.checked = isActionButtonsEnabled();
+        actionCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const actionText = document.createElement('span');
+        actionText.textContent = 'Show Action Buttons';
+
+        actionLabel.appendChild(actionCheckbox);
+        actionLabel.appendChild(actionText);
+        optionsGrid.appendChild(actionLabel);
+
+        // Autosave Toggle
+        const autosaveLabel = document.createElement('label');
+        autosaveLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        autosaveLabel.onmouseover = () => autosaveLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        autosaveLabel.onmouseout = () => autosaveLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const autosaveCheckbox = document.createElement('input');
+        autosaveCheckbox.type = 'checkbox';
+        autosaveCheckbox.checked = isAutosaveEnabled();
+        autosaveCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const autosaveText = document.createElement('span');
+        autosaveText.textContent = 'Enable Auto-Save';
+
+        autosaveLabel.appendChild(autosaveCheckbox);
+        autosaveLabel.appendChild(autosaveText);
+        optionsGrid.appendChild(autosaveLabel);
+
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -1006,6 +1182,9 @@
                 }
             });
             counterCheckbox.checked = true; // Default: counter enabled
+            fullscreenCheckbox.checked = true; // Default: fullscreen enabled
+            actionCheckbox.checked = false; // Default: action buttons disabled
+            autosaveCheckbox.checked = CONFIG.autosave.enabled; // Default from config
         };
 
         const saveBtn = document.createElement('button');
@@ -1031,7 +1210,10 @@
 
             saveUserSettings({
                 enabledButtons: newEnabled,
-                showCharCounter: counterCheckbox.checked
+                showCharCounter: counterCheckbox.checked,
+                showFullscreenButton: fullscreenCheckbox.checked,
+                showActionButtons: actionCheckbox.checked,
+                enableAutosave: autosaveCheckbox.checked
             });
             renderToolbarButtons();
 
@@ -1043,7 +1225,18 @@
                 counter.remove();
             }
 
+            // Update sticky controls visibility
+            const stickyControls = document.querySelector('.sticky-controls');
+            if (stickyControls) {
+                stickyControls.style.display = actionCheckbox.checked ? 'none' : '';
+            }
+
             overlay.remove();
+
+            // Notify user about autosave changes (requires page reload)
+            if (autosaveCheckbox.checked !== isAutosaveEnabled()) {
+                // Note: Autosave change takes effect on page reload
+            }
         };
 
         actions.appendChild(resetBtn);
@@ -1066,6 +1259,196 @@
             }
         };
         document.addEventListener('keydown', escHandler);
+    }
+
+    // ==========================================================================
+    // FULLSCREEN EDITOR
+    // ==========================================================================
+
+    function showFullscreenEditor() {
+        // Remove existing fullscreen overlay if any
+        const existing = document.getElementById('md-fullscreen-overlay');
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        // Save current scroll position
+        const originalScrollTop = $textarea.scrollTop;
+        const originalSelectionStart = $textarea.selectionStart;
+        const originalSelectionEnd = $textarea.selectionEnd;
+
+        // Create fullscreen overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'md-fullscreen-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            z-index: 10002;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Create fullscreen textarea first (needed for action button handlers)
+        const fsTextarea = document.createElement('textarea');
+        fsTextarea.id = 'md-fullscreen-textarea';
+        fsTextarea.value = $textarea.value;
+        fsTextarea.style.cssText = `
+            flex: 1;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 60px;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            color: ${isDark ? '#e0e0e0' : '#333'};
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+            font-size: 16px;
+            line-height: 1.7;
+            box-sizing: border-box;
+        `;
+
+        // Create header with action buttons
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: ${isDark ? '#004052' : '#eceff4'};
+            border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
+            flex-shrink: 0;
+        `;
+
+        // Left side: Action buttons (always visible in fullscreen)
+        const leftGroup = document.createElement('div');
+        leftGroup.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+
+        const actionButtons = [
+            { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#2e7d32' },
+            { icon: ICONS.save, title: 'Save as Draft', action: 'savePost' },
+            { icon: ICONS.eye, title: 'Preview', action: 'previewPost' },
+        ];
+
+        actionButtons.forEach(actionDef => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = actionDef.title;
+            btn.innerHTML = actionDef.icon;
+            btn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
+                color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 4px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            btn.addEventListener('click', () => {
+                // Sync content before action
+                $textarea.value = fsTextarea.value;
+                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                handleAction(actionDef.action);
+            });
+            leftGroup.appendChild(btn);
+        });
+
+        header.appendChild(leftGroup);
+
+        // Right side: Exit button
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.innerHTML = `${ICONS.exitFullscreen} <span style="margin-left: 6px;">Exit</span>`;
+        exitBtn.title = 'Exit Fullscreen (Escape)';
+        exitBtn.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            background: ${isDark ? '#01242e' : 'white'};
+            color: ${isDark ? '#ddd' : '#444'};
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: system-ui, sans-serif;
+            font-size: 13px;
+        `;
+
+        header.appendChild(exitBtn);
+        overlay.appendChild(header);
+
+        // Append textarea to overlay
+        overlay.appendChild(fsTextarea);
+        document.body.appendChild(overlay);
+
+        // Focus the fullscreen textarea and restore selection
+        fsTextarea.focus();
+        fsTextarea.setSelectionRange(originalSelectionStart, originalSelectionEnd);
+        fsTextarea.scrollTop = originalScrollTop;
+
+        // Sync content back to original textarea
+        fsTextarea.addEventListener('input', () => {
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
+        // Exit function
+        const exitFullscreen = () => {
+            // Sync final content
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Restore selection
+            $textarea.setSelectionRange(fsTextarea.selectionStart, fsTextarea.selectionEnd);
+
+            overlay.remove();
+            $textarea.focus();
+        };
+
+        // Exit button click
+        exitBtn.addEventListener('click', exitFullscreen);
+
+        // Escape key to exit
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                exitFullscreen();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        overlay.addEventListener('remove', () => {
+            document.body.style.overflow = '';
+        });
+
+        // Clean up on overlay remove
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === overlay) {
+                        document.body.style.overflow = '';
+                        document.removeEventListener('keydown', escHandler);
+                        observer.disconnect();
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true });
     }
 
     // ==========================================================================
@@ -1260,6 +1643,46 @@
 
             case 'settings':
                 showSettingsPanel();
+                break;
+
+            case 'fullscreen':
+                showFullscreenEditor();
+                break;
+
+            case 'publishPost': {
+                const publishInput = document.getElementById('publish');
+                if (publishInput) publishInput.value = 'true';
+                const form = $textarea.closest('form');
+                if (form) {
+                    // Trigger the hidden header content update
+                    const headerContent = document.getElementById('header_content');
+                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
+                    if (headerContent && hiddenHeaderContent) {
+                        hiddenHeaderContent.value = headerContent.innerText;
+                    }
+                    form.submit();
+                }
+                break;
+            }
+
+            case 'savePost': {
+                const publishInput = document.getElementById('publish');
+                if (publishInput) publishInput.value = 'false';
+                const form = $textarea.closest('form');
+                if (form) {
+                    // Trigger the hidden header content update
+                    const headerContent = document.getElementById('header_content');
+                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
+                    if (headerContent && hiddenHeaderContent) {
+                        hiddenHeaderContent.value = headerContent.innerText;
+                    }
+                    form.submit();
+                }
+                break;
+            }
+
+            case 'previewPost':
+                document.getElementById('preview')?.click();
                 break;
         }
     }
