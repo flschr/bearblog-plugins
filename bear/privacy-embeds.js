@@ -10,50 +10,120 @@
     const i18n = {
       externalMap: isEn ? 'External Map' : 'Externe Karte',
       externalVideo: isEn ? 'External Video' : 'Externes Video',
+      externalContent: isEn ? 'External Content' : 'Externer Inhalt',
       load: isEn ? 'Load' : 'laden',
+      content: isEn ? 'Content' : 'Inhalt',
       noteStart: isEn ? 'Loading this content will transfer data to' : 'Beim Laden dieses Inhalts werden Daten an',
-      noteEnd: isEn ? '.' : ' übertragen.'
+      noteEnd: isEn ? '.' : ' übertragen.',
+      noteGeneric: isEn ? 'Loading this content will transfer data to a third-party provider.' : 'Beim Laden dieses Inhalts werden Daten an einen Drittanbieter übertragen.'
     };
 
-    // Selectors for YouTube and Google Maps (including data-src for lazy-loaded iframes)
-    const selectors = [
-      'iframe[src*="youtube"]',
-      'iframe[data-src*="youtube"]',
-      'iframe[src*="googleusercontent.com"]',
-      'iframe[data-src*="googleusercontent.com"]',
-      'iframe[src*="maps.google"]',
-      'iframe[data-src*="maps.google"]',
-      'iframe[src*="google.com/maps"]',
-      'iframe[data-src*="google.com/maps"]'
+    // Provider detection patterns and configuration
+    const providers = [
+      {
+        name: 'YouTube',
+        patterns: ['youtube.com', 'youtube-nocookie.com', 'youtu.be'],
+        type: 'video',
+        transformSrc: (src) => src.replace('youtube.com', 'youtube-nocookie.com')
+      },
+      {
+        name: 'Google Maps',
+        patterns: ['maps.google', 'google.com/maps', 'googleusercontent.com'],
+        type: 'map',
+        transformSrc: (src) => src
+      },
+      {
+        name: 'Arte',
+        patterns: ['arte.tv'],
+        type: 'video',
+        transformSrc: (src) => src
+      },
+      {
+        name: 'Vimeo',
+        patterns: ['vimeo.com', 'player.vimeo.com'],
+        type: 'video',
+        transformSrc: (src) => src
+      },
+      {
+        name: 'Dailymotion',
+        patterns: ['dailymotion.com', 'dai.ly'],
+        type: 'video',
+        transformSrc: (src) => src
+      },
+      {
+        name: 'Spotify',
+        patterns: ['spotify.com', 'open.spotify.com'],
+        type: 'audio',
+        transformSrc: (src) => src
+      },
+      {
+        name: 'SoundCloud',
+        patterns: ['soundcloud.com', 'w.soundcloud.com'],
+        type: 'audio',
+        transformSrc: (src) => src
+      }
     ];
 
-    const iframes = document.querySelectorAll(selectors.join(','));
+    // Get all iframes on the page
+    const iframes = document.querySelectorAll('iframe[src], iframe[data-src]');
 
     iframes.forEach(iframe => {
       // Support both src and data-src attributes
       const originalSrc = iframe.src || iframe.dataset.src;
       if (!originalSrc) return;
 
-      const isMap = originalSrc.includes('maps') || originalSrc.includes('googleusercontent');
-      const typeLabel = isMap ? (isEn ? 'Map' : 'Karte') : 'Video';
-      const fullTypeLabel = isMap ? i18n.externalMap : i18n.externalVideo;
-      const service = isMap ? 'Google Maps' : 'YouTube';
+      // Skip iframes without http(s) protocol (e.g., about:blank)
+      if (!originalSrc.startsWith('http')) return;
+
+      // Find matching provider
+      const provider = providers.find(p =>
+        p.patterns.some(pattern => originalSrc.toLowerCase().includes(pattern))
+      );
+
+      let typeLabel, fullTypeLabel, service, transformSrc;
+
+      if (provider) {
+        // Known provider
+        service = provider.name;
+        transformSrc = provider.transformSrc;
+
+        if (provider.type === 'map') {
+          typeLabel = isEn ? 'Map' : 'Karte';
+          fullTypeLabel = i18n.externalMap;
+        } else if (provider.type === 'audio') {
+          typeLabel = isEn ? 'Audio' : 'Audio';
+          fullTypeLabel = isEn ? 'External Audio' : 'Externes Audio';
+        } else {
+          typeLabel = 'Video';
+          fullTypeLabel = i18n.externalVideo;
+        }
+      } else {
+        // Generic fallback for unknown providers
+        service = null;
+        transformSrc = (src) => src;
+        typeLabel = i18n.content;
+        fullTypeLabel = i18n.externalContent;
+      }
 
       // Create placeholder wrapper
       const wrapper = document.createElement('div');
       wrapper.className = 'media-proxy';
+
+      const noteText = service
+        ? `${i18n.noteStart} ${service}${i18n.noteEnd}`
+        : i18n.noteGeneric;
+
       wrapper.innerHTML = `
         <p><strong>${fullTypeLabel}</strong><br>
-        ${i18n.noteStart} ${service}${i18n.noteEnd}</p>
+        ${noteText}</p>
         <button type="button">${typeLabel} ${i18n.load}</button>
       `;
 
       const btn = wrapper.querySelector('button');
 
-      // Store values needed for click handler (avoid closure over iframe)
+      // Click handler to load the iframe
       const handleClick = () => {
-        const finalSrc = isMap ? originalSrc : originalSrc.replace('youtube.com', 'youtube-nocookie.com');
-        iframe.src = finalSrc;
+        iframe.src = transformSrc(originalSrc);
         wrapper.replaceWith(iframe);
       };
 
