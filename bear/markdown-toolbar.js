@@ -1244,7 +1244,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 10001;
+            z-index: 10003;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1960,6 +1960,42 @@
     }
 
     // ==========================================================================
+    // LOADING OVERLAY (prevents flash during form submit)
+    // ==========================================================================
+
+    function showLoadingOverlay() {
+        // Only show if in fullscreen mode to prevent the flash
+        const fsOverlay = document.getElementById('md-fullscreen-overlay');
+        if (!fsOverlay) return;
+
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'md-loading-overlay';
+        loadingOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            z-index: 10004;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        loadingOverlay.innerHTML = `
+            <svg width="40" height="40" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite; color: ${isDark ? '#ddd' : '#444'};">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+            <span style="color: ${isDark ? '#ddd' : '#444'}; font-family: system-ui, sans-serif; font-size: 14px;">Saving...</span>
+        `;
+
+        document.body.appendChild(loadingOverlay);
+    }
+
+    // ==========================================================================
     // FULLSCREEN EDITOR
     // ==========================================================================
 
@@ -2514,6 +2550,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Show loading overlay to prevent flash when in fullscreen
+                    showLoadingOverlay();
                     form.submit();
                 }
                 break;
@@ -2530,6 +2568,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Show loading overlay to prevent flash when in fullscreen
+                    showLoadingOverlay();
                     form.submit();
                 }
                 break;
