@@ -402,46 +402,6 @@
         // Clear existing buttons (except keep the structure)
         $toolbar.innerHTML = '';
 
-        // Back button at the very start (small, unobtrusive)
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.className = 'md-btn md-back-btn';
-        backBtn.title = 'Back';
-        backBtn.innerHTML = ICONS.back;
-        backBtn.style.cssText = `
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-            min-height: 32px;
-            flex-shrink: 0;
-            background: ${isDark ? '#01242e' : 'white'};
-            color: ${isDark ? '#888' : '#999'};
-            border: 1px solid ${isDark ? '#444' : '#ddd'};
-            border-radius: 3px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            opacity: 0.7;
-        `;
-        backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
-        backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
-        backBtn.addEventListener('click', () => {
-            // Navigate to the previous page using referrer or history
-            if (document.referrer && document.referrer !== window.location.href) {
-                window.location.href = document.referrer;
-            } else {
-                window.history.back();
-            }
-        });
-        $toolbar.appendChild(backBtn);
-
-        // Small gap after back button
-        const backGap = document.createElement('div');
-        backGap.style.cssText = 'width: 4px;';
-        $toolbar.appendChild(backGap);
-
         // Add action buttons (Publish, Save, Preview) if enabled
         if (isActionButtonsEnabled()) {
             const actionButtons = [
@@ -499,9 +459,13 @@
             $toolbar.appendChild(btn);
         });
 
-        // Fullscreen button at the end (after separator) if enabled
-        if (isFullscreenButtonEnabled()) {
-            // Separator before fullscreen button
+        // Back button and Fullscreen button at the end (after separator)
+        // Back button only shows when action buttons are hidden
+        const showBackButton = !isActionButtonsEnabled();
+        const showFullscreenButton = isFullscreenButtonEnabled();
+
+        if (showBackButton || showFullscreenButton) {
+            // Separator before back/fullscreen buttons
             const fsSeparator = document.createElement('div');
             fsSeparator.style.cssText = `
                 width: 1px;
@@ -511,30 +475,68 @@
             `;
             $toolbar.appendChild(fsSeparator);
 
+            // Back button (only when action buttons are hidden)
+            if (showBackButton) {
+                const backBtn = document.createElement('button');
+                backBtn.type = 'button';
+                backBtn.className = 'md-btn md-back-btn';
+                backBtn.title = 'Back';
+                backBtn.innerHTML = ICONS.back;
+                backBtn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
+                    flex-shrink: 0;
+                    background: ${isDark ? '#01242e' : 'white'};
+                    color: ${isDark ? '#888' : '#999'};
+                    border: 1px solid ${isDark ? '#444' : '#ddd'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                    opacity: 0.7;
+                `;
+                backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
+                backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
+                backBtn.addEventListener('click', () => {
+                    if (document.referrer && document.referrer !== window.location.href) {
+                        window.location.href = document.referrer;
+                    } else {
+                        window.history.back();
+                    }
+                });
+                $toolbar.appendChild(backBtn);
+            }
+
             // Fullscreen button
-            const fsBtn = document.createElement('button');
-            fsBtn.type = 'button';
-            fsBtn.className = 'md-btn md-fullscreen-btn';
-            fsBtn.title = 'Fullscreen Editor';
-            fsBtn.innerHTML = ICONS.fullscreen;
-            fsBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
-            fsBtn.addEventListener('click', () => handleAction('fullscreen'));
-            $toolbar.appendChild(fsBtn);
+            if (showFullscreenButton) {
+                const fsBtn = document.createElement('button');
+                fsBtn.type = 'button';
+                fsBtn.className = 'md-btn md-fullscreen-btn';
+                fsBtn.title = 'Fullscreen Editor';
+                fsBtn.innerHTML = ICONS.fullscreen;
+                fsBtn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
+                    flex-shrink: 0;
+                    background: ${isDark ? '#01242e' : 'white'};
+                    color: ${isDark ? '#ddd' : '#444'};
+                    border: 1px solid ${isDark ? '#555' : '#ccc'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                `;
+                fsBtn.addEventListener('click', () => handleAction('fullscreen'));
+                $toolbar.appendChild(fsBtn);
+            }
         }
 
         // Spacer
@@ -1517,6 +1519,39 @@
 
             header.appendChild(btn);
         });
+
+        // Separator before back button
+        const backSeparator = document.createElement('div');
+        backSeparator.style.cssText = `
+            width: 1px;
+            height: 24px;
+            background: ${isDark ? '#555' : '#ccc'};
+            margin: 0 8px;
+        `;
+        header.appendChild(backSeparator);
+
+        // Back button in fullscreen
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.title = 'Back';
+        backBtn.innerHTML = ICONS.back;
+        backBtn.style.cssText = buttonStyle();
+        backBtn.style.opacity = '0.7';
+        backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
+        backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
+        backBtn.addEventListener('click', () => {
+            // Exit fullscreen first, then navigate back
+            setFullscreenFlag(false);
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            overlay.remove();
+            if (document.referrer && document.referrer !== window.location.href) {
+                window.location.href = document.referrer;
+            } else {
+                window.history.back();
+            }
+        });
+        header.appendChild(backBtn);
 
         // Spacer
         const spacer = document.createElement('div');
