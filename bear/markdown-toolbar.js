@@ -2240,6 +2240,8 @@
                         if (response.ok) {
                             // Clear local draft after successful save
                             clearDraft();
+                            // Mark content as saved so back button doesn't show warning
+                            updateOriginalContent();
                             // Open preview after save completes
                             document.getElementById('preview')?.click();
                         } else {
