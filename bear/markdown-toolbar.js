@@ -509,6 +509,38 @@
         const showFullscreenButton = isFullscreenButtonEnabled();
         const showActionButtons = isActionButtonsEnabled();
 
+        // Custom snippet button - before separator
+        if (isCustomSnippetEnabled()) {
+            const snippetBtn = document.createElement('button');
+            snippetBtn.type = 'button';
+            snippetBtn.className = 'md-btn md-snippet-btn';
+            snippetBtn.title = 'Insert Custom Snippet';
+            snippetBtn.innerHTML = ICONS.heart;
+            snippetBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: #e91e63;
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            snippetBtn.addEventListener('click', () => {
+                const snippet = getCustomSnippetText();
+                if (snippet) {
+                    insertText(snippet);
+                }
+            });
+            $toolbar.appendChild(snippetBtn);
+        }
+
         if (showFullscreenButton) {
             // Separator before fullscreen button
             const fsSeparator = document.createElement('div');
@@ -544,38 +576,6 @@
             `;
             fsBtn.addEventListener('click', () => handleAction('fullscreen'));
             $toolbar.appendChild(fsBtn);
-        }
-
-        // Custom snippet button - directly before spacer
-        if (isCustomSnippetEnabled()) {
-            const snippetBtn = document.createElement('button');
-            snippetBtn.type = 'button';
-            snippetBtn.className = 'md-btn md-snippet-btn';
-            snippetBtn.title = 'Insert Custom Snippet';
-            snippetBtn.innerHTML = ICONS.heart;
-            snippetBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: #e91e63;
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
-            snippetBtn.addEventListener('click', () => {
-                const snippet = getCustomSnippetText();
-                if (snippet) {
-                    insertText(snippet);
-                }
-            });
-            $toolbar.appendChild(snippetBtn);
         }
 
         // Spacer
@@ -925,7 +925,7 @@
             border-radius: 8px;
             padding: 16px 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 10000;
+            z-index: 10004;
             font-family: system-ui, sans-serif;
             max-width: 400px;
         `;
@@ -970,6 +970,11 @@
         dialog.querySelector('.md-restore-btn').addEventListener('click', () => {
             $textarea.value = draft.content;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Also update fullscreen textarea if it exists
+            const fsTextarea = document.getElementById('md-fullscreen-textarea');
+            if (fsTextarea) {
+                fsTextarea.value = draft.content;
+            }
             // Update original content to match restored draft
             updateOriginalContent();
             dialog.remove();
@@ -2188,6 +2193,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Clear draft before submitting since content is being saved
+                    clearDraft();
                     form.submit();
                 }
                 break;
@@ -2204,6 +2211,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Clear draft before submitting since content is being saved
+                    clearDraft();
                     form.submit();
                 }
                 break;
