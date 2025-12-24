@@ -102,6 +102,8 @@
         settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
         fullscreen: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>',
         exitFullscreen: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/></svg>',
+        // Custom snippet button
+        heart: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
         // Action buttons
         publish: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
         save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
@@ -340,6 +342,36 @@
         return true; // Default: visible
     }
 
+    function isCustomSnippetEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showCustomSnippet === 'boolean') {
+            return userSettings.showCustomSnippet;
+        }
+        return false; // Default: disabled
+    }
+
+    function getCustomSnippetText() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.customSnippetText === 'string') {
+            return userSettings.customSnippetText;
+        }
+        return ''; // Default: empty
+    }
+
+    // Track original content for unsaved changes detection
+    let originalContent = '';
+
+    function hasUnsavedChanges() {
+        if (!$textarea) return false;
+        return $textarea.value !== originalContent;
+    }
+
+    function updateOriginalContent() {
+        if ($textarea) {
+            originalContent = $textarea.value;
+        }
+    }
+
     // ==========================================================================
     // INITIALIZATION
     // ==========================================================================
@@ -349,6 +381,9 @@
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
 
         $textarea.setAttribute('data-toolbar-initialized', 'true');
+
+        // Store original content for unsaved changes detection
+        originalContent = $textarea.value;
 
         // Listen for dark mode changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -473,13 +508,12 @@
             $toolbar.appendChild(btn);
         });
 
-        // Back button and Fullscreen button at the end (after separator)
-        // Back button only shows when action buttons are hidden
-        const showBackButton = !isActionButtonsEnabled();
+        // Fullscreen button (always at consistent position after formatting buttons)
         const showFullscreenButton = isFullscreenButtonEnabled();
+        const showActionButtons = isActionButtonsEnabled();
 
-        if (showBackButton || showFullscreenButton) {
-            // Separator before back/fullscreen buttons
+        if (showFullscreenButton) {
+            // Separator before fullscreen button
             const fsSeparator = document.createElement('div');
             fsSeparator.style.cssText = `
                 width: 1px;
@@ -489,68 +523,92 @@
             `;
             $toolbar.appendChild(fsSeparator);
 
-            // Back button (only when action buttons are hidden)
-            if (showBackButton) {
-                const backBtn = document.createElement('button');
-                backBtn.type = 'button';
-                backBtn.className = 'md-btn md-back-btn';
-                backBtn.title = 'Back';
-                backBtn.innerHTML = ICONS.back;
-                backBtn.style.cssText = `
-                    width: 32px;
-                    height: 32px;
-                    min-width: 32px;
-                    min-height: 32px;
-                    flex-shrink: 0;
-                    background: ${isDark ? '#01242e' : 'white'};
-                    color: ${isDark ? '#888' : '#999'};
-                    border: 1px solid ${isDark ? '#444' : '#ddd'};
-                    border-radius: 3px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0;
-                    opacity: 0.7;
-                `;
-                backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
-                backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
-                backBtn.addEventListener('click', () => {
-                    if (document.referrer && document.referrer !== window.location.href) {
-                        window.location.href = document.referrer;
-                    } else {
-                        window.history.back();
-                    }
-                });
-                $toolbar.appendChild(backBtn);
-            }
-
             // Fullscreen button
-            if (showFullscreenButton) {
-                const fsBtn = document.createElement('button');
-                fsBtn.type = 'button';
-                fsBtn.className = 'md-btn md-fullscreen-btn';
-                fsBtn.title = 'Fullscreen Editor';
-                fsBtn.innerHTML = ICONS.fullscreen;
-                fsBtn.style.cssText = `
-                    width: 32px;
-                    height: 32px;
-                    min-width: 32px;
-                    min-height: 32px;
-                    flex-shrink: 0;
-                    background: ${isDark ? '#01242e' : 'white'};
-                    color: ${isDark ? '#ddd' : '#444'};
-                    border: 1px solid ${isDark ? '#555' : '#ccc'};
-                    border-radius: 3px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0;
-                `;
-                fsBtn.addEventListener('click', () => handleAction('fullscreen'));
-                $toolbar.appendChild(fsBtn);
-            }
+            const fsBtn = document.createElement('button');
+            fsBtn.type = 'button';
+            fsBtn.className = 'md-btn md-fullscreen-btn';
+            fsBtn.title = 'Fullscreen Editor';
+            fsBtn.innerHTML = ICONS.fullscreen;
+            fsBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#ddd' : '#444'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            fsBtn.addEventListener('click', () => handleAction('fullscreen'));
+            $toolbar.appendChild(fsBtn);
+        }
+
+        // Back button - show when action buttons are enabled (user has own controls)
+        if (showActionButtons) {
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'md-btn md-back-btn';
+            backBtn.title = 'Back';
+            backBtn.innerHTML = ICONS.back;
+            backBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#888' : '#999'};
+                border: 1px solid ${isDark ? '#444' : '#ddd'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                opacity: 0.7;
+            `;
+            backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
+            backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
+            backBtn.addEventListener('click', () => handleBackNavigation());
+            $toolbar.appendChild(backBtn);
+        }
+
+        // Custom snippet button
+        if (isCustomSnippetEnabled()) {
+            const snippetBtn = document.createElement('button');
+            snippetBtn.type = 'button';
+            snippetBtn.className = 'md-btn md-snippet-btn';
+            snippetBtn.title = 'Insert Custom Snippet';
+            snippetBtn.innerHTML = ICONS.heart;
+            snippetBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: #e91e63;
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            snippetBtn.addEventListener('click', () => {
+                const snippet = getCustomSnippetText();
+                if (snippet) {
+                    insertText(snippet);
+                }
+            });
+            $toolbar.appendChild(snippetBtn);
         }
 
         // Spacer
@@ -793,8 +851,7 @@
     }
 
     function setupAutosave() {
-        if (!CONFIG.autosave.enabled) return;
-
+        // This function is only called if autosave is enabled (checked in init)
         const draftKey = getDraftKey();
         if (!draftKey) return;
 
@@ -810,6 +867,8 @@
         if (form) {
             form.addEventListener('submit', () => {
                 clearDraft();
+                // Update original content on save
+                updateOriginalContent();
             });
         }
     }
@@ -846,8 +905,7 @@
     }
 
     function checkForDraft() {
-        if (!CONFIG.autosave.enabled) return;
-
+        // This function is only called if autosave is enabled (checked in init)
         const draftKey = getDraftKey();
         if (!draftKey) return;
 
@@ -944,6 +1002,8 @@
         dialog.querySelector('.md-restore-btn').addEventListener('click', () => {
             $textarea.value = draft.content;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Update original content to match restored draft
+            updateOriginalContent();
             dialog.remove();
         });
 
@@ -1302,6 +1362,84 @@
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
+        // Custom Snippet Section
+        const snippetSection = document.createElement('div');
+        snippetSection.style.cssText = 'margin-bottom: 16px;';
+
+        const snippetHeader = document.createElement('div');
+        snippetHeader.style.cssText = `
+            font-weight: 600;
+            font-size: 13px;
+            color: ${isDark ? '#aaa' : '#666'};
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        `;
+        snippetHeader.textContent = 'Custom Snippet';
+        snippetSection.appendChild(snippetHeader);
+
+        const snippetWrapper = document.createElement('div');
+        snippetWrapper.style.cssText = `
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            padding: 12px;
+        `;
+
+        // Enable toggle for custom snippet
+        const snippetToggleLabel = document.createElement('label');
+        snippetToggleLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            margin-bottom: 10px;
+        `;
+
+        const snippetCheckbox = document.createElement('input');
+        snippetCheckbox.type = 'checkbox';
+        snippetCheckbox.checked = isCustomSnippetEnabled();
+        snippetCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const snippetToggleText = document.createElement('span');
+        snippetToggleText.innerHTML = `Show Custom Snippet Button <span style="color:#e91e63;">${ICONS.heart}</span>`;
+
+        snippetToggleLabel.appendChild(snippetCheckbox);
+        snippetToggleLabel.appendChild(snippetToggleText);
+        snippetWrapper.appendChild(snippetToggleLabel);
+
+        // Text area for custom snippet
+        const snippetTextareaLabel = document.createElement('div');
+        snippetTextareaLabel.style.cssText = `
+            font-size: 12px;
+            color: ${isDark ? '#888' : '#666'};
+            margin-bottom: 6px;
+        `;
+        snippetTextareaLabel.textContent = 'Custom text or HTML to insert:';
+        snippetWrapper.appendChild(snippetTextareaLabel);
+
+        const snippetTextarea = document.createElement('textarea');
+        snippetTextarea.value = getCustomSnippetText();
+        snippetTextarea.placeholder = 'Enter your custom text or HTML here...';
+        snippetTextarea.style.cssText = `
+            width: 100%;
+            min-height: 80px;
+            padding: 8px;
+            border: 1px solid ${isDark ? '#444' : '#ccc'};
+            border-radius: 4px;
+            background: ${isDark ? '#01242e' : 'white'};
+            color: ${isDark ? '#ddd' : '#333'};
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            resize: vertical;
+            box-sizing: border-box;
+        `;
+        snippetWrapper.appendChild(snippetTextarea);
+
+        snippetSection.appendChild(snippetWrapper);
+        panel.appendChild(snippetSection);
+
         // Buttons
         const actions = document.createElement('div');
         actions.style.cssText = `
@@ -1325,6 +1463,10 @@
             font-size: 13px;
         `;
         resetBtn.onclick = () => {
+            // Show confirmation dialog
+            const confirmReset = confirm('Are you sure you want to reset all toolbar settings to default?');
+            if (!confirmReset) return;
+
             CONFIG.enabledButtons.forEach(id => {
                 if (checkboxes[id]) checkboxes[id].checked = true;
             });
@@ -1338,6 +1480,8 @@
             actionCheckbox.checked = false; // Default: action buttons disabled
             autosaveCheckbox.checked = CONFIG.autosave.enabled; // Default from config
             frontmatterCheckbox.checked = true; // Default: frontmatter visible
+            snippetCheckbox.checked = false; // Default: custom snippet disabled
+            snippetTextarea.value = ''; // Default: empty snippet
         };
 
         const saveBtn = document.createElement('button');
@@ -1367,7 +1511,9 @@
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
                 enableAutosave: autosaveCheckbox.checked,
-                showFrontmatter: frontmatterCheckbox.checked
+                showFrontmatter: frontmatterCheckbox.checked,
+                showCustomSnippet: snippetCheckbox.checked,
+                customSnippetText: snippetTextarea.value
             });
             renderToolbarButtons();
 
@@ -1455,6 +1601,155 @@
             ...userSettings,
             showFrontmatter: newVisibility
         });
+    }
+
+    // ==========================================================================
+    // BACK NAVIGATION WITH UNSAVED CHANGES CHECK
+    // ==========================================================================
+
+    function handleBackNavigation() {
+        if (!hasUnsavedChanges()) {
+            navigateBack();
+            return;
+        }
+
+        // Show unsaved changes dialog
+        showUnsavedChangesDialog();
+    }
+
+    function showUnsavedChangesDialog() {
+        const dialog = document.createElement('div');
+        dialog.className = 'md-unsaved-dialog';
+        dialog.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: ${isDark ? '#01242e' : 'white'};
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-family: system-ui, sans-serif;
+        `;
+
+        panel.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+                <span style="color:#f57c00;flex-shrink:0;">${ICONS.warning}</span>
+                <div>
+                    <div style="font-weight:600;font-size:16px;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;">
+                        Unsaved Changes
+                    </div>
+                    <div style="font-size:14px;color:${isDark ? '#aaa' : '#666'};">
+                        You have unsaved changes. Would you like to save before leaving?
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="md-dialog-cancel" style="
+                    padding: 8px 16px;
+                    background: transparent;
+                    color: ${isDark ? '#888' : '#666'};
+                    border: 1px solid ${isDark ? '#444' : '#ccc'};
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                ">Cancel</button>
+                <button class="md-dialog-discard" style="
+                    padding: 8px 16px;
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                ">Discard</button>
+                <button class="md-dialog-save" style="
+                    padding: 8px 16px;
+                    background: #2e7d32;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                ">Save & Leave</button>
+            </div>
+        `;
+
+        dialog.appendChild(panel);
+        document.body.appendChild(dialog);
+
+        // Cancel - close dialog
+        panel.querySelector('.md-dialog-cancel').addEventListener('click', () => {
+            dialog.remove();
+        });
+
+        // Discard - navigate without saving
+        panel.querySelector('.md-dialog-discard').addEventListener('click', () => {
+            dialog.remove();
+            clearDraft();
+            navigateBack();
+        });
+
+        // Save & Leave - save then navigate
+        panel.querySelector('.md-dialog-save').addEventListener('click', () => {
+            dialog.remove();
+            saveAndNavigateBack();
+        });
+
+        // Close on overlay click
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) dialog.remove();
+        });
+
+        // Close on Escape
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                dialog.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    function navigateBack() {
+        if (document.referrer && document.referrer !== window.location.href) {
+            window.location.href = document.referrer;
+        } else {
+            window.history.back();
+        }
+    }
+
+    function saveAndNavigateBack() {
+        const publishInput = document.getElementById('publish');
+        if (publishInput) publishInput.value = 'false';
+
+        const form = $textarea.closest('form');
+        if (form) {
+            // Sync header content
+            const headerContent = document.getElementById('header_content');
+            const hiddenHeaderContent = document.getElementById('hidden_header_content');
+            if (headerContent && hiddenHeaderContent) {
+                hiddenHeaderContent.value = headerContent.innerText;
+            }
+
+            // Submit form (which will navigate away)
+            form.submit();
+        } else {
+            navigateBack();
+        }
     }
 
     // ==========================================================================
@@ -1633,64 +1928,53 @@
             header.appendChild(btn);
         });
 
-        // Separator before back button
-        const backSeparator = document.createElement('div');
-        backSeparator.style.cssText = `
+        // Separator before exit button (same position as fullscreen button in normal mode)
+        const exitSeparator = document.createElement('div');
+        exitSeparator.style.cssText = `
             width: 1px;
             height: 24px;
             background: ${isDark ? '#555' : '#ccc'};
             margin: 0 8px;
         `;
-        header.appendChild(backSeparator);
+        header.appendChild(exitSeparator);
 
-        // Back button in fullscreen
+        // Exit button (at same position as fullscreen button in normal toolbar)
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.title = 'Exit Fullscreen (Escape)';
+        exitBtn.innerHTML = ICONS.exitFullscreen;
+        exitBtn.style.cssText = buttonStyle();
+        // Event listener added after exitFullscreen is defined
+        header.appendChild(exitBtn);
+
+        // Back button in fullscreen (after exit button, consistent with normal toolbar)
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
         backBtn.title = 'Back';
         backBtn.innerHTML = ICONS.back;
         backBtn.style.cssText = buttonStyle();
         backBtn.style.opacity = '0.7';
+        backBtn.style.color = isDark ? '#888' : '#999';
+        backBtn.style.borderColor = isDark ? '#444' : '#ddd';
         backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
         backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
         backBtn.addEventListener('click', () => {
-            // Exit fullscreen first, then navigate back
-            setFullscreenFlag(false);
+            // Sync content first
             $textarea.value = fsTextarea.value;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Exit fullscreen
+            setFullscreenFlag(false);
             overlay.remove();
-            if (document.referrer && document.referrer !== window.location.href) {
-                window.location.href = document.referrer;
-            } else {
-                window.history.back();
-            }
+            document.body.style.overflow = '';
+            // Then handle navigation with unsaved changes check
+            handleBackNavigation();
         });
         header.appendChild(backBtn);
 
-        // Spacer
+        // Spacer (pushes remaining items to right)
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
         header.appendChild(spacer);
-
-        // Exit button
-        const exitBtn = document.createElement('button');
-        exitBtn.type = 'button';
-        exitBtn.innerHTML = `${ICONS.exitFullscreen} <span style="margin-left: 6px;">Exit</span>`;
-        exitBtn.title = 'Exit Fullscreen (Escape)';
-        exitBtn.style.cssText = `
-            display: flex;
-            align-items: center;
-            padding: 6px 12px;
-            height: ${buttonSize};
-            background: ${isDark ? '#01242e' : 'white'};
-            color: ${isDark ? '#ddd' : '#444'};
-            border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 3px;
-            cursor: pointer;
-            font-family: system-ui, sans-serif;
-            font-size: 13px;
-        `;
-
-        header.appendChild(exitBtn);
         overlay.appendChild(header);
 
         // Append textarea to overlay
