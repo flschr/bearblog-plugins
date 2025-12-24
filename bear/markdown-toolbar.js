@@ -511,6 +511,120 @@
         }, timeout);
     }
 
+    // Lock editor during alt-text generation to prevent user input interference
+    let editorLocked = false;
+
+    function lockEditor() {
+        if (editorLocked) return;
+
+        const textarea = document.getElementById('body_content');
+        if (!textarea) return;
+
+        editorLocked = true;
+        debugLog('Editor locked', 'preventing user input during alt-text generation');
+
+        // Store cursor position before locking
+        textarea.dataset.lockedSelectionStart = textarea.selectionStart;
+        textarea.dataset.lockedSelectionEnd = textarea.selectionEnd;
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'md-editor-lock-overlay';
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999998;
+            pointer-events: all;
+            cursor: wait;
+        `;
+
+        // Create spinner and message
+        const message = document.createElement('div');
+        message.style.cssText = `
+            background: ${isDark ? '#1a1a1a' : 'white'};
+            color: ${isDark ? '#e0e0e0' : '#333'};
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: system-ui, sans-serif;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        `;
+        message.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+            <span>Generating alt-text...</span>
+        `;
+
+        // Add spin animation if not already present
+        if (!document.getElementById('md-spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'md-spin-style';
+            style.textContent = `@keyframes md-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+            document.head.appendChild(style);
+        }
+
+        overlay.appendChild(message);
+
+        // Position overlay relative to textarea
+        const wrapper = textarea.parentElement;
+        if (wrapper) {
+            const originalPosition = window.getComputedStyle(wrapper).position;
+            if (originalPosition === 'static') {
+                wrapper.style.position = 'relative';
+                wrapper.dataset.originalPosition = originalPosition;
+            }
+            wrapper.appendChild(overlay);
+        }
+
+        // Make textarea readonly and prevent focus
+        textarea.readOnly = true;
+        textarea.style.pointerEvents = 'none';
+    }
+
+    function unlockEditor() {
+        if (!editorLocked) return;
+
+        const textarea = document.getElementById('body_content');
+        const overlay = document.getElementById('md-editor-lock-overlay');
+
+        if (overlay) {
+            overlay.remove();
+        }
+
+        if (textarea) {
+            textarea.readOnly = false;
+            textarea.style.pointerEvents = '';
+
+            // Restore original wrapper position if changed
+            const wrapper = textarea.parentElement;
+            if (wrapper && wrapper.dataset.originalPosition) {
+                wrapper.style.position = wrapper.dataset.originalPosition;
+                delete wrapper.dataset.originalPosition;
+            }
+
+            // Restore cursor position
+            const start = parseInt(textarea.dataset.lockedSelectionStart || '0', 10);
+            const end = parseInt(textarea.dataset.lockedSelectionEnd || '0', 10);
+            textarea.setSelectionRange(start, end);
+            delete textarea.dataset.lockedSelectionStart;
+            delete textarea.dataset.lockedSelectionEnd;
+        }
+
+        editorLocked = false;
+        debugLog('Editor unlocked', 'user input restored');
+    }
+
     // Convert File to base64 data URL
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -576,6 +690,9 @@
                         debugLog('Alt-text replaced', { from: currentAlt, to: insertedAltText });
                         showAltTextNotification('✓ Alt-text inserted automatically', false, insertedAltText);
 
+                        // Unlock editor after successful alt-text insertion
+                        unlockEditor();
+
                         // Trigger input event for BearBlog to detect change
                         textarea.dispatchEvent(new Event('input', { bubbles: true }));
                         return; // Exit early since we already updated lastTextareaValue
@@ -583,6 +700,7 @@
 
                     // Clear pending alt-text if replacement didn't happen
                     pendingAltText = null;
+                    unlockEditor();
                 }
             }
 
@@ -606,8 +724,8 @@
             return;
         }
 
-        // Show "generating" notification
-        showAltTextNotification('Generating alt-text...');
+        // Lock editor to prevent user input during generation
+        lockEditor();
 
         try {
             // Convert file to base64 (parallel to BearBlog's upload)
@@ -627,25 +745,26 @@
                 try {
                     await navigator.clipboard.writeText(altText);
                     debugLog('Copied to clipboard', altText);
-                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 } catch (clipboardError) {
                     debugLog('Clipboard error', clipboardError);
-                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 }
 
-                // Clear pending after timeout (in case BearBlog upload fails)
+                // Clear pending and unlock after timeout (in case BearBlog upload fails)
                 setTimeout(() => {
                     if (pendingAltText === altText) {
                         debugLog('Pending alt-text cleared (timeout)', altText);
                         pendingAltText = null;
+                        unlockEditor();
                     }
                 }, 30000); // 30 second timeout
             } else {
                 showAltTextNotification('Failed to generate alt-text', true);
+                unlockEditor();
             }
         } catch (error) {
             debugLog('Processing error', { message: error.message, stack: error.stack });
             showAltTextNotification('Error processing image', true);
+            unlockEditor();
         }
     }
 
@@ -831,8 +950,38 @@
         // Clear existing buttons (except keep the structure)
         $toolbar.innerHTML = '';
 
+        const showFullscreenButton = isFullscreenButtonEnabled();
+        const showActionButtons = isActionButtonsEnabled();
+
+        // Back button first (leftmost position)
+        if (showActionButtons) {
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'md-btn md-back-btn';
+            backBtn.title = 'Back';
+            backBtn.innerHTML = ICONS.back;
+            backBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#ddd' : '#444'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            backBtn.addEventListener('click', () => handleBackNavigation());
+            $toolbar.appendChild(backBtn);
+        }
+
         // Add action buttons (Publish, Save, Preview, Delete) if enabled
-        if (isActionButtonsEnabled()) {
+        if (showActionButtons) {
             const actionButtons = [
                 { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
                 { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
@@ -889,11 +1038,7 @@
             $toolbar.appendChild(btn);
         });
 
-        // Fullscreen button (always at consistent position after formatting buttons)
-        const showFullscreenButton = isFullscreenButtonEnabled();
-        const showActionButtons = isActionButtonsEnabled();
-
-        // Custom snippet button - before separator
+        // Custom snippet button - before spacer
         if (isCustomSnippetEnabled()) {
             const snippetBtn = document.createElement('button');
             snippetBtn.type = 'button';
@@ -925,18 +1070,13 @@
             $toolbar.appendChild(snippetBtn);
         }
 
-        if (showFullscreenButton) {
-            // Separator before fullscreen button
-            const fsSeparator = document.createElement('div');
-            fsSeparator.style.cssText = `
-                width: 1px;
-                height: 24px;
-                background: ${isDark ? '#555' : '#ccc'};
-                margin: 0 8px;
-            `;
-            $toolbar.appendChild(fsSeparator);
+        // Spacer (pushes following buttons to the right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        $toolbar.appendChild(spacer);
 
-            // Fullscreen button
+        // Fullscreen button (right side, before settings)
+        if (showFullscreenButton) {
             const fsBtn = document.createElement('button');
             fsBtn.type = 'button';
             fsBtn.className = 'md-btn md-fullscreen-btn';
@@ -962,39 +1102,7 @@
             $toolbar.appendChild(fsBtn);
         }
 
-        // Spacer
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        $toolbar.appendChild(spacer);
-
-        // Back button - show when action buttons are enabled (after spacer, on right side)
-        if (showActionButtons) {
-            const backBtn = document.createElement('button');
-            backBtn.type = 'button';
-            backBtn.className = 'md-btn md-back-btn';
-            backBtn.title = 'Back';
-            backBtn.innerHTML = ICONS.back;
-            backBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
-            backBtn.addEventListener('click', () => handleBackNavigation());
-            $toolbar.appendChild(backBtn);
-        }
-
-        // Menu button
+        // Menu button (rightmost)
         $toolbar.appendChild(createMenuButton());
     }
 
@@ -1136,7 +1244,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 10001;
+            z-index: 10003;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1852,6 +1960,42 @@
     }
 
     // ==========================================================================
+    // LOADING OVERLAY (prevents flash during form submit)
+    // ==========================================================================
+
+    function showLoadingOverlay() {
+        // Only show if in fullscreen mode to prevent the flash
+        const fsOverlay = document.getElementById('md-fullscreen-overlay');
+        if (!fsOverlay) return;
+
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'md-loading-overlay';
+        loadingOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            z-index: 10004;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        loadingOverlay.innerHTML = `
+            <svg width="40" height="40" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite; color: ${isDark ? '#ddd' : '#444'};">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+            <span style="color: ${isDark ? '#ddd' : '#444'}; font-family: system-ui, sans-serif; font-size: 14px;">Saving...</span>
+        `;
+
+        document.body.appendChild(loadingOverlay);
+    }
+
+    // ==========================================================================
     // FULLSCREEN EDITOR
     // ==========================================================================
 
@@ -1960,6 +2104,25 @@
             padding: 0;
         `;
 
+        // Back button first (leftmost position - consistent with normal toolbar)
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.title = 'Back';
+        backBtn.innerHTML = ICONS.back;
+        backBtn.style.cssText = buttonStyle();
+        backBtn.addEventListener('click', () => {
+            // Sync content first
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Exit fullscreen
+            setFullscreenFlag(false);
+            overlay.remove();
+            document.body.style.overflow = '';
+            // Then handle navigation with unsaved changes check
+            handleBackNavigation();
+        });
+        header.appendChild(backBtn);
+
         // Action buttons (Publish, Save, Preview, Delete) - always visible in fullscreen
         const actionButtons = [
             { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
@@ -2052,17 +2215,12 @@
             header.appendChild(snippetBtn);
         }
 
-        // Separator before exit button (same position as fullscreen button in normal mode)
-        const exitSeparator = document.createElement('div');
-        exitSeparator.style.cssText = `
-            width: 1px;
-            height: 24px;
-            background: ${isDark ? '#555' : '#ccc'};
-            margin: 0 8px;
-        `;
-        header.appendChild(exitSeparator);
+        // Spacer (pushes remaining items to right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        header.appendChild(spacer);
 
-        // Exit button (at same position as fullscreen button in normal toolbar)
+        // Exit button (right side, before settings - consistent with fullscreen button position in normal toolbar)
         const exitBtn = document.createElement('button');
         exitBtn.type = 'button';
         exitBtn.title = 'Exit Fullscreen (Escape)';
@@ -2071,31 +2229,7 @@
         // Event listener added after exitFullscreen is defined
         header.appendChild(exitBtn);
 
-        // Spacer (pushes remaining items to right)
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        header.appendChild(spacer);
-
-        // Back button in fullscreen (after spacer, on right side - consistent with normal toolbar)
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.title = 'Back';
-        backBtn.innerHTML = ICONS.back;
-        backBtn.style.cssText = buttonStyle();
-        backBtn.addEventListener('click', () => {
-            // Sync content first
-            $textarea.value = fsTextarea.value;
-            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            // Exit fullscreen
-            setFullscreenFlag(false);
-            overlay.remove();
-            document.body.style.overflow = '';
-            // Then handle navigation with unsaved changes check
-            handleBackNavigation();
-        });
-        header.appendChild(backBtn);
-
-        // Settings button (last, consistent with normal toolbar)
+        // Settings button (rightmost - consistent with normal toolbar)
         const settingsBtn = document.createElement('button');
         settingsBtn.type = 'button';
         settingsBtn.title = 'Toolbar Settings';
@@ -2416,6 +2550,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Show loading overlay to prevent flash when in fullscreen
+                    showLoadingOverlay();
                     form.submit();
                 }
                 break;
@@ -2432,6 +2568,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Show loading overlay to prevent flash when in fullscreen
+                    showLoadingOverlay();
                     form.submit();
                 }
                 break;
