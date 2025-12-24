@@ -950,8 +950,38 @@
         // Clear existing buttons (except keep the structure)
         $toolbar.innerHTML = '';
 
+        const showFullscreenButton = isFullscreenButtonEnabled();
+        const showActionButtons = isActionButtonsEnabled();
+
+        // Back button first (leftmost position)
+        if (showActionButtons) {
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'md-btn md-back-btn';
+            backBtn.title = 'Back';
+            backBtn.innerHTML = ICONS.back;
+            backBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#ddd' : '#444'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            backBtn.addEventListener('click', () => handleBackNavigation());
+            $toolbar.appendChild(backBtn);
+        }
+
         // Add action buttons (Publish, Save, Preview, Delete) if enabled
-        if (isActionButtonsEnabled()) {
+        if (showActionButtons) {
             const actionButtons = [
                 { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
                 { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
@@ -1008,11 +1038,7 @@
             $toolbar.appendChild(btn);
         });
 
-        // Fullscreen button (always at consistent position after formatting buttons)
-        const showFullscreenButton = isFullscreenButtonEnabled();
-        const showActionButtons = isActionButtonsEnabled();
-
-        // Custom snippet button - before separator
+        // Custom snippet button - before spacer
         if (isCustomSnippetEnabled()) {
             const snippetBtn = document.createElement('button');
             snippetBtn.type = 'button';
@@ -1044,18 +1070,13 @@
             $toolbar.appendChild(snippetBtn);
         }
 
-        if (showFullscreenButton) {
-            // Separator before fullscreen button
-            const fsSeparator = document.createElement('div');
-            fsSeparator.style.cssText = `
-                width: 1px;
-                height: 24px;
-                background: ${isDark ? '#555' : '#ccc'};
-                margin: 0 8px;
-            `;
-            $toolbar.appendChild(fsSeparator);
+        // Spacer (pushes following buttons to the right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        $toolbar.appendChild(spacer);
 
-            // Fullscreen button
+        // Fullscreen button (right side, before settings)
+        if (showFullscreenButton) {
             const fsBtn = document.createElement('button');
             fsBtn.type = 'button';
             fsBtn.className = 'md-btn md-fullscreen-btn';
@@ -1081,39 +1102,7 @@
             $toolbar.appendChild(fsBtn);
         }
 
-        // Spacer
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        $toolbar.appendChild(spacer);
-
-        // Back button - show when action buttons are enabled (after spacer, on right side)
-        if (showActionButtons) {
-            const backBtn = document.createElement('button');
-            backBtn.type = 'button';
-            backBtn.className = 'md-btn md-back-btn';
-            backBtn.title = 'Back';
-            backBtn.innerHTML = ICONS.back;
-            backBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
-            backBtn.addEventListener('click', () => handleBackNavigation());
-            $toolbar.appendChild(backBtn);
-        }
-
-        // Menu button
+        // Menu button (rightmost)
         $toolbar.appendChild(createMenuButton());
     }
 
@@ -2079,6 +2068,25 @@
             padding: 0;
         `;
 
+        // Back button first (leftmost position - consistent with normal toolbar)
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.title = 'Back';
+        backBtn.innerHTML = ICONS.back;
+        backBtn.style.cssText = buttonStyle();
+        backBtn.addEventListener('click', () => {
+            // Sync content first
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Exit fullscreen
+            setFullscreenFlag(false);
+            overlay.remove();
+            document.body.style.overflow = '';
+            // Then handle navigation with unsaved changes check
+            handleBackNavigation();
+        });
+        header.appendChild(backBtn);
+
         // Action buttons (Publish, Save, Preview, Delete) - always visible in fullscreen
         const actionButtons = [
             { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
@@ -2171,17 +2179,12 @@
             header.appendChild(snippetBtn);
         }
 
-        // Separator before exit button (same position as fullscreen button in normal mode)
-        const exitSeparator = document.createElement('div');
-        exitSeparator.style.cssText = `
-            width: 1px;
-            height: 24px;
-            background: ${isDark ? '#555' : '#ccc'};
-            margin: 0 8px;
-        `;
-        header.appendChild(exitSeparator);
+        // Spacer (pushes remaining items to right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        header.appendChild(spacer);
 
-        // Exit button (at same position as fullscreen button in normal toolbar)
+        // Exit button (right side, before settings - consistent with fullscreen button position in normal toolbar)
         const exitBtn = document.createElement('button');
         exitBtn.type = 'button';
         exitBtn.title = 'Exit Fullscreen (Escape)';
@@ -2190,31 +2193,7 @@
         // Event listener added after exitFullscreen is defined
         header.appendChild(exitBtn);
 
-        // Spacer (pushes remaining items to right)
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        header.appendChild(spacer);
-
-        // Back button in fullscreen (after spacer, on right side - consistent with normal toolbar)
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.title = 'Back';
-        backBtn.innerHTML = ICONS.back;
-        backBtn.style.cssText = buttonStyle();
-        backBtn.addEventListener('click', () => {
-            // Sync content first
-            $textarea.value = fsTextarea.value;
-            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            // Exit fullscreen
-            setFullscreenFlag(false);
-            overlay.remove();
-            document.body.style.overflow = '';
-            // Then handle navigation with unsaved changes check
-            handleBackNavigation();
-        });
-        header.appendChild(backBtn);
-
-        // Settings button (last, consistent with normal toolbar)
+        // Settings button (rightmost - consistent with normal toolbar)
         const settingsBtn = document.createElement('button');
         settingsBtn.type = 'button';
         settingsBtn.title = 'Toolbar Settings';
