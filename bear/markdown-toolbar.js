@@ -978,6 +978,7 @@
                 min-width: 32px;
                 min-height: 32px;
                 flex-shrink: 0;
+                box-sizing: border-box;
                 background: ${isDark ? '#01242e' : 'white'};
                 color: ${isDark ? '#ddd' : '#444'};
                 border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1014,6 +1015,7 @@
                     min-width: 32px;
                     min-height: 32px;
                     flex-shrink: 0;
+                    box-sizing: border-box;
                     background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
                     color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
                     border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1063,6 +1065,7 @@
                 min-width: 32px;
                 min-height: 32px;
                 flex-shrink: 0;
+                box-sizing: border-box;
                 background: ${isDark ? '#01242e' : 'white'};
                 color: #e91e63;
                 border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1100,6 +1103,7 @@
                 min-width: 32px;
                 min-height: 32px;
                 flex-shrink: 0;
+                box-sizing: border-box;
                 background: ${isDark ? '#01242e' : 'white'};
                 color: ${isDark ? '#ddd' : '#444'};
                 border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1141,6 +1145,7 @@
             min-width: 32px;
             min-height: 32px;
             flex-shrink: 0;
+            box-sizing: border-box;
             background: ${def.color || (isDark ? '#01242e' : 'white')};
             color: ${def.color ? 'white' : (isDark ? '#ddd' : '#444')};
             border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1169,6 +1174,7 @@
             min-width: 32px;
             min-height: 32px;
             flex-shrink: 0;
+            box-sizing: border-box;
             background: ${isDark ? '#01242e' : 'white'};
             color: ${isDark ? '#ddd' : '#444'};
             border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -1693,6 +1699,22 @@
         aiSection.appendChild(aiWrapper);
         panel.appendChild(aiSection);
 
+        // About Section
+        const aboutSection = document.createElement('div');
+        aboutSection.style.cssText = `
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid ${isDark ? '#333' : '#eee'};
+            text-align: center;
+            font-size: 12px;
+            color: ${isDark ? '#888' : '#666'};
+        `;
+        aboutSection.innerHTML = `
+            Created by <a href="https://fischr.org" target="_blank" style="color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;">René Fischer</a><br>
+            <a href="https://github.com/flschr/bearblog-plugins" target="_blank" style="color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;">GitHub Repository</a> · Licensed under WTFPL
+        `;
+        panel.appendChild(aboutSection);
+
         // Buttons
         const actions = document.createElement('div');
         actions.style.cssText = `
@@ -2105,6 +2127,7 @@
             min-width: ${buttonSize};
             min-height: ${buttonSize};
             flex-shrink: 0;
+            box-sizing: border-box;
             background: ${color || (isDark ? '#01242e' : 'white')};
             color: ${color ? 'white' : (isDark ? '#ddd' : '#444')};
             border: 1px solid ${isDark ? '#555' : '#ccc'};
