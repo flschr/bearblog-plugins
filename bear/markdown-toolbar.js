@@ -690,8 +690,11 @@
                         debugLog('Alt-text replaced', { from: currentAlt, to: insertedAltText });
                         showAltTextNotification('✓ Alt-text inserted automatically', false, insertedAltText);
 
-                        // Unlock editor after successful alt-text insertion
-                        unlockEditor();
+                        // Also update fullscreen textarea if it exists
+                        const fsTextarea = document.getElementById('md-fullscreen-textarea');
+                        if (fsTextarea) {
+                            fsTextarea.value = updatedValue;
+                        }
 
                         // Trigger input event for BearBlog to detect change
                         textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -700,7 +703,6 @@
 
                     // Clear pending alt-text if replacement didn't happen
                     pendingAltText = null;
-                    unlockEditor();
                 }
             }
 
@@ -741,6 +743,10 @@
                 pendingAltText = altText;
                 debugLog('Pending alt-text set', altText);
 
+                // Unlock editor immediately after alt-text is generated
+                // (user can continue working while BearBlog uploads the image)
+                unlockEditor();
+
                 // Also copy to clipboard as fallback
                 try {
                     await navigator.clipboard.writeText(altText);
@@ -749,12 +755,11 @@
                     debugLog('Clipboard error', clipboardError);
                 }
 
-                // Clear pending and unlock after timeout (in case BearBlog upload fails)
+                // Clear pending alt-text after timeout (in case BearBlog upload fails)
                 setTimeout(() => {
                     if (pendingAltText === altText) {
                         debugLog('Pending alt-text cleared (timeout)', altText);
                         pendingAltText = null;
-                        unlockEditor();
                     }
                 }, 30000); // 30 second timeout
             } else {
@@ -2251,6 +2256,22 @@
 
         // Sync content back to original textarea
         fsTextarea.addEventListener('input', () => {
+            // If there's a pending alt-text (image being uploaded), merge instead of overwrite
+            // to avoid losing BearBlog's image insertion
+            if (pendingAltText) {
+                // Check if original textarea has new image that fullscreen doesn't have
+                const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+                const originalImages = [...$textarea.value.matchAll(imageMarkdownRegex)];
+                const fsImages = [...fsTextarea.value.matchAll(imageMarkdownRegex)];
+
+                // If original has more images, it means BearBlog inserted one - don't overwrite
+                if (originalImages.length > fsImages.length) {
+                    debugLog('Skipping fullscreen sync - waiting for image insertion',
+                        { originalImages: originalImages.length, fsImages: fsImages.length });
+                    return;
+                }
+            }
+
             $textarea.value = fsTextarea.value;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
         });
