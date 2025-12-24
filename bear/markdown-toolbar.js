@@ -106,6 +106,7 @@
         publish: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
         save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
         eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
+        back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
     };
 
     // Button categories for settings panel
@@ -234,26 +235,22 @@
         admonitionInfo: {
             icon: ICONS.info,
             title: 'Info Box',
-            syntax: ['\n> #### INFO\n> ', '\n'],
-            color: '#0969da'
+            syntax: ['\n> #### INFO\n> ', '\n']
         },
         admonitionWarning: {
             icon: ICONS.warning,
             title: 'Warning Box',
-            syntax: ['\n> ##### WARNING\n> ', '\n'],
-            color: '#9a6700'
+            syntax: ['\n> ##### WARNING\n> ', '\n']
         },
         admonitionCaution: {
             icon: ICONS.caution,
             title: 'Caution Box',
-            syntax: ['\n> ###### CAUTION\n> ', '\n'],
-            color: '#cf222e'
+            syntax: ['\n> ###### CAUTION\n> ', '\n']
         },
     };
 
     // Menu items (always in dropdown)
     const MENU_ITEMS = [
-        { icon: ICONS.fullscreen, text: 'Fullscreen Editor', action: 'fullscreen', conditional: 'fullscreen' },
         { icon: ICONS.gallery, text: 'Media Gallery', action: 'gallery' },
         { icon: ICONS.settings, text: 'Toolbar Settings', action: 'settings', separator: true },
     ];
@@ -462,6 +459,86 @@
             $toolbar.appendChild(btn);
         });
 
+        // Back button and Fullscreen button at the end (after separator)
+        // Back button only shows when action buttons are hidden
+        const showBackButton = !isActionButtonsEnabled();
+        const showFullscreenButton = isFullscreenButtonEnabled();
+
+        if (showBackButton || showFullscreenButton) {
+            // Separator before back/fullscreen buttons
+            const fsSeparator = document.createElement('div');
+            fsSeparator.style.cssText = `
+                width: 1px;
+                height: 24px;
+                background: ${isDark ? '#555' : '#ccc'};
+                margin: 0 8px;
+            `;
+            $toolbar.appendChild(fsSeparator);
+
+            // Back button (only when action buttons are hidden)
+            if (showBackButton) {
+                const backBtn = document.createElement('button');
+                backBtn.type = 'button';
+                backBtn.className = 'md-btn md-back-btn';
+                backBtn.title = 'Back';
+                backBtn.innerHTML = ICONS.back;
+                backBtn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
+                    flex-shrink: 0;
+                    background: ${isDark ? '#01242e' : 'white'};
+                    color: ${isDark ? '#888' : '#999'};
+                    border: 1px solid ${isDark ? '#444' : '#ddd'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                    opacity: 0.7;
+                `;
+                backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
+                backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
+                backBtn.addEventListener('click', () => {
+                    if (document.referrer && document.referrer !== window.location.href) {
+                        window.location.href = document.referrer;
+                    } else {
+                        window.history.back();
+                    }
+                });
+                $toolbar.appendChild(backBtn);
+            }
+
+            // Fullscreen button
+            if (showFullscreenButton) {
+                const fsBtn = document.createElement('button');
+                fsBtn.type = 'button';
+                fsBtn.className = 'md-btn md-fullscreen-btn';
+                fsBtn.title = 'Fullscreen Editor';
+                fsBtn.innerHTML = ICONS.fullscreen;
+                fsBtn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
+                    flex-shrink: 0;
+                    background: ${isDark ? '#01242e' : 'white'};
+                    color: ${isDark ? '#ddd' : '#444'};
+                    border: 1px solid ${isDark ? '#555' : '#ccc'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                `;
+                fsBtn.addEventListener('click', () => handleAction('fullscreen'));
+                $toolbar.appendChild(fsBtn);
+            }
+        }
+
         // Spacer
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
@@ -553,11 +630,6 @@
         `;
 
         MENU_ITEMS.forEach(item => {
-            // Check conditional visibility
-            if (item.conditional === 'fullscreen' && !isFullscreenButtonEnabled()) {
-                return; // Skip this item
-            }
-
             // Add separator before item if specified
             if (item.separator) {
                 const sep = document.createElement('div');
@@ -1448,6 +1520,39 @@
             header.appendChild(btn);
         });
 
+        // Separator before back button
+        const backSeparator = document.createElement('div');
+        backSeparator.style.cssText = `
+            width: 1px;
+            height: 24px;
+            background: ${isDark ? '#555' : '#ccc'};
+            margin: 0 8px;
+        `;
+        header.appendChild(backSeparator);
+
+        // Back button in fullscreen
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.title = 'Back';
+        backBtn.innerHTML = ICONS.back;
+        backBtn.style.cssText = buttonStyle();
+        backBtn.style.opacity = '0.7';
+        backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
+        backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
+        backBtn.addEventListener('click', () => {
+            // Exit fullscreen first, then navigate back
+            setFullscreenFlag(false);
+            $textarea.value = fsTextarea.value;
+            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            overlay.remove();
+            if (document.referrer && document.referrer !== window.location.href) {
+                window.location.href = document.referrer;
+            } else {
+                window.history.back();
+            }
+        });
+        header.appendChild(backBtn);
+
         // Spacer
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
@@ -1803,9 +1908,44 @@
                 break;
             }
 
-            case 'previewPost':
-                document.getElementById('preview')?.click();
+            case 'previewPost': {
+                // Save first via AJAX, then open preview
+                const publishInput = document.getElementById('publish');
+                if (publishInput) publishInput.value = 'false';
+                const form = $textarea.closest('form');
+                if (form) {
+                    // Sync header content
+                    const headerContent = document.getElementById('header_content');
+                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
+                    if (headerContent && hiddenHeaderContent) {
+                        hiddenHeaderContent.value = headerContent.innerText;
+                    }
+
+                    // Save via AJAX without page reload
+                    const formData = new FormData(form);
+                    fetch(form.action || window.location.href, {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => {
+                        if (response.ok) {
+                            // Clear local draft after successful save
+                            clearDraft();
+                            // Open preview after save completes
+                            document.getElementById('preview')?.click();
+                        } else {
+                            // Fallback: just open preview without save
+                            document.getElementById('preview')?.click();
+                        }
+                    }).catch(() => {
+                        // On network error, still try to preview
+                        document.getElementById('preview')?.click();
+                    });
+                } else {
+                    // No form found, just open preview
+                    document.getElementById('preview')?.click();
+                }
                 break;
+            }
         }
     }
 
