@@ -337,6 +337,201 @@
         return ''; // Default: empty
     }
 
+    function isAiAltTextEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.enableAiAltText === 'boolean') {
+            return userSettings.enableAiAltText;
+        }
+        return false; // Default: disabled
+    }
+
+    function getOpenAiApiKey() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.openAiApiKey === 'string') {
+            return userSettings.openAiApiKey;
+        }
+        return ''; // Default: empty
+    }
+
+    // ==========================================================================
+    // AI ALT-TEXT GENERATION (OpenAI Vision)
+    // ==========================================================================
+
+    async function generateAltTextWithOpenAI(imageUrl) {
+        const apiKey = getOpenAiApiKey();
+        if (!apiKey) {
+            console.warn('OpenAI API key not configured');
+            return null;
+        }
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an accessibility expert. Generate concise, descriptive alt-text for images. The alt-text should be 1-2 sentences, describing the key visual elements and context. Do not start with "Image of" or "Picture of". Just describe what is shown. Respond with only the alt-text, no quotes or extra formatting.'
+                        },
+                        {
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: imageUrl,
+                                        detail: 'low'
+                                    }
+                                },
+                                {
+                                    type: 'text',
+                                    text: 'Generate alt-text for this image.'
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 150
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('OpenAI API error:', error);
+                return null;
+            }
+
+            const data = await response.json();
+            const altText = data.choices?.[0]?.message?.content?.trim();
+            return altText || null;
+        } catch (error) {
+            console.error('Failed to generate alt-text:', error);
+            return null;
+        }
+    }
+
+    function showAltTextNotification(message, isError = false) {
+        // Remove existing notification if any
+        const existing = document.getElementById('md-alttext-notification');
+        if (existing) existing.remove();
+
+        const notification = document.createElement('div');
+        notification.id = 'md-alttext-notification';
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: system-ui, sans-serif;
+            z-index: 999999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.3s;
+            background: ${isError ? '#d32f2f' : (isDark ? '#004052' : '#0969da')};
+            color: white;
+        `;
+        notification.innerHTML = `
+            <span style="display:flex;">${isError ? ICONS.caution : ICONS.info}</span>
+            <span>${message}</span>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
+    }
+
+    function setupImageUploadObserver() {
+        if (!isAiAltTextEnabled() || !getOpenAiApiKey()) return;
+
+        // Track URLs we've already processed to avoid duplicates
+        const processedUrls = new Set();
+        let isProcessing = false;
+
+        const checkForNewImages = async () => {
+            if (isProcessing) return;
+
+            const currentContent = $textarea.value;
+
+            // Look for image markdown without alt-text: ![](url)
+            const emptyAltPattern = /!\[\]\(([^)]+)\)/g;
+            let match;
+            const matches = [];
+
+            while ((match = emptyAltPattern.exec(currentContent)) !== null) {
+                const imageUrl = match[1];
+
+                // Skip if already processed
+                if (processedUrls.has(imageUrl)) continue;
+
+                // Skip if not a valid image URL
+                if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) &&
+                    !imageUrl.includes('media.bearblog.dev')) {
+                    continue;
+                }
+
+                matches.push({
+                    fullMatch: match[0],
+                    imageUrl: imageUrl
+                });
+            }
+
+            // Process each new image
+            for (const { fullMatch, imageUrl } of matches) {
+                isProcessing = true;
+                processedUrls.add(imageUrl);
+
+                showAltTextNotification('Generating alt-text...');
+
+                // Generate alt-text
+                const altText = await generateAltTextWithOpenAI(imageUrl);
+
+                if (altText) {
+                    // Escape special characters in alt-text for markdown
+                    const safeAltText = altText.replace(/[\[\]]/g, '');
+
+                    // Replace the empty alt-text with the generated one
+                    const newMarkdown = `![${safeAltText}](${imageUrl})`;
+                    const updatedContent = $textarea.value.replace(fullMatch, newMarkdown);
+
+                    // Update textarea
+                    const cursorPos = $textarea.selectionStart;
+                    $textarea.value = updatedContent;
+                    $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // Restore cursor position (adjusted for new content length)
+                    const lengthDiff = newMarkdown.length - fullMatch.length;
+                    const newPos = Math.max(0, cursorPos + lengthDiff);
+                    $textarea.setSelectionRange(newPos, newPos);
+
+                    showAltTextNotification('Alt-text generated!');
+                } else {
+                    showAltTextNotification('Failed to generate alt-text', true);
+                }
+
+                isProcessing = false;
+            }
+        };
+
+        // Listen to input events on textarea
+        $textarea.addEventListener('input', () => {
+            // Debounce to avoid processing while user is typing
+            clearTimeout($textarea._altTextDebounce);
+            $textarea._altTextDebounce = setTimeout(checkForNewImages, 500);
+        });
+    }
+
     // Track original content for unsaved changes detection
     let originalContent = '';
 
@@ -383,6 +578,7 @@
         createToolbar();
         createCharCounter();
         setupKeyboardShortcuts();
+        setupImageUploadObserver();
 
         // Hide Bear Blog default elements
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => {
@@ -1055,6 +1251,96 @@
         snippetSection.appendChild(snippetWrapper);
         panel.appendChild(snippetSection);
 
+        // AI Alt-Text Section
+        const aiSection = document.createElement('div');
+        aiSection.style.cssText = 'margin-bottom: 16px;';
+
+        const aiHeader = document.createElement('div');
+        aiHeader.style.cssText = `
+            font-weight: 600;
+            font-size: 13px;
+            color: ${isDark ? '#aaa' : '#666'};
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        `;
+        aiHeader.textContent = 'AI Alt-Text (OpenAI)';
+        aiSection.appendChild(aiHeader);
+
+        const aiWrapper = document.createElement('div');
+        aiWrapper.style.cssText = `
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            padding: 12px;
+        `;
+
+        // Enable toggle for AI alt-text
+        const aiToggleLabel = document.createElement('label');
+        aiToggleLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            margin-bottom: 10px;
+        `;
+
+        const aiCheckbox = document.createElement('input');
+        aiCheckbox.type = 'checkbox';
+        aiCheckbox.checked = isAiAltTextEnabled();
+        aiCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const aiToggleText = document.createElement('span');
+        aiToggleText.textContent = 'Auto-generate alt-text for uploaded images';
+
+        aiToggleLabel.appendChild(aiCheckbox);
+        aiToggleLabel.appendChild(aiToggleText);
+        aiWrapper.appendChild(aiToggleLabel);
+
+        // API Key input
+        const apiKeyLabel = document.createElement('div');
+        apiKeyLabel.style.cssText = `
+            font-size: 12px;
+            color: ${isDark ? '#888' : '#666'};
+            margin-bottom: 6px;
+        `;
+        apiKeyLabel.textContent = 'OpenAI API Key:';
+        aiWrapper.appendChild(apiKeyLabel);
+
+        const apiKeyInput = document.createElement('input');
+        apiKeyInput.type = 'password';
+        apiKeyInput.value = getOpenAiApiKey();
+        apiKeyInput.placeholder = 'sk-...';
+        apiKeyInput.style.cssText = `
+            width: 100%;
+            padding: 8px;
+            border: 1px solid ${isDark ? '#444' : '#ccc'};
+            border-radius: 4px;
+            background: ${isDark ? '#01242e' : 'white'};
+            color: ${isDark ? '#ddd' : '#333'};
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            box-sizing: border-box;
+        `;
+        aiWrapper.appendChild(apiKeyInput);
+
+        // Info text
+        const aiInfo = document.createElement('div');
+        aiInfo.style.cssText = `
+            font-size: 11px;
+            color: ${isDark ? '#666' : '#999'};
+            margin-top: 8px;
+            line-height: 1.4;
+        `;
+        aiInfo.innerHTML = 'Uses OpenAI GPT-4o to generate descriptive alt-text for accessibility. ' +
+            'Your API key is stored locally in your browser. ' +
+            '<a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0969da;">Get an API key</a>';
+        aiWrapper.appendChild(aiInfo);
+
+        aiSection.appendChild(aiWrapper);
+        panel.appendChild(aiSection);
+
         // Buttons
         const actions = document.createElement('div');
         actions.style.cssText = `
@@ -1095,6 +1381,8 @@
             actionCheckbox.checked = false; // Default: action buttons disabled
             snippetCheckbox.checked = false; // Default: custom snippet disabled
             snippetTextarea.value = ''; // Default: empty snippet
+            aiCheckbox.checked = false; // Default: AI alt-text disabled
+            apiKeyInput.value = ''; // Default: no API key
         };
 
         const saveBtn = document.createElement('button');
@@ -1124,7 +1412,9 @@
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
                 showCustomSnippet: snippetCheckbox.checked,
-                customSnippetText: snippetTextarea.value
+                customSnippetText: snippetTextarea.value,
+                enableAiAltText: aiCheckbox.checked,
+                openAiApiKey: apiKeyInput.value
             });
             renderToolbarButtons();
 
@@ -1771,7 +2061,10 @@
     }
 
     function insertCodeBlock() {
-        const language = prompt('Language (e.g., javascript, python, css):') || '';
+        const language = prompt('Language (e.g., javascript, python, css):');
+        // Cancel if user pressed Cancel button
+        if (language === null) return;
+
         const start = $textarea.selectionStart;
         const end = $textarea.selectionEnd;
         const selected = $textarea.value.substring(start, end);
