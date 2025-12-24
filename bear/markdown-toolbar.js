@@ -44,6 +44,7 @@
             'h3',
             'link',
             'image',
+            'gallery',
             'quote',
             'list',
             'numberedList',
@@ -77,7 +78,7 @@
         mark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>',
         link: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
         quote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 12a2 2 0 0 0 2-2V8H8"/><path d="M14 12a2 2 0 0 0 2-2V8h-2"/></svg>',
-        image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+        image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5 3-3 3 3"/><path d="M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></svg>',
         code: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
         codeBlock: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10 9.5 8 12l2 2.5"/><path d="m14 9.5 2 2.5-2 2.5"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M4 21h16"/><path d="M9 21h1"/><path d="M14 21h1"/></svg>',
         list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>',
@@ -89,7 +90,7 @@
         warning: '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/></svg>',
         caution: '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>',
         more: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
-        gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+        gallery: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg>',
         preview: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         help: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
         settings: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -108,7 +109,7 @@
     const BUTTON_CATEGORIES = {
         'Formatting': ['bold', 'italic', 'strikethrough', 'mark'],
         'Headings': ['h1', 'h2', 'h3'],
-        'Links & Media': ['link', 'image'],
+        'Links & Media': ['link', 'image', 'gallery'],
         'Blocks': ['quote', 'list', 'numberedList', 'hr', 'table'],
         'Code': ['code', 'codeBlock'],
         'References': ['footnote'],
@@ -175,6 +176,11 @@
             icon: ICONS.image,
             title: 'Insert Image',
             action: 'upload'
+        },
+        gallery: {
+            icon: ICONS.gallery,
+            title: 'Media Gallery',
+            action: 'gallery'
         },
 
         // --- Blocks ---
@@ -246,8 +252,7 @@
 
     // Menu items (always in dropdown)
     const MENU_ITEMS = [
-        { icon: ICONS.gallery, text: 'Media Gallery', action: 'gallery' },
-        { icon: ICONS.settings, text: 'Toolbar Settings', action: 'settings', separator: true },
+        { icon: ICONS.settings, text: 'Toolbar Settings', action: 'settings' },
     ];
 
     // ==========================================================================
@@ -634,14 +639,11 @@
     }
 
     function createMenuButton() {
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'relative';
-
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'md-btn md-menu-btn';
-        btn.innerHTML = ICONS.more;
-        btn.title = 'More...';
+        btn.innerHTML = ICONS.settings;
+        btn.title = 'Toolbar Settings';
         btn.style.cssText = `
             width: 32px;
             height: 32px;
@@ -659,70 +661,9 @@
             padding: 0;
         `;
 
-        const dropdown = document.createElement('div');
-        dropdown.className = 'md-dropdown';
-        dropdown.style.cssText = `
-            display: none;
-            position: absolute;
-            top: 36px;
-            right: 0;
-            background: ${isDark ? '#01242e' : 'white'};
-            border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            min-width: 180px;
-            z-index: 1000;
-            padding: 4px 0;
-        `;
+        btn.addEventListener('click', () => handleAction('settings'));
 
-        MENU_ITEMS.forEach(item => {
-            // Add separator before item if specified
-            if (item.separator) {
-                const sep = document.createElement('div');
-                sep.style.cssText = `height: 1px; background: ${isDark ? '#333' : '#eee'}; margin: 4px 0;`;
-                dropdown.appendChild(sep);
-            }
-
-            const menuItem = document.createElement('div');
-            menuItem.style.cssText = `
-                padding: 10px 14px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 13px;
-                color: ${isDark ? '#ddd' : '#444'};
-            `;
-            menuItem.innerHTML = `<span style="display:flex;width:18px;">${item.icon}</span><span>${item.text}</span>`;
-
-            menuItem.addEventListener('click', () => {
-                handleAction(item.action);
-                dropdown.style.display = 'none';
-            });
-
-            menuItem.addEventListener('mouseover', () => {
-                menuItem.style.background = isDark ? '#004052' : '#f5f5f5';
-            });
-            menuItem.addEventListener('mouseout', () => {
-                menuItem.style.background = 'transparent';
-            });
-
-            dropdown.appendChild(menuItem);
-        });
-
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        });
-
-        document.addEventListener('click', () => {
-            dropdown.style.display = 'none';
-        });
-
-        wrapper.appendChild(btn);
-        wrapper.appendChild(dropdown);
-
-        return wrapper;
+        return btn;
     }
 
     // ==========================================================================
@@ -1629,85 +1570,14 @@
         });
         header.appendChild(backBtn);
 
-        // Menu button (last, consistent with normal toolbar)
-        const menuWrapper = document.createElement('div');
-        menuWrapper.style.position = 'relative';
-
-        const menuBtn = document.createElement('button');
-        menuBtn.type = 'button';
-        menuBtn.title = 'More...';
-        menuBtn.innerHTML = ICONS.more;
-        menuBtn.style.cssText = buttonStyle();
-
-        const dropdown = document.createElement('div');
-        dropdown.className = 'md-dropdown';
-        dropdown.style.cssText = `
-            display: none;
-            position: absolute;
-            top: 36px;
-            right: 0;
-            background: ${isDark ? '#01242e' : 'white'};
-            border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            min-width: 180px;
-            z-index: 1000;
-            padding: 4px 0;
-        `;
-
-        MENU_ITEMS.forEach(item => {
-            // Add separator before item if specified
-            if (item.separator) {
-                const sep = document.createElement('div');
-                sep.style.cssText = `height: 1px; background: ${isDark ? '#333' : '#eee'}; margin: 4px 0;`;
-                dropdown.appendChild(sep);
-            }
-
-            const menuItem = document.createElement('div');
-            menuItem.style.cssText = `
-                padding: 10px 14px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 13px;
-                color: ${isDark ? '#ddd' : '#444'};
-            `;
-            menuItem.innerHTML = `<span style="display:flex;width:18px;">${item.icon}</span><span>${item.text}</span>`;
-
-            menuItem.addEventListener('click', () => {
-                // Sync content before action
-                $textarea.value = fsTextarea.value;
-                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                handleAction(item.action);
-                dropdown.style.display = 'none';
-            });
-
-            menuItem.addEventListener('mouseover', () => {
-                menuItem.style.background = isDark ? '#004052' : '#f5f5f5';
-            });
-            menuItem.addEventListener('mouseout', () => {
-                menuItem.style.background = 'transparent';
-            });
-
-            dropdown.appendChild(menuItem);
-        });
-
-        menuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        });
-
-        // Close dropdown when clicking outside
-        overlay.addEventListener('click', (e) => {
-            if (!menuWrapper.contains(e.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
-
-        menuWrapper.appendChild(menuBtn);
-        menuWrapper.appendChild(dropdown);
-        header.appendChild(menuWrapper);
+        // Settings button (last, consistent with normal toolbar)
+        const settingsBtn = document.createElement('button');
+        settingsBtn.type = 'button';
+        settingsBtn.title = 'Toolbar Settings';
+        settingsBtn.innerHTML = ICONS.settings;
+        settingsBtn.style.cssText = buttonStyle();
+        settingsBtn.addEventListener('click', () => handleAction('settings'));
+        header.appendChild(settingsBtn);
 
         overlay.appendChild(header);
 
