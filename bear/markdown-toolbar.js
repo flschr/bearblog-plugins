@@ -255,8 +255,6 @@
     const MENU_ITEMS = [
         { icon: ICONS.fullscreen, text: 'Fullscreen Editor', action: 'fullscreen', conditional: 'fullscreen' },
         { icon: ICONS.gallery, text: 'Media Gallery', action: 'gallery' },
-        { icon: ICONS.preview, text: 'Preview', action: 'preview' },
-        { icon: ICONS.help, text: 'Markdown Help', action: 'help' },
         { icon: ICONS.settings, text: 'Toolbar Settings', action: 'settings', separator: true },
     ];
 
@@ -370,6 +368,9 @@
                 stickyControls.style.display = 'none';
             }
         }
+
+        // Restore fullscreen mode if it was active before page reload
+        checkFullscreenRestore();
     }
 
     // ==========================================================================
@@ -407,9 +408,9 @@
         // Add action buttons (Publish, Save, Preview) if enabled
         if (isActionButtonsEnabled()) {
             const actionButtons = [
-                { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#2e7d32' },
-                { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost' },
-                { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost' },
+                { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
+                { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
+                { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
             ];
 
             actionButtons.forEach(actionDef => {
@@ -422,6 +423,8 @@
                 btn.style.cssText = `
                     width: 32px;
                     height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
                     flex-shrink: 0;
                     background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
                     color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
@@ -431,6 +434,7 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    padding: 0;
                 `;
                 btn.addEventListener('click', () => handleAction(actionDef.action));
                 $toolbar.appendChild(btn);
@@ -483,10 +487,12 @@
             btn.style.fontFamily = 'system-ui, sans-serif';
         }
 
-        // Styling
+        // Styling - consistent button dimensions
         btn.style.cssText += `
             width: 32px;
             height: 32px;
+            min-width: 32px;
+            min-height: 32px;
             flex-shrink: 0;
             background: ${def.color || (isDark ? '#01242e' : 'white')};
             color: ${def.color ? 'white' : (isDark ? '#ddd' : '#444')};
@@ -496,6 +502,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 0;
         `;
 
         btn.addEventListener('click', () => handleButtonClick(id, def));
@@ -515,6 +522,9 @@
         btn.style.cssText = `
             width: 32px;
             height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            flex-shrink: 0;
             background: ${isDark ? '#01242e' : 'white'};
             color: ${isDark ? '#ddd' : '#444'};
             border: 1px solid ${isDark ? '#555' : '#ccc'};
@@ -523,6 +533,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 0;
         `;
 
         const dropdown = document.createElement('div');
@@ -1265,13 +1276,37 @@
     // FULLSCREEN EDITOR
     // ==========================================================================
 
+    const FULLSCREEN_KEY = 'bear_fullscreen_mode';
+
+    function setFullscreenFlag(value) {
+        try {
+            if (value) {
+                sessionStorage.setItem(FULLSCREEN_KEY, 'true');
+            } else {
+                sessionStorage.removeItem(FULLSCREEN_KEY);
+            }
+        } catch (e) {}
+    }
+
+    function getFullscreenFlag() {
+        try {
+            return sessionStorage.getItem(FULLSCREEN_KEY) === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
     function showFullscreenEditor() {
         // Remove existing fullscreen overlay if any
         const existing = document.getElementById('md-fullscreen-overlay');
         if (existing) {
+            setFullscreenFlag(false);
             existing.remove();
             return;
         }
+
+        // Set fullscreen flag for persistence across page reloads
+        setFullscreenFlag(true);
 
         // Save current scroll position
         const originalScrollTop = $textarea.scrollTop;
@@ -1293,7 +1328,7 @@
             flex-direction: column;
         `;
 
-        // Create fullscreen textarea first (needed for action button handlers)
+        // Create fullscreen textarea first (needed for button handlers)
         const fsTextarea = document.createElement('textarea');
         fsTextarea.id = 'md-fullscreen-textarea';
         fsTextarea.value = $textarea.value;
@@ -1314,30 +1349,43 @@
             box-sizing: border-box;
         `;
 
-        // Create header with action buttons
+        // Create toolbar header
         const header = document.createElement('div');
         header.style.cssText = `
             display: flex;
-            justify-content: space-between;
+            gap: 4px;
+            padding: 8px;
             align-items: center;
-            padding: 12px 20px;
+            flex-wrap: wrap;
             background: ${isDark ? '#004052' : '#eceff4'};
             border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
             flex-shrink: 0;
         `;
 
-        // Left side: Action buttons (always visible in fullscreen)
-        const leftGroup = document.createElement('div');
-        leftGroup.style.cssText = `
+        // Common button style for consistency
+        const buttonSize = '32px';
+        const buttonStyle = (color) => `
+            width: ${buttonSize};
+            height: ${buttonSize};
+            min-width: ${buttonSize};
+            min-height: ${buttonSize};
+            flex-shrink: 0;
+            background: ${color || (isDark ? '#01242e' : 'white')};
+            color: ${color ? 'white' : (isDark ? '#ddd' : '#444')};
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 3px;
+            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            padding: 0;
         `;
 
+        // Action buttons (Publish, Save, Preview) - always visible in fullscreen
         const actionButtons = [
-            { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#2e7d32' },
-            { icon: ICONS.save, title: 'Save as Draft', action: 'savePost' },
-            { icon: ICONS.eye, title: 'Preview', action: 'previewPost' },
+            { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
+            { icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
+            { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
         ];
 
         actionButtons.forEach(actionDef => {
@@ -1345,30 +1393,67 @@
             btn.type = 'button';
             btn.title = actionDef.title;
             btn.innerHTML = actionDef.icon;
-            btn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
-                color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 4px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            `;
+            btn.style.cssText = buttonStyle(actionDef.color);
             btn.addEventListener('click', () => {
                 // Sync content before action
                 $textarea.value = fsTextarea.value;
                 $textarea.dispatchEvent(new Event('input', { bubbles: true }));
                 handleAction(actionDef.action);
             });
-            leftGroup.appendChild(btn);
+            header.appendChild(btn);
         });
 
-        header.appendChild(leftGroup);
+        // Separator after action buttons
+        const separator1 = document.createElement('div');
+        separator1.style.cssText = `
+            width: 1px;
+            height: 24px;
+            background: ${isDark ? '#555' : '#ccc'};
+            margin: 0 8px;
+        `;
+        header.appendChild(separator1);
 
-        // Right side: Exit button
+        // Add all enabled formatting buttons
+        const enabledButtons = getEnabledButtons();
+        enabledButtons.forEach(buttonId => {
+            const buttonDef = BUTTONS[buttonId];
+            if (!buttonDef) return;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = buttonDef.title;
+
+            // Icon or text
+            if (buttonDef.icon.startsWith('<svg') || buttonDef.icon.startsWith('<')) {
+                btn.innerHTML = buttonDef.icon;
+            } else {
+                btn.textContent = buttonDef.icon;
+                btn.style.fontWeight = '800';
+                btn.style.fontFamily = 'system-ui, sans-serif';
+            }
+
+            btn.style.cssText = buttonStyle(buttonDef.color);
+
+            btn.addEventListener('click', () => {
+                // Temporarily switch the global textarea reference to fullscreen textarea
+                const originalTextarea = $textarea;
+                $textarea = fsTextarea;
+                handleButtonClick(buttonId, buttonDef);
+                $textarea = originalTextarea;
+                // Sync back to original
+                originalTextarea.value = fsTextarea.value;
+                originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+
+            header.appendChild(btn);
+        });
+
+        // Spacer
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        header.appendChild(spacer);
+
+        // Exit button
         const exitBtn = document.createElement('button');
         exitBtn.type = 'button';
         exitBtn.innerHTML = `${ICONS.exitFullscreen} <span style="margin-left: 6px;">Exit</span>`;
@@ -1376,11 +1461,12 @@
         exitBtn.style.cssText = `
             display: flex;
             align-items: center;
-            padding: 8px 14px;
+            padding: 6px 12px;
+            height: ${buttonSize};
             background: ${isDark ? '#01242e' : 'white'};
             color: ${isDark ? '#ddd' : '#444'};
             border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 4px;
+            border-radius: 3px;
             cursor: pointer;
             font-family: system-ui, sans-serif;
             font-size: 13px;
@@ -1406,6 +1492,8 @@
 
         // Exit function
         const exitFullscreen = () => {
+            setFullscreenFlag(false);
+
             // Sync final content
             $textarea.value = fsTextarea.value;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1449,6 +1537,40 @@
             });
         });
         observer.observe(document.body, { childList: true });
+
+        // Setup keyboard shortcuts for fullscreen textarea
+        fsTextarea.addEventListener('keydown', (e) => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            if (!ctrl) return;
+
+            for (const [id, def] of Object.entries(BUTTONS)) {
+                if (!def.shortcut) continue;
+                if (!enabledButtons.includes(id)) continue;
+
+                if (def.shortcut.key === e.key.toLowerCase() && def.shortcut.ctrl === ctrl) {
+                    e.preventDefault();
+                    // Temporarily switch textarea reference
+                    const originalTextarea = $textarea;
+                    $textarea = fsTextarea;
+                    handleButtonClick(id, def);
+                    $textarea = originalTextarea;
+                    // Sync back
+                    originalTextarea.value = fsTextarea.value;
+                    originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    return;
+                }
+            }
+        });
+    }
+
+    // Check if we should restore fullscreen mode on page load
+    function checkFullscreenRestore() {
+        if (getFullscreenFlag()) {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                showFullscreenEditor();
+            }, 100);
+        }
     }
 
     // ==========================================================================
