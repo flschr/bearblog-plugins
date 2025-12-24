@@ -464,13 +464,15 @@
 
             const currentContent = $textarea.value;
 
-            // Look for image markdown without alt-text: ![](url)
-            const emptyAltPattern = /!\[\]\(([^)]+)\)/g;
+            // Look for image markdown with empty alt-text OR filename as alt-text
+            // Matches: ![](url) or ![filename.jpg](url) or ![IMG_1234.png](url)
+            const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
             let match;
             const matches = [];
 
-            while ((match = emptyAltPattern.exec(currentContent)) !== null) {
-                const imageUrl = match[1];
+            while ((match = imagePattern.exec(currentContent)) !== null) {
+                const altText = match[1];
+                const imageUrl = match[2];
 
                 // Skip if already processed
                 if (processedUrls.has(imageUrl)) continue;
@@ -478,6 +480,16 @@
                 // Skip if not a valid image URL
                 if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) &&
                     !imageUrl.includes('media.bearblog.dev')) {
+                    continue;
+                }
+
+                // Only process if alt-text is empty OR looks like a filename
+                // Filename pattern: contains a dot followed by common image extension
+                const isEmptyAlt = altText.trim() === '';
+                const isFilenameAlt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff?|heic)$/i.test(altText.trim());
+
+                if (!isEmptyAlt && !isFilenameAlt) {
+                    // Alt-text exists and is not a filename, skip (user probably wrote it)
                     continue;
                 }
 
@@ -501,7 +513,7 @@
                     // Escape special characters in alt-text for markdown
                     const safeAltText = altText.replace(/[\[\]]/g, '');
 
-                    // Replace the empty alt-text with the generated one
+                    // Replace the placeholder alt-text (empty or filename) with the generated one
                     const newMarkdown = `![${safeAltText}](${imageUrl})`;
                     const updatedContent = $textarea.value.replace(fullMatch, newMarkdown);
 
