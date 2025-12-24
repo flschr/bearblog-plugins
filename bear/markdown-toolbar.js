@@ -505,6 +505,52 @@
         });
     }
 
+    // Process an image file for alt-text generation
+    async function processImageForAltText(file, source = 'unknown') {
+        debugLog('Processing image', {
+            source,
+            name: file?.name,
+            type: file?.type,
+            size: file?.size
+        });
+
+        if (!file || !file.type.startsWith('image/')) {
+            debugLog('Not an image file', file?.type);
+            return;
+        }
+
+        // Show "generating" notification
+        showAltTextNotification('Generating alt-text...');
+
+        try {
+            // Convert file to base64 (parallel to BearBlog's upload)
+            debugLog('Converting to base64', 'started');
+            const base64Data = await fileToBase64(file);
+            debugLog('Base64 ready', { length: base64Data.length });
+
+            // Send to OpenAI
+            const altText = await generateAltTextWithOpenAI(base64Data, true);
+
+            if (altText) {
+                // Copy to clipboard
+                try {
+                    await navigator.clipboard.writeText(altText);
+                    debugLog('Copied to clipboard', altText);
+                    showAltTextNotification('✓ Alt-text ready - paste with Ctrl+V', false, altText);
+                } catch (clipboardError) {
+                    debugLog('Clipboard error', clipboardError);
+                    // Fallback: show alt-text in notification for manual copy
+                    showAltTextNotification(`Alt-text: "${altText.substring(0, 50)}..."`, false, altText);
+                }
+            } else {
+                showAltTextNotification('Failed to generate alt-text', true);
+            }
+        } catch (error) {
+            debugLog('Processing error', { message: error.message, stack: error.stack });
+            showAltTextNotification('Error processing image', true);
+        }
+    }
+
     function setupImageUploadObserver() {
         debugLog('Setup', {
             aiEnabled: isAiAltTextEnabled(),
@@ -524,46 +570,9 @@
             // Listen for file selection - this fires BEFORE BearBlog processes the upload
             uploadInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
-                debugLog('File selected', {
-                    name: file?.name,
-                    type: file?.type,
-                    size: file?.size
-                });
-
-                if (!file || !file.type.startsWith('image/')) {
-                    debugLog('Not an image file', file?.type);
-                    return;
-                }
-
-                // Show "generating" notification
-                showAltTextNotification('Generating alt-text...');
-
-                try {
-                    // Convert file to base64 (parallel to BearBlog's upload)
-                    debugLog('Converting to base64', 'started');
-                    const base64Data = await fileToBase64(file);
-                    debugLog('Base64 ready', { length: base64Data.length });
-
-                    // Send to OpenAI
-                    const altText = await generateAltTextWithOpenAI(base64Data, true);
-
-                    if (altText) {
-                        // Copy to clipboard
-                        try {
-                            await navigator.clipboard.writeText(altText);
-                            debugLog('Copied to clipboard', altText);
-                            showAltTextNotification('✓ Alt-text ready - paste with Ctrl+V', false, altText);
-                        } catch (clipboardError) {
-                            debugLog('Clipboard error', clipboardError);
-                            // Fallback: show alt-text in notification for manual copy
-                            showAltTextNotification(`Alt-text: "${altText.substring(0, 50)}..."`, false, altText);
-                        }
-                    } else {
-                        showAltTextNotification('Failed to generate alt-text', true);
-                    }
-                } catch (error) {
-                    debugLog('Processing error', { message: error.message, stack: error.stack });
-                    showAltTextNotification('Error processing image', true);
+                debugLog('File input change', { hasFile: !!file });
+                if (file) {
+                    await processImageForAltText(file, 'file-input');
                 }
             });
 
@@ -581,6 +590,47 @@
                 }
             });
             observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        // Also listen for drag & drop on the textarea
+        const textarea = document.getElementById('body_content');
+        if (textarea) {
+            debugLog('Setting up drag & drop on textarea', true);
+
+            textarea.addEventListener('drop', async (e) => {
+                debugLog('Drop event', {
+                    hasFiles: e.dataTransfer?.files?.length > 0,
+                    types: Array.from(e.dataTransfer?.types || [])
+                });
+
+                const file = e.dataTransfer?.files?.[0];
+                if (file && file.type.startsWith('image/')) {
+                    await processImageForAltText(file, 'drag-drop');
+                }
+            });
+
+            // Listen for paste events (for pasted images)
+            textarea.addEventListener('paste', async (e) => {
+                debugLog('Paste event', {
+                    hasItems: e.clipboardData?.items?.length > 0,
+                    types: Array.from(e.clipboardData?.types || [])
+                });
+
+                const items = e.clipboardData?.items;
+                if (items) {
+                    for (const item of items) {
+                        if (item.type.startsWith('image/')) {
+                            const file = item.getAsFile();
+                            if (file) {
+                                await processImageForAltText(file, 'paste');
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            debugLog('Drag & drop and paste listeners attached', 'success');
         }
     }
 
