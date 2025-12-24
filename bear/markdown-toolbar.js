@@ -1842,6 +1842,30 @@
             header.appendChild(btn);
         });
 
+        // Custom snippet button (after formatting buttons, like normal toolbar)
+        if (isCustomSnippetEnabled()) {
+            const snippetBtn = document.createElement('button');
+            snippetBtn.type = 'button';
+            snippetBtn.title = 'Insert Custom Snippet';
+            snippetBtn.innerHTML = ICONS.heart;
+            snippetBtn.style.cssText = buttonStyle();
+            snippetBtn.style.color = '#e91e63';
+            snippetBtn.addEventListener('click', () => {
+                const snippet = getCustomSnippetText();
+                if (snippet) {
+                    // Temporarily switch textarea reference
+                    const originalTextarea = $textarea;
+                    $textarea = fsTextarea;
+                    insertText(snippet);
+                    $textarea = originalTextarea;
+                    // Sync back
+                    originalTextarea.value = fsTextarea.value;
+                    originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            header.appendChild(snippetBtn);
+        }
+
         // Separator before exit button (same position as fullscreen button in normal mode)
         const exitSeparator = document.createElement('div');
         exitSeparator.style.cssText = `
@@ -1861,7 +1885,12 @@
         // Event listener added after exitFullscreen is defined
         header.appendChild(exitBtn);
 
-        // Back button in fullscreen (after exit button, consistent with normal toolbar)
+        // Spacer (pushes remaining items to right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        header.appendChild(spacer);
+
+        // Back button in fullscreen (after spacer, on right side - consistent with normal toolbar)
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
         backBtn.title = 'Back';
@@ -1880,10 +1909,86 @@
         });
         header.appendChild(backBtn);
 
-        // Spacer (pushes remaining items to right)
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        header.appendChild(spacer);
+        // Menu button (last, consistent with normal toolbar)
+        const menuWrapper = document.createElement('div');
+        menuWrapper.style.position = 'relative';
+
+        const menuBtn = document.createElement('button');
+        menuBtn.type = 'button';
+        menuBtn.title = 'More...';
+        menuBtn.innerHTML = ICONS.more;
+        menuBtn.style.cssText = buttonStyle();
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'md-dropdown';
+        dropdown.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 36px;
+            right: 0;
+            background: ${isDark ? '#01242e' : 'white'};
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            min-width: 180px;
+            z-index: 1000;
+            padding: 4px 0;
+        `;
+
+        MENU_ITEMS.forEach(item => {
+            // Add separator before item if specified
+            if (item.separator) {
+                const sep = document.createElement('div');
+                sep.style.cssText = `height: 1px; background: ${isDark ? '#333' : '#eee'}; margin: 4px 0;`;
+                dropdown.appendChild(sep);
+            }
+
+            const menuItem = document.createElement('div');
+            menuItem.style.cssText = `
+                padding: 10px 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 13px;
+                color: ${isDark ? '#ddd' : '#444'};
+            `;
+            menuItem.innerHTML = `<span style="display:flex;width:18px;">${item.icon}</span><span>${item.text}</span>`;
+
+            menuItem.addEventListener('click', () => {
+                // Sync content before action
+                $textarea.value = fsTextarea.value;
+                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                handleAction(item.action);
+                dropdown.style.display = 'none';
+            });
+
+            menuItem.addEventListener('mouseover', () => {
+                menuItem.style.background = isDark ? '#004052' : '#f5f5f5';
+            });
+            menuItem.addEventListener('mouseout', () => {
+                menuItem.style.background = 'transparent';
+            });
+
+            dropdown.appendChild(menuItem);
+        });
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Close dropdown when clicking outside
+        overlay.addEventListener('click', (e) => {
+            if (!menuWrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        menuWrapper.appendChild(menuBtn);
+        menuWrapper.appendChild(dropdown);
+        header.appendChild(menuWrapper);
+
         overlay.appendChild(header);
 
         // Append textarea to overlay
