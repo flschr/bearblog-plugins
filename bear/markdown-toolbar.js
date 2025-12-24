@@ -1803,9 +1803,44 @@
                 break;
             }
 
-            case 'previewPost':
-                document.getElementById('preview')?.click();
+            case 'previewPost': {
+                // Save first via AJAX, then open preview
+                const publishInput = document.getElementById('publish');
+                if (publishInput) publishInput.value = 'false';
+                const form = $textarea.closest('form');
+                if (form) {
+                    // Sync header content
+                    const headerContent = document.getElementById('header_content');
+                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
+                    if (headerContent && hiddenHeaderContent) {
+                        hiddenHeaderContent.value = headerContent.innerText;
+                    }
+
+                    // Save via AJAX without page reload
+                    const formData = new FormData(form);
+                    fetch(form.action || window.location.href, {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => {
+                        if (response.ok) {
+                            // Clear local draft after successful save
+                            clearDraft();
+                            // Open preview after save completes
+                            document.getElementById('preview')?.click();
+                        } else {
+                            // Fallback: just open preview without save
+                            document.getElementById('preview')?.click();
+                        }
+                    }).catch(() => {
+                        // On network error, still try to preview
+                        document.getElementById('preview')?.click();
+                    });
+                } else {
+                    // No form found, just open preview
+                    document.getElementById('preview')?.click();
+                }
                 break;
+            }
         }
     }
 
