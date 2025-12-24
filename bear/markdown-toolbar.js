@@ -271,6 +271,7 @@
     // ==========================================================================
 
     const SETTINGS_KEY = 'bear_toolbar_settings';
+    const PENDING_BACK_NAV_KEY = 'bear_pending_back_nav';
 
     function loadUserSettings() {
         try {
@@ -366,6 +367,16 @@
     // ==========================================================================
 
     function init() {
+        // Check for pending back navigation (from save & go back)
+        try {
+            const pendingBackUrl = sessionStorage.getItem(PENDING_BACK_NAV_KEY);
+            if (pendingBackUrl) {
+                sessionStorage.removeItem(PENDING_BACK_NAV_KEY);
+                window.location.href = pendingBackUrl;
+                return;
+            }
+        } catch (e) {}
+
         $textarea = document.getElementById('body_content');
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
 
@@ -535,34 +546,7 @@
             $toolbar.appendChild(fsBtn);
         }
 
-        // Back button - show when action buttons are enabled (user has own controls)
-        if (showActionButtons) {
-            const backBtn = document.createElement('button');
-            backBtn.type = 'button';
-            backBtn.className = 'md-btn md-back-btn';
-            backBtn.title = 'Back';
-            backBtn.innerHTML = ICONS.back;
-            backBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
-            backBtn.addEventListener('click', () => handleBackNavigation());
-            $toolbar.appendChild(backBtn);
-        }
-
-        // Custom snippet button
+        // Custom snippet button - directly before spacer
         if (isCustomSnippetEnabled()) {
             const snippetBtn = document.createElement('button');
             snippetBtn.type = 'button';
@@ -598,6 +582,33 @@
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
         $toolbar.appendChild(spacer);
+
+        // Back button - show when action buttons are enabled (after spacer, on right side)
+        if (showActionButtons) {
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'md-btn md-back-btn';
+            backBtn.title = 'Back';
+            backBtn.innerHTML = ICONS.back;
+            backBtn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                background: ${isDark ? '#01242e' : 'white'};
+                color: ${isDark ? '#ddd' : '#444'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            `;
+            backBtn.addEventListener('click', () => handleBackNavigation());
+            $toolbar.appendChild(backBtn);
+        }
 
         // Menu button
         $toolbar.appendChild(createMenuButton());
@@ -1628,6 +1639,20 @@
             if (headerContent && hiddenHeaderContent) {
                 hiddenHeaderContent.value = headerContent.innerText;
             }
+
+            // Clear draft before saving (programmatic submit doesn't trigger 'submit' event)
+            clearDraft();
+            updateOriginalContent();
+
+            // Store back navigation URL for after page reload
+            try {
+                const backUrl = document.referrer && document.referrer !== window.location.href
+                    ? document.referrer
+                    : null;
+                if (backUrl) {
+                    sessionStorage.setItem(PENDING_BACK_NAV_KEY, backUrl);
+                }
+            } catch (e) {}
 
             // Submit form (which will navigate away)
             form.submit();
