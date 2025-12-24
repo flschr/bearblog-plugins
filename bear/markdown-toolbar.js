@@ -793,8 +793,8 @@
     // ==========================================================================
 
     function getPostId() {
-        // Extract post ID from URL: /blog/dashboard/posts/123/edit/
-        const match = window.location.pathname.match(/\/posts\/(\d+)\//);
+        // Extract post ID from URL: /dashboard/posts/ABC123/
+        const match = window.location.pathname.match(/\/posts\/([a-zA-Z0-9]+)/);
         if (match) return `post_${match[1]}`;
 
         // For new posts, use a generic key
