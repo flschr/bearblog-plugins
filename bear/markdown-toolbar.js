@@ -925,7 +925,7 @@
             border-radius: 8px;
             padding: 16px 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 10000;
+            z-index: 10004;
             font-family: system-ui, sans-serif;
             max-width: 400px;
         `;
@@ -970,6 +970,11 @@
         dialog.querySelector('.md-restore-btn').addEventListener('click', () => {
             $textarea.value = draft.content;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Also update fullscreen textarea if it exists
+            const fsTextarea = document.getElementById('md-fullscreen-textarea');
+            if (fsTextarea) {
+                fsTextarea.value = draft.content;
+            }
             // Update original content to match restored draft
             updateOriginalContent();
             dialog.remove();
@@ -2188,6 +2193,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Clear draft before submitting since content is being saved
+                    clearDraft();
                     form.submit();
                 }
                 break;
@@ -2204,6 +2211,8 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
+                    // Clear draft before submitting since content is being saved
+                    clearDraft();
                     form.submit();
                 }
                 break;
