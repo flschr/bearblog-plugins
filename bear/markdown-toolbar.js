@@ -1346,6 +1346,16 @@
     }
 
     function navigateBack() {
+        // Try to navigate to the posts list
+        // URL pattern: /blogname/dashboard/posts/POST_ID/ -> /blogname/dashboard/posts/
+        const path = window.location.pathname;
+        const postsMatch = path.match(/^(\/[^/]+\/dashboard\/posts\/)/);
+        if (postsMatch) {
+            window.location.href = postsMatch[1];
+            return;
+        }
+
+        // Fallback to referrer or history
         if (document.referrer && document.referrer !== window.location.href) {
             window.location.href = document.referrer;
         } else {
@@ -1369,10 +1379,15 @@
             updateOriginalContent();
 
             // Store back navigation URL for after page reload
+            // Prefer posts list URL over referrer
             try {
-                const backUrl = document.referrer && document.referrer !== window.location.href
-                    ? document.referrer
-                    : null;
+                const path = window.location.pathname;
+                const postsMatch = path.match(/^(\/[^/]+\/dashboard\/posts\/)/);
+                const backUrl = postsMatch ? postsMatch[1] : (
+                    document.referrer && document.referrer !== window.location.href
+                        ? document.referrer
+                        : null
+                );
                 if (backUrl) {
                     sessionStorage.setItem(PENDING_BACK_NAV_KEY, backUrl);
                 }
@@ -1646,7 +1661,7 @@
                 align-items: center;
                 gap: 10px;
             `;
-            menuItem.innerHTML = `<span style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;">${item.icon}</span>${item.label}`;
+            menuItem.innerHTML = `<span style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;">${item.icon}</span>${item.text}`;
             menuItem.addEventListener('mouseover', () => menuItem.style.background = isDark ? '#003545' : '#f5f5f5');
             menuItem.addEventListener('mouseout', () => menuItem.style.background = 'transparent');
             menuItem.addEventListener('click', () => {
