@@ -549,18 +549,15 @@
                 min-height: 32px;
                 flex-shrink: 0;
                 background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#888' : '#999'};
-                border: 1px solid ${isDark ? '#444' : '#ddd'};
+                color: ${isDark ? '#ddd' : '#444'};
+                border: 1px solid ${isDark ? '#555' : '#ccc'};
                 border-radius: 3px;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 padding: 0;
-                opacity: 0.7;
             `;
-            backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
-            backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
             backBtn.addEventListener('click', () => handleBackNavigation());
             $toolbar.appendChild(backBtn);
         }
@@ -1840,11 +1837,6 @@
         backBtn.title = 'Back';
         backBtn.innerHTML = ICONS.back;
         backBtn.style.cssText = buttonStyle();
-        backBtn.style.opacity = '0.7';
-        backBtn.style.color = isDark ? '#888' : '#999';
-        backBtn.style.borderColor = isDark ? '#444' : '#ddd';
-        backBtn.addEventListener('mouseenter', () => backBtn.style.opacity = '1');
-        backBtn.addEventListener('mouseleave', () => backBtn.style.opacity = '0.7');
         backBtn.addEventListener('click', () => {
             // Sync content first
             $textarea.value = fsTextarea.value;
