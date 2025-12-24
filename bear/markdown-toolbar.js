@@ -562,16 +562,16 @@
             return;
         }
 
-        // Find the BearBlog upload input
-        const uploadInput = document.getElementById('upload-image');
+        // Find the BearBlog file input (note: "upload-image" is just an <a> link, the actual input has id="file")
+        const uploadInput = document.getElementById('file');
         debugLog('Upload input found', !!uploadInput);
 
         if (uploadInput) {
-            // Listen for file selection - this fires BEFORE BearBlog processes the upload
+            // Listen for file selection - this fires when user selects files via the file dialog
             uploadInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
-                debugLog('File input change', { hasFile: !!file });
-                if (file) {
+                debugLog('File input change', { hasFile: !!file, fileName: file?.name });
+                if (file && file.type.startsWith('image/')) {
                     await processImageForAltText(file, 'file-input');
                 }
             });
@@ -582,7 +582,7 @@
 
             // If upload input doesn't exist yet, watch for it
             const observer = new MutationObserver((mutations, obs) => {
-                const input = document.getElementById('upload-image');
+                const input = document.getElementById('file');
                 if (input) {
                     debugLog('Upload input found via observer', 'attaching listener');
                     obs.disconnect();
@@ -592,24 +592,25 @@
             observer.observe(document.body, { childList: true, subtree: true });
         }
 
-        // Also listen for drag & drop on the textarea
-        const textarea = document.getElementById('body_content');
-        if (textarea) {
-            debugLog('Setting up drag & drop on textarea', true);
-
-            textarea.addEventListener('drop', async (e) => {
-                debugLog('Drop event', {
-                    hasFiles: e.dataTransfer?.files?.length > 0,
-                    types: Array.from(e.dataTransfer?.types || [])
-                });
-
-                const file = e.dataTransfer?.files?.[0];
-                if (file && file.type.startsWith('image/')) {
-                    await processImageForAltText(file, 'drag-drop');
-                }
+        // Listen for drag & drop on window (BearBlog uses window-level drop handler)
+        debugLog('Setting up window drop listener', true);
+        window.addEventListener('drop', async (e) => {
+            debugLog('Window drop event', {
+                hasFiles: e.dataTransfer?.files?.length > 0,
+                fileCount: e.dataTransfer?.files?.length,
+                types: Array.from(e.dataTransfer?.types || [])
             });
 
-            // Listen for paste events (for pasted images)
+            const file = e.dataTransfer?.files?.[0];
+            if (file && file.type.startsWith('image/')) {
+                await processImageForAltText(file, 'drag-drop');
+            }
+        });
+        debugLog('Window drop listener attached', 'success');
+
+        // Also listen for paste events on the textarea
+        const textarea = document.getElementById('body_content');
+        if (textarea) {
             textarea.addEventListener('paste', async (e) => {
                 debugLog('Paste event', {
                     hasItems: e.clipboardData?.items?.length > 0,
@@ -630,7 +631,7 @@
                 }
             });
 
-            debugLog('Drag & drop and paste listeners attached', 'success');
+            debugLog('Paste listener attached', 'success');
         }
     }
 
