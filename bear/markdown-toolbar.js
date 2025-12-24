@@ -104,6 +104,7 @@
         eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
         checkmark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 6 9 17l-5-5"/></svg>',
+        trash: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
     };
 
     // Button categories for settings panel
@@ -354,6 +355,14 @@
         return ''; // Default: empty
     }
 
+    function getAltTextLanguage() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.altTextLanguage === 'string') {
+            return userSettings.altTextLanguage;
+        }
+        return ''; // Default: empty (English)
+    }
+
     // ==========================================================================
     // AI ALT-TEXT GENERATION (OpenAI Vision)
     // ==========================================================================
@@ -366,7 +375,8 @@
 
     async function generateAltTextWithOpenAI(imageData, isBase64 = false) {
         const apiKey = getOpenAiApiKey();
-        debugLog('API Check', { hasKey: !!apiKey, keyLength: apiKey?.length });
+        const language = getAltTextLanguage();
+        debugLog('API Check', { hasKey: !!apiKey, keyLength: apiKey?.length, language });
 
         if (!apiKey) {
             console.warn('OpenAI API key not configured');
@@ -375,6 +385,12 @@
 
         const imageUrl = isBase64 ? imageData : imageData;
         debugLog('Image URL', { isBase64, urlPreview: imageUrl.substring(0, 100) + '...' });
+
+        // Build language instruction
+        const languageInstruction = language
+            ? `Write the alt-text in ${language.toUpperCase()} language.`
+            : '';
+        const systemPrompt = `You are an accessibility expert. Generate concise, descriptive alt-text for images. The alt-text should be 1-2 sentences, describing the key visual elements and context. Do not start with "Image of" or "Picture of". Just describe what is shown. ${languageInstruction} Respond with only the alt-text, no quotes or extra formatting.`;
 
         try {
             debugLog('Sending request', { model: 'gpt-4o-mini' });
@@ -390,7 +406,7 @@
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are an accessibility expert. Generate concise, descriptive alt-text for images. The alt-text should be 1-2 sentences, describing the key visual elements and context. Do not start with "Image of" or "Picture of". Just describe what is shown. Respond with only the alt-text, no quotes or extra formatting.'
+                            content: systemPrompt
                         },
                         {
                             role: 'user',
@@ -505,6 +521,77 @@
         });
     }
 
+    // Store pending alt-text for auto-replacement
+    let pendingAltText = null;
+    let lastTextareaValue = '';
+
+    // Watch textarea for BearBlog's image insertion and replace alt-text
+    function setupAltTextReplacement() {
+        const textarea = document.getElementById('body_content');
+        if (!textarea) return;
+
+        // Store initial value
+        lastTextareaValue = textarea.value;
+
+        // Listen for input events to detect when BearBlog inserts image markdown
+        textarea.addEventListener('input', () => {
+            if (!pendingAltText) return;
+
+            const newValue = textarea.value;
+            const oldValue = lastTextareaValue;
+
+            // Check if new content was added (BearBlog inserted something)
+            if (newValue.length > oldValue.length) {
+                // Look for newly inserted image markdown: ![something](url)
+                // The "something" is typically the filename that we want to replace
+                const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+                // Find all image markdowns in new value
+                const newMatches = [...newValue.matchAll(imageMarkdownRegex)];
+                const oldMatches = [...oldValue.matchAll(imageMarkdownRegex)];
+
+                // If there's a new image markdown that wasn't in old value
+                if (newMatches.length > oldMatches.length) {
+                    // Find the new one (last one is usually the newly inserted)
+                    const newMatch = newMatches[newMatches.length - 1];
+                    const fullMatch = newMatch[0];
+                    const currentAlt = newMatch[1];
+                    const url = newMatch[2];
+
+                    debugLog('New image detected', { currentAlt, url, pendingAltText });
+
+                    // Replace the alt-text with the generated one
+                    const newImageMarkdown = `![${pendingAltText}](${url})`;
+                    const updatedValue = newValue.replace(fullMatch, newImageMarkdown);
+
+                    if (updatedValue !== newValue) {
+                        // Store alt-text before clearing
+                        const insertedAltText = pendingAltText;
+
+                        // Clear pending alt-text BEFORE dispatching event to prevent re-triggering
+                        pendingAltText = null;
+
+                        textarea.value = updatedValue;
+                        lastTextareaValue = updatedValue; // Update before dispatch
+                        debugLog('Alt-text replaced', { from: currentAlt, to: insertedAltText });
+                        showAltTextNotification('✓ Alt-text inserted automatically', false, insertedAltText);
+
+                        // Trigger input event for BearBlog to detect change
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        return; // Exit early since we already updated lastTextareaValue
+                    }
+
+                    // Clear pending alt-text if replacement didn't happen
+                    pendingAltText = null;
+                }
+            }
+
+            lastTextareaValue = textarea.value;
+        });
+
+        debugLog('Alt-text replacement watcher setup', 'success');
+    }
+
     // Process an image file for alt-text generation
     async function processImageForAltText(file, source = 'unknown') {
         debugLog('Processing image', {
@@ -532,16 +619,27 @@
             const altText = await generateAltTextWithOpenAI(base64Data, true);
 
             if (altText) {
-                // Copy to clipboard
+                // Store for auto-replacement when BearBlog inserts the image
+                pendingAltText = altText;
+                debugLog('Pending alt-text set', altText);
+
+                // Also copy to clipboard as fallback
                 try {
                     await navigator.clipboard.writeText(altText);
                     debugLog('Copied to clipboard', altText);
-                    showAltTextNotification('✓ Alt-text ready - paste with Ctrl+V', false, altText);
+                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 } catch (clipboardError) {
                     debugLog('Clipboard error', clipboardError);
-                    // Fallback: show alt-text in notification for manual copy
-                    showAltTextNotification(`Alt-text: "${altText.substring(0, 50)}..."`, false, altText);
+                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 }
+
+                // Clear pending after timeout (in case BearBlog upload fails)
+                setTimeout(() => {
+                    if (pendingAltText === altText) {
+                        debugLog('Pending alt-text cleared (timeout)', altText);
+                        pendingAltText = null;
+                    }
+                }, 30000); // 30 second timeout
             } else {
                 showAltTextNotification('Failed to generate alt-text', true);
             }
@@ -682,6 +780,7 @@
         createCharCounter();
         setupKeyboardShortcuts();
         setupImageUploadObserver();
+        setupAltTextReplacement();
 
         // Hide Bear Blog default elements
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => {
@@ -732,12 +831,13 @@
         // Clear existing buttons (except keep the structure)
         $toolbar.innerHTML = '';
 
-        // Add action buttons (Publish, Save, Preview) if enabled
+        // Add action buttons (Publish, Save, Preview, Delete) if enabled
         if (isActionButtonsEnabled()) {
             const actionButtons = [
                 { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
                 { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
                 { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
+                { id: 'actionDelete', icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
             ];
 
             actionButtons.forEach(actionDef => {
@@ -1428,6 +1528,34 @@
         `;
         aiWrapper.appendChild(apiKeyInput);
 
+        // Language input
+        const langLabel = document.createElement('div');
+        langLabel.style.cssText = `
+            font-size: 12px;
+            color: ${isDark ? '#888' : '#666'};
+            margin-top: 10px;
+            margin-bottom: 6px;
+        `;
+        langLabel.textContent = 'Alt-Text Language (optional):';
+        aiWrapper.appendChild(langLabel);
+
+        const langInput = document.createElement('input');
+        langInput.type = 'text';
+        langInput.value = getAltTextLanguage();
+        langInput.placeholder = 'e.g. de, en, fr, it';
+        langInput.style.cssText = `
+            width: 100%;
+            padding: 8px;
+            border: 1px solid ${isDark ? '#444' : '#ccc'};
+            border-radius: 4px;
+            background: ${isDark ? '#01242e' : 'white'};
+            color: ${isDark ? '#ddd' : '#333'};
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            box-sizing: border-box;
+        `;
+        aiWrapper.appendChild(langInput);
+
         // Info text
         const aiInfo = document.createElement('div');
         aiInfo.style.cssText = `
@@ -1438,6 +1566,7 @@
         `;
         aiInfo.innerHTML = 'Uses OpenAI GPT-4o to generate descriptive alt-text for accessibility. ' +
             'Your API key is stored locally in your browser. ' +
+            'Leave language empty for English. ' +
             '<a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0969da;">Get an API key</a>';
         aiWrapper.appendChild(aiInfo);
 
@@ -1486,6 +1615,7 @@
             snippetTextarea.value = ''; // Default: empty snippet
             aiCheckbox.checked = false; // Default: AI alt-text disabled
             apiKeyInput.value = ''; // Default: no API key
+            langInput.value = ''; // Default: no language (English)
         };
 
         const saveBtn = document.createElement('button');
@@ -1517,7 +1647,8 @@
                 showCustomSnippet: snippetCheckbox.checked,
                 customSnippetText: snippetTextarea.value,
                 enableAiAltText: aiCheckbox.checked,
-                openAiApiKey: apiKeyInput.value
+                openAiApiKey: apiKeyInput.value,
+                altTextLanguage: langInput.value.trim().toLowerCase()
             });
             renderToolbarButtons();
 
@@ -1829,11 +1960,12 @@
             padding: 0;
         `;
 
-        // Action buttons (Publish, Save, Preview) - always visible in fullscreen
+        // Action buttons (Publish, Save, Preview, Delete) - always visible in fullscreen
         const actionButtons = [
             { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
             { icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
             { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
+            { icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
         ];
 
         actionButtons.forEach(actionDef => {
@@ -2340,6 +2472,37 @@
                 } else {
                     // No form found, just open preview
                     document.getElementById('preview')?.click();
+                }
+                break;
+            }
+
+            case 'deletePost': {
+                // Call BearBlog's deletePost function if it exists
+                if (typeof window.deletePost === 'function') {
+                    window.deletePost();
+                } else {
+                    // Fallback: click the delete button if it exists
+                    const deleteBtn = document.getElementById('delete-button');
+                    if (deleteBtn) {
+                        deleteBtn.click();
+                    } else {
+                        // Last resort: confirm and submit delete form
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            const form = $textarea.closest('form');
+                            if (form) {
+                                // Look for delete URL pattern in existing delete button onclick
+                                const existingDeleteBtn = document.querySelector('[id="delete-button"]');
+                                if (existingDeleteBtn) {
+                                    const onclick = existingDeleteBtn.getAttribute('onclick');
+                                    const match = onclick?.match(/action\s*=\s*['"]([^'"]+)['"]/);
+                                    if (match) {
+                                        form.action = match[1];
+                                        form.submit();
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
             }
