@@ -511,6 +511,120 @@
         }, timeout);
     }
 
+    // Lock editor during alt-text generation to prevent user input interference
+    let editorLocked = false;
+
+    function lockEditor() {
+        if (editorLocked) return;
+
+        const textarea = document.getElementById('body_content');
+        if (!textarea) return;
+
+        editorLocked = true;
+        debugLog('Editor locked', 'preventing user input during alt-text generation');
+
+        // Store cursor position before locking
+        textarea.dataset.lockedSelectionStart = textarea.selectionStart;
+        textarea.dataset.lockedSelectionEnd = textarea.selectionEnd;
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'md-editor-lock-overlay';
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999998;
+            pointer-events: all;
+            cursor: wait;
+        `;
+
+        // Create spinner and message
+        const message = document.createElement('div');
+        message.style.cssText = `
+            background: ${isDark ? '#1a1a1a' : 'white'};
+            color: ${isDark ? '#e0e0e0' : '#333'};
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: system-ui, sans-serif;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        `;
+        message.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+            <span>Generating alt-text...</span>
+        `;
+
+        // Add spin animation if not already present
+        if (!document.getElementById('md-spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'md-spin-style';
+            style.textContent = `@keyframes md-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+            document.head.appendChild(style);
+        }
+
+        overlay.appendChild(message);
+
+        // Position overlay relative to textarea
+        const wrapper = textarea.parentElement;
+        if (wrapper) {
+            const originalPosition = window.getComputedStyle(wrapper).position;
+            if (originalPosition === 'static') {
+                wrapper.style.position = 'relative';
+                wrapper.dataset.originalPosition = originalPosition;
+            }
+            wrapper.appendChild(overlay);
+        }
+
+        // Make textarea readonly and prevent focus
+        textarea.readOnly = true;
+        textarea.style.pointerEvents = 'none';
+    }
+
+    function unlockEditor() {
+        if (!editorLocked) return;
+
+        const textarea = document.getElementById('body_content');
+        const overlay = document.getElementById('md-editor-lock-overlay');
+
+        if (overlay) {
+            overlay.remove();
+        }
+
+        if (textarea) {
+            textarea.readOnly = false;
+            textarea.style.pointerEvents = '';
+
+            // Restore original wrapper position if changed
+            const wrapper = textarea.parentElement;
+            if (wrapper && wrapper.dataset.originalPosition) {
+                wrapper.style.position = wrapper.dataset.originalPosition;
+                delete wrapper.dataset.originalPosition;
+            }
+
+            // Restore cursor position
+            const start = parseInt(textarea.dataset.lockedSelectionStart || '0', 10);
+            const end = parseInt(textarea.dataset.lockedSelectionEnd || '0', 10);
+            textarea.setSelectionRange(start, end);
+            delete textarea.dataset.lockedSelectionStart;
+            delete textarea.dataset.lockedSelectionEnd;
+        }
+
+        editorLocked = false;
+        debugLog('Editor unlocked', 'user input restored');
+    }
+
     // Convert File to base64 data URL
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -576,6 +690,9 @@
                         debugLog('Alt-text replaced', { from: currentAlt, to: insertedAltText });
                         showAltTextNotification('✓ Alt-text inserted automatically', false, insertedAltText);
 
+                        // Unlock editor after successful alt-text insertion
+                        unlockEditor();
+
                         // Trigger input event for BearBlog to detect change
                         textarea.dispatchEvent(new Event('input', { bubbles: true }));
                         return; // Exit early since we already updated lastTextareaValue
@@ -583,6 +700,7 @@
 
                     // Clear pending alt-text if replacement didn't happen
                     pendingAltText = null;
+                    unlockEditor();
                 }
             }
 
@@ -606,8 +724,8 @@
             return;
         }
 
-        // Show "generating" notification
-        showAltTextNotification('Generating alt-text...');
+        // Lock editor to prevent user input during generation
+        lockEditor();
 
         try {
             // Convert file to base64 (parallel to BearBlog's upload)
@@ -627,25 +745,26 @@
                 try {
                     await navigator.clipboard.writeText(altText);
                     debugLog('Copied to clipboard', altText);
-                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 } catch (clipboardError) {
                     debugLog('Clipboard error', clipboardError);
-                    showAltTextNotification('Generating... alt-text will be inserted automatically', false);
                 }
 
-                // Clear pending after timeout (in case BearBlog upload fails)
+                // Clear pending and unlock after timeout (in case BearBlog upload fails)
                 setTimeout(() => {
                     if (pendingAltText === altText) {
                         debugLog('Pending alt-text cleared (timeout)', altText);
                         pendingAltText = null;
+                        unlockEditor();
                     }
                 }, 30000); // 30 second timeout
             } else {
                 showAltTextNotification('Failed to generate alt-text', true);
+                unlockEditor();
             }
         } catch (error) {
             debugLog('Processing error', { message: error.message, stack: error.stack });
             showAltTextNotification('Error processing image', true);
+            unlockEditor();
         }
     }
 
