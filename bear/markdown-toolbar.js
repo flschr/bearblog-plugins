@@ -107,6 +107,9 @@
         save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
         eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
+        // Frontmatter toggle icons
+        chevronUp: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m8 14 4-4 4 4"/></svg>',
+        chevronDown: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m16 10-4 4-4-4"/></svg>',
     };
 
     // Button categories for settings panel
@@ -329,6 +332,14 @@
         return CONFIG.autosave.enabled; // Default from config
     }
 
+    function isFrontmatterVisible() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showFrontmatter === 'boolean') {
+            return userSettings.showFrontmatter;
+        }
+        return true; // Default: visible
+    }
+
     // ==========================================================================
     // INITIALIZATION
     // ==========================================================================
@@ -368,6 +379,9 @@
 
         // Restore fullscreen mode if it was active before page reload
         checkFullscreenRestore();
+
+        // Apply initial frontmatter visibility
+        applyFrontmatterVisibility(isFrontmatterVisible());
     }
 
     // ==========================================================================
@@ -543,6 +557,32 @@
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
         $toolbar.appendChild(spacer);
+
+        // Frontmatter toggle button
+        const frontmatterVisible = isFrontmatterVisible();
+        const fmToggleBtn = document.createElement('button');
+        fmToggleBtn.type = 'button';
+        fmToggleBtn.className = 'md-btn md-frontmatter-toggle-btn';
+        fmToggleBtn.title = frontmatterVisible ? 'Hide Frontmatter' : 'Show Frontmatter';
+        fmToggleBtn.innerHTML = frontmatterVisible ? ICONS.chevronUp : ICONS.chevronDown;
+        fmToggleBtn.style.cssText = `
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            flex-shrink: 0;
+            background: ${isDark ? '#01242e' : 'white'};
+            color: ${isDark ? '#ddd' : '#444'};
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        `;
+        fmToggleBtn.addEventListener('click', toggleFrontmatter);
+        $toolbar.appendChild(fmToggleBtn);
 
         // Menu button
         $toolbar.appendChild(createMenuButton());
@@ -1230,6 +1270,35 @@
         autosaveLabel.appendChild(autosaveText);
         optionsGrid.appendChild(autosaveLabel);
 
+        // Frontmatter Toggle
+        const frontmatterLabel = document.createElement('label');
+        frontmatterLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        frontmatterLabel.onmouseover = () => frontmatterLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        frontmatterLabel.onmouseout = () => frontmatterLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const frontmatterCheckbox = document.createElement('input');
+        frontmatterCheckbox.type = 'checkbox';
+        frontmatterCheckbox.checked = isFrontmatterVisible();
+        frontmatterCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const frontmatterText = document.createElement('span');
+        frontmatterText.textContent = 'Show Frontmatter';
+
+        frontmatterLabel.appendChild(frontmatterCheckbox);
+        frontmatterLabel.appendChild(frontmatterText);
+        optionsGrid.appendChild(frontmatterLabel);
+
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -1268,6 +1337,7 @@
             fullscreenCheckbox.checked = true; // Default: fullscreen enabled
             actionCheckbox.checked = false; // Default: action buttons disabled
             autosaveCheckbox.checked = CONFIG.autosave.enabled; // Default from config
+            frontmatterCheckbox.checked = true; // Default: frontmatter visible
         };
 
         const saveBtn = document.createElement('button');
@@ -1296,7 +1366,8 @@
                 showCharCounter: counterCheckbox.checked,
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
-                enableAutosave: autosaveCheckbox.checked
+                enableAutosave: autosaveCheckbox.checked,
+                showFrontmatter: frontmatterCheckbox.checked
             });
             renderToolbarButtons();
 
@@ -1313,6 +1384,9 @@
             if (stickyControls) {
                 stickyControls.style.display = actionCheckbox.checked ? 'none' : '';
             }
+
+            // Update frontmatter visibility
+            applyFrontmatterVisibility(frontmatterCheckbox.checked);
 
             overlay.remove();
 
@@ -1342,6 +1416,45 @@
             }
         };
         document.addEventListener('keydown', escHandler);
+    }
+
+    // ==========================================================================
+    // FRONTMATTER TOGGLE
+    // ==========================================================================
+
+    function applyFrontmatterVisibility(visible) {
+        // Find the details element containing the frontmatter (Attributes section)
+        const detailsElement = document.querySelector('details');
+        if (detailsElement) {
+            detailsElement.style.display = visible ? '' : 'none';
+        }
+        // Update toggle button icon if it exists
+        updateFrontmatterToggleButton(visible);
+    }
+
+    function updateFrontmatterToggleButton(visible) {
+        const toggleBtn = document.querySelector('.md-frontmatter-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.innerHTML = visible ? ICONS.chevronUp : ICONS.chevronDown;
+            toggleBtn.title = visible ? 'Hide Frontmatter' : 'Show Frontmatter';
+        }
+    }
+
+    function toggleFrontmatter() {
+        const detailsElement = document.querySelector('details');
+        if (!detailsElement) return;
+
+        const isCurrentlyVisible = detailsElement.style.display !== 'none';
+        const newVisibility = !isCurrentlyVisible;
+
+        applyFrontmatterVisibility(newVisibility);
+
+        // Save the preference
+        const userSettings = loadUserSettings() || {};
+        saveUserSettings({
+            ...userSettings,
+            showFrontmatter: newVisibility
+        });
     }
 
     // ==========================================================================
