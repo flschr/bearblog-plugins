@@ -638,8 +638,10 @@
     // Store pending alt-text for auto-replacement
     let pendingAltText = null;
     let lastTextareaValue = '';
+    // Flag to indicate we're waiting for BearBlog to insert an image
+    let pendingImageUpload = false;
 
-    // Watch textarea for BearBlog's image insertion and replace alt-text
+    // Watch textarea for BearBlog's image insertion and generate alt-text using the uploaded URL
     function setupAltTextReplacement() {
         const textarea = document.getElementById('body_content');
         if (!textarea) return;
@@ -648,8 +650,12 @@
         lastTextareaValue = textarea.value;
 
         // Listen for input events to detect when BearBlog inserts image markdown
-        textarea.addEventListener('input', () => {
-            if (!pendingAltText) return;
+        textarea.addEventListener('input', async () => {
+            // Check if we're waiting for an image upload OR have pending alt-text
+            if (!pendingImageUpload && !pendingAltText) {
+                lastTextareaValue = textarea.value;
+                return;
+            }
 
             const newValue = textarea.value;
             const oldValue = lastTextareaValue;
@@ -657,7 +663,6 @@
             // Check if new content was added (BearBlog inserted something)
             if (newValue.length > oldValue.length) {
                 // Look for newly inserted image markdown: ![something](url)
-                // The "something" is typically the filename that we want to replace
                 const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
                 // Find all image markdowns in new value
@@ -670,39 +675,53 @@
                     const newMatch = newMatches[newMatches.length - 1];
                     const fullMatch = newMatch[0];
                     const currentAlt = newMatch[1];
-                    const url = newMatch[2];
+                    const imageUrl = newMatch[2];
 
-                    debugLog('New image detected', { currentAlt, url, pendingAltText });
+                    debugLog('New image detected', { currentAlt, imageUrl });
 
-                    // Replace the alt-text with the generated one
-                    const newImageMarkdown = `![${pendingAltText}](${url})`;
-                    const updatedValue = newValue.replace(fullMatch, newImageMarkdown);
-
-                    if (updatedValue !== newValue) {
-                        // Store alt-text before clearing
-                        const insertedAltText = pendingAltText;
-
-                        // Clear pending alt-text BEFORE dispatching event to prevent re-triggering
+                    // If we have pending alt-text (old flow), use it directly
+                    if (pendingAltText) {
+                        replaceAltText(textarea, fullMatch, imageUrl, pendingAltText, currentAlt);
                         pendingAltText = null;
-
-                        textarea.value = updatedValue;
-                        lastTextareaValue = updatedValue; // Update before dispatch
-                        debugLog('Alt-text replaced', { from: currentAlt, to: insertedAltText });
-                        showAltTextNotification('✓ Alt-text inserted automatically', false, insertedAltText);
-
-                        // Also update fullscreen textarea if it exists
-                        const fsTextarea = document.getElementById('md-fullscreen-textarea');
-                        if (fsTextarea) {
-                            fsTextarea.value = updatedValue;
-                        }
-
-                        // Trigger input event for BearBlog to detect change
-                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                        return; // Exit early since we already updated lastTextareaValue
+                        return;
                     }
 
-                    // Clear pending alt-text if replacement didn't happen
-                    pendingAltText = null;
+                    // New flow: generate alt-text using the uploaded image URL
+                    if (pendingImageUpload) {
+                        pendingImageUpload = false;
+
+                        // Lock editor during alt-text generation
+                        lockEditor();
+
+                        debugLog('Generating alt-text from URL', imageUrl);
+
+                        try {
+                            // Generate alt-text using the BearBlog-uploaded image URL (smaller, faster!)
+                            const altText = await generateAltTextWithOpenAI(imageUrl, false);
+
+                            if (altText) {
+                                // Re-read textarea value in case it changed during async operation
+                                const currentValue = textarea.value;
+                                const currentFullMatch = `![${currentAlt}](${imageUrl})`;
+
+                                if (currentValue.includes(currentFullMatch)) {
+                                    replaceAltText(textarea, currentFullMatch, imageUrl, altText, currentAlt);
+                                } else {
+                                    debugLog('Image markdown changed during generation', 'copying to clipboard');
+                                    await navigator.clipboard.writeText(altText);
+                                    showAltTextNotification('Alt-text copied to clipboard', false, altText);
+                                }
+                            } else {
+                                showAltTextNotification('Failed to generate alt-text', true);
+                            }
+                        } catch (error) {
+                            debugLog('Alt-text generation error', error);
+                            showAltTextNotification('Error generating alt-text', true);
+                        } finally {
+                            unlockEditor();
+                        }
+                        return;
+                    }
                 }
             }
 
@@ -712,8 +731,30 @@
         debugLog('Alt-text replacement watcher setup', 'success');
     }
 
-    // Process an image file for alt-text generation
-    async function processImageForAltText(file, source = 'unknown') {
+    // Helper function to replace alt-text in textarea
+    function replaceAltText(textarea, fullMatch, imageUrl, altText, oldAlt) {
+        const newImageMarkdown = `![${altText}](${imageUrl})`;
+        const updatedValue = textarea.value.replace(fullMatch, newImageMarkdown);
+
+        if (updatedValue !== textarea.value) {
+            textarea.value = updatedValue;
+            lastTextareaValue = updatedValue;
+            debugLog('Alt-text replaced', { from: oldAlt, to: altText });
+            showAltTextNotification('✓ Alt-text inserted automatically', false, altText);
+
+            // Also update fullscreen textarea if it exists
+            const fsTextarea = document.getElementById('md-fullscreen-textarea');
+            if (fsTextarea) {
+                fsTextarea.value = updatedValue;
+            }
+
+            // Trigger input event for BearBlog to detect change
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+
+    // Process an image file - just set flag, alt-text will be generated after BearBlog uploads
+    function processImageForAltText(file, source = 'unknown') {
         debugLog('Processing image', {
             source,
             name: file?.name,
@@ -726,51 +767,17 @@
             return;
         }
 
-        // Lock editor to prevent user input during generation
-        lockEditor();
+        // Set flag - we'll generate alt-text when BearBlog inserts the image markdown
+        pendingImageUpload = true;
+        debugLog('Pending image upload set', 'waiting for BearBlog to insert image');
 
-        try {
-            // Convert file to base64 (parallel to BearBlog's upload)
-            debugLog('Converting to base64', 'started');
-            const base64Data = await fileToBase64(file);
-            debugLog('Base64 ready', { length: base64Data.length });
-
-            // Send to OpenAI
-            const altText = await generateAltTextWithOpenAI(base64Data, true);
-
-            if (altText) {
-                // Store for auto-replacement when BearBlog inserts the image
-                pendingAltText = altText;
-                debugLog('Pending alt-text set', altText);
-
-                // Unlock editor immediately after alt-text is generated
-                // (user can continue working while BearBlog uploads the image)
-                unlockEditor();
-
-                // Also copy to clipboard as fallback
-                try {
-                    await navigator.clipboard.writeText(altText);
-                    debugLog('Copied to clipboard', altText);
-                } catch (clipboardError) {
-                    debugLog('Clipboard error', clipboardError);
-                }
-
-                // Clear pending alt-text after timeout (in case BearBlog upload fails)
-                setTimeout(() => {
-                    if (pendingAltText === altText) {
-                        debugLog('Pending alt-text cleared (timeout)', altText);
-                        pendingAltText = null;
-                    }
-                }, 30000); // 30 second timeout
-            } else {
-                showAltTextNotification('Failed to generate alt-text', true);
-                unlockEditor();
+        // Clear flag after timeout (in case BearBlog upload fails)
+        setTimeout(() => {
+            if (pendingImageUpload) {
+                debugLog('Pending image upload cleared (timeout)');
+                pendingImageUpload = false;
             }
-        } catch (error) {
-            debugLog('Processing error', { message: error.message, stack: error.stack });
-            showAltTextNotification('Error processing image', true);
-            unlockEditor();
-        }
+        }, 60000); // 60 second timeout for slow uploads
     }
 
     function setupImageUploadObserver() {
@@ -2256,9 +2263,9 @@
 
         // Sync content back to original textarea
         fsTextarea.addEventListener('input', () => {
-            // If there's a pending alt-text (image being uploaded), merge instead of overwrite
+            // If there's a pending image upload, merge instead of overwrite
             // to avoid losing BearBlog's image insertion
-            if (pendingAltText) {
+            if (pendingImageUpload) {
                 // Check if original textarea has new image that fullscreen doesn't have
                 const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
                 const originalImages = [...$textarea.value.matchAll(imageMarkdownRegex)];
