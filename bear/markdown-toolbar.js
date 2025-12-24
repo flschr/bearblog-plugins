@@ -103,6 +103,7 @@
         save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
         eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
+        checkmark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 6 9 17l-5-5"/></svg>',
     };
 
     // Button categories for settings panel
@@ -357,14 +358,27 @@
     // AI ALT-TEXT GENERATION (OpenAI Vision)
     // ==========================================================================
 
-    async function generateAltTextWithOpenAI(imageUrl) {
+    // Debug logging helper
+    function debugLog(stage, data) {
+        const timestamp = new Date().toISOString().substr(11, 12);
+        console.log(`[ALT-TEXT ${timestamp}] ${stage}:`, data);
+    }
+
+    async function generateAltTextWithOpenAI(imageData, isBase64 = false) {
         const apiKey = getOpenAiApiKey();
+        debugLog('API Check', { hasKey: !!apiKey, keyLength: apiKey?.length });
+
         if (!apiKey) {
             console.warn('OpenAI API key not configured');
             return null;
         }
 
+        const imageUrl = isBase64 ? imageData : imageData;
+        debugLog('Image URL', { isBase64, urlPreview: imageUrl.substring(0, 100) + '...' });
+
         try {
+            debugLog('Sending request', { model: 'gpt-4o-mini' });
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -399,28 +413,37 @@
                 })
             });
 
+            debugLog('Response status', { ok: response.ok, status: response.status });
+
             if (!response.ok) {
                 const error = await response.json();
+                debugLog('API Error', error);
                 console.error('OpenAI API error:', error);
                 return null;
             }
 
             const data = await response.json();
             const altText = data.choices?.[0]?.message?.content?.trim();
+            debugLog('Generated alt-text', { altText, length: altText?.length });
             return altText || null;
         } catch (error) {
+            debugLog('Exception', { message: error.message, stack: error.stack });
             console.error('Failed to generate alt-text:', error);
             return null;
         }
     }
 
-    function showAltTextNotification(message, isError = false) {
+    function showAltTextNotification(message, isError = false, altText = null) {
         // Remove existing notification if any
         const existing = document.getElementById('md-alttext-notification');
         if (existing) existing.remove();
 
         const notification = document.createElement('div');
         notification.id = 'md-alttext-notification';
+
+        const isClickable = altText !== null;
+        const bgColor = isError ? '#d32f2f' : (isClickable ? '#2e7d32' : (isDark ? '#004052' : '#0969da'));
+
         notification.style.cssText = `
             position: fixed;
             bottom: 60px;
@@ -435,113 +458,130 @@
             align-items: center;
             gap: 8px;
             transition: opacity 0.3s;
-            background: ${isError ? '#d32f2f' : (isDark ? '#004052' : '#0969da')};
+            background: ${bgColor};
             color: white;
+            ${isClickable ? 'cursor: pointer;' : ''}
         `;
+
+        const icon = isError ? ICONS.caution : (isClickable ? ICONS.checkmark : ICONS.info);
         notification.innerHTML = `
-            <span style="display:flex;">${isError ? ICONS.caution : ICONS.info}</span>
+            <span style="display:flex;">${icon}</span>
             <span>${message}</span>
+            ${isClickable ? '<span style="opacity:0.7;font-size:11px;margin-left:8px;">(click to copy again)</span>' : ''}
         `;
+
+        // If clickable, add click handler to copy alt-text again
+        if (isClickable && altText) {
+            notification.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(altText);
+                    notification.querySelector('span:last-child').textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        notification.querySelector('span:last-child').textContent = '(click to copy again)';
+                    }, 1000);
+                } catch (e) {
+                    debugLog('Clipboard error on click', e);
+                }
+            });
+        }
 
         document.body.appendChild(notification);
 
-        // Auto-remove after 4 seconds
+        // Auto-remove after longer time if clickable (user might want to use it)
+        const timeout = isClickable ? 10000 : 4000;
         setTimeout(() => {
             notification.style.opacity = '0';
             setTimeout(() => notification.remove(), 300);
-        }, 4000);
+        }, timeout);
+    }
+
+    // Convert File to base64 data URL
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     function setupImageUploadObserver() {
-        if (!isAiAltTextEnabled() || !getOpenAiApiKey()) return;
+        debugLog('Setup', {
+            aiEnabled: isAiAltTextEnabled(),
+            hasApiKey: !!getOpenAiApiKey()
+        });
 
-        // Track URLs we've already processed to avoid duplicates
-        const processedUrls = new Set();
-        let isProcessing = false;
+        if (!isAiAltTextEnabled() || !getOpenAiApiKey()) {
+            debugLog('Setup skipped', 'AI alt-text disabled or no API key');
+            return;
+        }
 
-        const checkForNewImages = async () => {
-            if (isProcessing) return;
+        // Find the BearBlog upload input
+        const uploadInput = document.getElementById('upload-image');
+        debugLog('Upload input found', !!uploadInput);
 
-            const currentContent = $textarea.value;
-
-            // Look for image markdown with empty alt-text OR filename as alt-text
-            // Matches: ![](url) or ![filename.jpg](url) or ![IMG_1234.png](url)
-            const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
-            let match;
-            const matches = [];
-
-            while ((match = imagePattern.exec(currentContent)) !== null) {
-                const altText = match[1];
-                const imageUrl = match[2];
-
-                // Skip if already processed
-                if (processedUrls.has(imageUrl)) continue;
-
-                // Skip if not a valid image URL
-                if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) &&
-                    !imageUrl.includes('media.bearblog.dev')) {
-                    continue;
-                }
-
-                // Only process if alt-text is empty OR looks like a filename
-                // Filename pattern: contains a dot followed by common image extension
-                const isEmptyAlt = altText.trim() === '';
-                const isFilenameAlt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff?|heic)$/i.test(altText.trim());
-
-                if (!isEmptyAlt && !isFilenameAlt) {
-                    // Alt-text exists and is not a filename, skip (user probably wrote it)
-                    continue;
-                }
-
-                matches.push({
-                    fullMatch: match[0],
-                    imageUrl: imageUrl
+        if (uploadInput) {
+            // Listen for file selection - this fires BEFORE BearBlog processes the upload
+            uploadInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                debugLog('File selected', {
+                    name: file?.name,
+                    type: file?.type,
+                    size: file?.size
                 });
-            }
 
-            // Process each new image
-            for (const { fullMatch, imageUrl } of matches) {
-                isProcessing = true;
-                processedUrls.add(imageUrl);
+                if (!file || !file.type.startsWith('image/')) {
+                    debugLog('Not an image file', file?.type);
+                    return;
+                }
 
+                // Show "generating" notification
                 showAltTextNotification('Generating alt-text...');
 
-                // Generate alt-text
-                const altText = await generateAltTextWithOpenAI(imageUrl);
+                try {
+                    // Convert file to base64 (parallel to BearBlog's upload)
+                    debugLog('Converting to base64', 'started');
+                    const base64Data = await fileToBase64(file);
+                    debugLog('Base64 ready', { length: base64Data.length });
 
-                if (altText) {
-                    // Escape special characters in alt-text for markdown
-                    const safeAltText = altText.replace(/[\[\]]/g, '');
+                    // Send to OpenAI
+                    const altText = await generateAltTextWithOpenAI(base64Data, true);
 
-                    // Replace the placeholder alt-text (empty or filename) with the generated one
-                    const newMarkdown = `![${safeAltText}](${imageUrl})`;
-                    const updatedContent = $textarea.value.replace(fullMatch, newMarkdown);
-
-                    // Update textarea
-                    const cursorPos = $textarea.selectionStart;
-                    $textarea.value = updatedContent;
-                    $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-                    // Restore cursor position (adjusted for new content length)
-                    const lengthDiff = newMarkdown.length - fullMatch.length;
-                    const newPos = Math.max(0, cursorPos + lengthDiff);
-                    $textarea.setSelectionRange(newPos, newPos);
-
-                    showAltTextNotification('Alt-text generated!');
-                } else {
-                    showAltTextNotification('Failed to generate alt-text', true);
+                    if (altText) {
+                        // Copy to clipboard
+                        try {
+                            await navigator.clipboard.writeText(altText);
+                            debugLog('Copied to clipboard', altText);
+                            showAltTextNotification('✓ Alt-text ready - paste with Ctrl+V', false, altText);
+                        } catch (clipboardError) {
+                            debugLog('Clipboard error', clipboardError);
+                            // Fallback: show alt-text in notification for manual copy
+                            showAltTextNotification(`Alt-text: "${altText.substring(0, 50)}..."`, false, altText);
+                        }
+                    } else {
+                        showAltTextNotification('Failed to generate alt-text', true);
+                    }
+                } catch (error) {
+                    debugLog('Processing error', { message: error.message, stack: error.stack });
+                    showAltTextNotification('Error processing image', true);
                 }
+            });
 
-                isProcessing = false;
-            }
-        };
+            debugLog('Upload listener attached', 'success');
+        } else {
+            debugLog('Upload input not found', 'will retry on mutation');
 
-        // Listen to input events on textarea
-        $textarea.addEventListener('input', () => {
-            // Debounce to avoid processing while user is typing
-            clearTimeout($textarea._altTextDebounce);
-            $textarea._altTextDebounce = setTimeout(checkForNewImages, 500);
-        });
+            // If upload input doesn't exist yet, watch for it
+            const observer = new MutationObserver((mutations, obs) => {
+                const input = document.getElementById('upload-image');
+                if (input) {
+                    debugLog('Upload input found via observer', 'attaching listener');
+                    obs.disconnect();
+                    setupImageUploadObserver(); // Re-run setup
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
     }
 
     // Track original content for unsaved changes detection
