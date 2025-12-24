@@ -5,7 +5,7 @@
  * - Modular button registry (easily extensible)
  * - Configurable buttons (show/hide individual buttons)
  * - Undo-compatible text insertion (execCommand)
- * - Autosave with draft recovery
+ * - Fullscreen editing mode
  * - GitHub-style admonitions (Info/Warning/Caution)
  * - Dark mode support
  */
@@ -57,13 +57,6 @@
             'admonitionWarning',
             'admonitionCaution',
         ],
-
-        // Autosave settings
-        autosave: {
-            enabled: true,
-            intervalMs: 3000,  // Save 3 seconds after last edit
-            maxAgeHours: 48,   // Delete drafts older than 48 hours
-        },
 
         // Character counter thresholds (for meta description)
         charCounter: {
@@ -262,7 +255,6 @@
     // ==========================================================================
 
     let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let autosaveTimer = null;
     let $textarea = null;
     let $toolbar = null;
 
@@ -322,14 +314,6 @@
             return userSettings.showActionButtons;
         }
         return false; // Default: disabled (use original Bear Blog controls)
-    }
-
-    function isAutosaveEnabled() {
-        const userSettings = loadUserSettings();
-        if (userSettings && typeof userSettings.enableAutosave === 'boolean') {
-            return userSettings.enableAutosave;
-        }
-        return CONFIG.autosave.enabled; // Default from config
     }
 
     function isCustomSnippetEnabled() {
@@ -393,10 +377,6 @@
 
         createToolbar();
         createCharCounter();
-        if (isAutosaveEnabled()) {
-            setupAutosave();
-            checkForDraft();
-        }
         setupKeyboardShortcuts();
 
         // Hide Bear Blog default elements
@@ -797,227 +777,6 @@
     }
 
     // ==========================================================================
-    // AUTOSAVE
-    // ==========================================================================
-
-    function getPostId() {
-        // Extract post ID from URL: /dashboard/posts/ABC123/
-        const match = window.location.pathname.match(/\/posts\/([a-zA-Z0-9]+)/);
-        if (match) return `post_${match[1]}`;
-
-        // For new posts, use a generic key
-        if (window.location.pathname.includes('/new/')) {
-            return 'new_post';
-        }
-
-        return null;
-    }
-
-    function getDraftKey() {
-        const postId = getPostId();
-        return postId ? `bear_draft_${postId}` : null;
-    }
-
-    function setupAutosave() {
-        // This function is only called if autosave is enabled (checked in init)
-        const draftKey = getDraftKey();
-        if (!draftKey) return;
-
-        $textarea.addEventListener('input', () => {
-            clearTimeout(autosaveTimer);
-            autosaveTimer = setTimeout(() => {
-                saveDraft();
-            }, CONFIG.autosave.intervalMs);
-        });
-
-        // Clear draft on successful form submit
-        const form = $textarea.closest('form');
-        if (form) {
-            form.addEventListener('submit', () => {
-                clearDraft();
-                // Update original content on save
-                updateOriginalContent();
-            });
-        }
-    }
-
-    function saveDraft() {
-        const draftKey = getDraftKey();
-        if (!draftKey) return;
-
-        const content = $textarea.value;
-        if (!content.trim()) {
-            clearDraft();
-            return;
-        }
-
-        try {
-            localStorage.setItem(draftKey, JSON.stringify({
-                content: content,
-                timestamp: Date.now(),
-                url: window.location.pathname
-            }));
-            showAutosaveIndicator();
-        } catch (e) {
-            // localStorage might be full or unavailable
-        }
-    }
-
-    function clearDraft() {
-        const draftKey = getDraftKey();
-        if (draftKey) {
-            try {
-                localStorage.removeItem(draftKey);
-            } catch (e) {}
-        }
-    }
-
-    function checkForDraft() {
-        // This function is only called if autosave is enabled (checked in init)
-        const draftKey = getDraftKey();
-        if (!draftKey) return;
-
-        try {
-            const saved = localStorage.getItem(draftKey);
-            if (!saved) return;
-
-            const draft = JSON.parse(saved);
-            const ageHours = (Date.now() - draft.timestamp) / (1000 * 60 * 60);
-
-            // Delete old drafts
-            if (ageHours > CONFIG.autosave.maxAgeHours) {
-                clearDraft();
-                return;
-            }
-
-            // Check if current content differs from draft
-            const currentContent = $textarea.value;
-            if (draft.content === currentContent) {
-                return; // No need to restore
-            }
-
-            // Show restore dialog
-            showRestoreDialog(draft);
-
-        } catch (e) {}
-    }
-
-    function showRestoreDialog(draft) {
-        const ageMinutes = Math.round((Date.now() - draft.timestamp) / (1000 * 60));
-        let ageText;
-
-        if (ageMinutes < 60) {
-            ageText = `${ageMinutes} minute${ageMinutes !== 1 ? 's' : ''} ago`;
-        } else {
-            const hours = Math.round(ageMinutes / 60);
-            ageText = `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-        }
-
-        const dialog = document.createElement('div');
-        dialog.className = 'md-restore-dialog';
-        dialog.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: ${isDark ? '#01242e' : 'white'};
-            border: 2px solid ${isDark ? '#0969da' : '#0969da'};
-            border-radius: 8px;
-            padding: 16px 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 10004;
-            font-family: system-ui, sans-serif;
-            max-width: 400px;
-        `;
-
-        dialog.innerHTML = `
-            <div style="display:flex;align-items:flex-start;gap:12px;">
-                <span style="color:#0969da;flex-shrink:0;">${ICONS.info}</span>
-                <div>
-                    <div style="font-weight:600;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;">
-                        Unsaved draft found
-                    </div>
-                    <div style="font-size:13px;color:${isDark ? '#aaa' : '#666'};margin-bottom:12px;">
-                        Last saved ${ageText}
-                    </div>
-                    <div style="display:flex;gap:8px;">
-                        <button class="md-restore-btn" style="
-                            padding: 6px 14px;
-                            background: #0969da;
-                            color: white;
-                            border: none;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 13px;
-                            font-weight: 500;
-                        ">Restore</button>
-                        <button class="md-discard-btn" style="
-                            padding: 6px 14px;
-                            background: transparent;
-                            color: ${isDark ? '#aaa' : '#666'};
-                            border: 1px solid ${isDark ? '#555' : '#ccc'};
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 13px;
-                        ">Discard</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(dialog);
-
-        dialog.querySelector('.md-restore-btn').addEventListener('click', () => {
-            $textarea.value = draft.content;
-            $textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            // Also update fullscreen textarea if it exists
-            const fsTextarea = document.getElementById('md-fullscreen-textarea');
-            if (fsTextarea) {
-                fsTextarea.value = draft.content;
-            }
-            // Update original content to match restored draft
-            updateOriginalContent();
-            dialog.remove();
-        });
-
-        dialog.querySelector('.md-discard-btn').addEventListener('click', () => {
-            clearDraft();
-            dialog.remove();
-        });
-    }
-
-    function showAutosaveIndicator() {
-        let indicator = document.getElementById('md-autosave-indicator');
-
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'md-autosave-indicator';
-            indicator.style.cssText = `
-                position: fixed;
-                bottom: 60px;
-                right: 20px;
-                padding: 4px 10px;
-                background: ${isDark ? '#004052' : '#e8f5e9'};
-                color: ${isDark ? '#8bc34a' : '#2e7d32'};
-                border-radius: 4px;
-                font-size: 12px;
-                font-family: system-ui, sans-serif;
-                opacity: 0;
-                transition: opacity 0.3s;
-                z-index: 999998;
-            `;
-            document.body.appendChild(indicator);
-        }
-
-        indicator.textContent = 'Draft saved';
-        indicator.style.opacity = '1';
-
-        setTimeout(() => {
-            indicator.style.opacity = '0';
-        }, 2000);
-    }
-
-    // ==========================================================================
     // SETTINGS PANEL
     // ==========================================================================
 
@@ -1274,35 +1033,6 @@
         actionLabel.appendChild(actionText);
         optionsGrid.appendChild(actionLabel);
 
-        // Autosave Toggle
-        const autosaveLabel = document.createElement('label');
-        autosaveLabel.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            background: ${isDark ? '#002530' : '#f8f9fa'};
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            color: ${isDark ? '#ddd' : '#444'};
-            transition: background 0.15s;
-        `;
-        autosaveLabel.onmouseover = () => autosaveLabel.style.background = isDark ? '#003545' : '#eef0f2';
-        autosaveLabel.onmouseout = () => autosaveLabel.style.background = isDark ? '#002530' : '#f8f9fa';
-
-        const autosaveCheckbox = document.createElement('input');
-        autosaveCheckbox.type = 'checkbox';
-        autosaveCheckbox.checked = isAutosaveEnabled();
-        autosaveCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
-
-        const autosaveText = document.createElement('span');
-        autosaveText.textContent = 'Enable Auto-Save';
-
-        autosaveLabel.appendChild(autosaveCheckbox);
-        autosaveLabel.appendChild(autosaveText);
-        optionsGrid.appendChild(autosaveLabel);
-
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -1422,7 +1152,6 @@
             counterCheckbox.checked = true; // Default: counter enabled
             fullscreenCheckbox.checked = true; // Default: fullscreen enabled
             actionCheckbox.checked = false; // Default: action buttons disabled
-            autosaveCheckbox.checked = CONFIG.autosave.enabled; // Default from config
             snippetCheckbox.checked = false; // Default: custom snippet disabled
             snippetTextarea.value = ''; // Default: empty snippet
         };
@@ -1453,7 +1182,6 @@
                 showCharCounter: counterCheckbox.checked,
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
-                enableAutosave: autosaveCheckbox.checked,
                 showCustomSnippet: snippetCheckbox.checked,
                 customSnippetText: snippetTextarea.value
             });
@@ -1474,11 +1202,6 @@
             }
 
             overlay.remove();
-
-            // Notify user about autosave changes (requires page reload)
-            if (autosaveCheckbox.checked !== isAutosaveEnabled()) {
-                // Note: Autosave change takes effect on page reload
-            }
         };
 
         actions.appendChild(resetBtn);
@@ -1599,7 +1322,6 @@
         // Discard - navigate without saving
         panel.querySelector('.md-dialog-discard').addEventListener('click', () => {
             dialog.remove();
-            clearDraft();
             navigateBack();
         });
 
@@ -1645,8 +1367,6 @@
                 hiddenHeaderContent.value = headerContent.innerText;
             }
 
-            // Clear draft before saving (programmatic submit doesn't trigger 'submit' event)
-            clearDraft();
             updateOriginalContent();
 
             // Store back navigation URL for after page reload
@@ -1842,6 +1562,30 @@
             header.appendChild(btn);
         });
 
+        // Custom snippet button (after formatting buttons, like normal toolbar)
+        if (isCustomSnippetEnabled()) {
+            const snippetBtn = document.createElement('button');
+            snippetBtn.type = 'button';
+            snippetBtn.title = 'Insert Custom Snippet';
+            snippetBtn.innerHTML = ICONS.heart;
+            snippetBtn.style.cssText = buttonStyle();
+            snippetBtn.style.color = '#e91e63';
+            snippetBtn.addEventListener('click', () => {
+                const snippet = getCustomSnippetText();
+                if (snippet) {
+                    // Temporarily switch textarea reference
+                    const originalTextarea = $textarea;
+                    $textarea = fsTextarea;
+                    insertText(snippet);
+                    $textarea = originalTextarea;
+                    // Sync back
+                    originalTextarea.value = fsTextarea.value;
+                    originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            header.appendChild(snippetBtn);
+        }
+
         // Separator before exit button (same position as fullscreen button in normal mode)
         const exitSeparator = document.createElement('div');
         exitSeparator.style.cssText = `
@@ -1861,7 +1605,12 @@
         // Event listener added after exitFullscreen is defined
         header.appendChild(exitBtn);
 
-        // Back button in fullscreen (after exit button, consistent with normal toolbar)
+        // Spacer (pushes remaining items to right)
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        header.appendChild(spacer);
+
+        // Back button in fullscreen (after spacer, on right side - consistent with normal toolbar)
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
         backBtn.title = 'Back';
@@ -1880,10 +1629,86 @@
         });
         header.appendChild(backBtn);
 
-        // Spacer (pushes remaining items to right)
-        const spacer = document.createElement('div');
-        spacer.style.flex = '1';
-        header.appendChild(spacer);
+        // Menu button (last, consistent with normal toolbar)
+        const menuWrapper = document.createElement('div');
+        menuWrapper.style.position = 'relative';
+
+        const menuBtn = document.createElement('button');
+        menuBtn.type = 'button';
+        menuBtn.title = 'More...';
+        menuBtn.innerHTML = ICONS.more;
+        menuBtn.style.cssText = buttonStyle();
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'md-dropdown';
+        dropdown.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 36px;
+            right: 0;
+            background: ${isDark ? '#01242e' : 'white'};
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            min-width: 180px;
+            z-index: 1000;
+            padding: 4px 0;
+        `;
+
+        MENU_ITEMS.forEach(item => {
+            // Add separator before item if specified
+            if (item.separator) {
+                const sep = document.createElement('div');
+                sep.style.cssText = `height: 1px; background: ${isDark ? '#333' : '#eee'}; margin: 4px 0;`;
+                dropdown.appendChild(sep);
+            }
+
+            const menuItem = document.createElement('div');
+            menuItem.style.cssText = `
+                padding: 10px 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 13px;
+                color: ${isDark ? '#ddd' : '#444'};
+            `;
+            menuItem.innerHTML = `<span style="display:flex;width:18px;">${item.icon}</span><span>${item.text}</span>`;
+
+            menuItem.addEventListener('click', () => {
+                // Sync content before action
+                $textarea.value = fsTextarea.value;
+                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                handleAction(item.action);
+                dropdown.style.display = 'none';
+            });
+
+            menuItem.addEventListener('mouseover', () => {
+                menuItem.style.background = isDark ? '#004052' : '#f5f5f5';
+            });
+            menuItem.addEventListener('mouseout', () => {
+                menuItem.style.background = 'transparent';
+            });
+
+            dropdown.appendChild(menuItem);
+        });
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Close dropdown when clicking outside
+        overlay.addEventListener('click', (e) => {
+            if (!menuWrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        menuWrapper.appendChild(menuBtn);
+        menuWrapper.appendChild(dropdown);
+        header.appendChild(menuWrapper);
+
         overlay.appendChild(header);
 
         // Append textarea to overlay
@@ -2193,8 +2018,6 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
-                    // Clear draft before submitting since content is being saved
-                    clearDraft();
                     form.submit();
                 }
                 break;
@@ -2211,8 +2034,6 @@
                     if (headerContent && hiddenHeaderContent) {
                         hiddenHeaderContent.value = headerContent.innerText;
                     }
-                    // Clear draft before submitting since content is being saved
-                    clearDraft();
                     form.submit();
                 }
                 break;
@@ -2238,8 +2059,6 @@
                         body: formData
                     }).then(response => {
                         if (response.ok) {
-                            // Clear local draft after successful save
-                            clearDraft();
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
                             // Open preview after save completes
