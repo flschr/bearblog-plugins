@@ -2530,13 +2530,22 @@
             return;
         }
 
-        // Get preview URL from the existing preview button
-        const previewBtn = document.getElementById('preview');
-        if (!previewBtn || !previewBtn.href) {
-            console.warn('Preview button not found or has no href');
+        // Bear Blog uses POST for preview - we need to get the current content and submit it
+        const headerContent = document.getElementById('header_content');
+        const bodyContent = document.getElementById('body_content');
+        if (!headerContent || !bodyContent) {
+            console.warn('Could not find header_content or body_content elements');
             return;
         }
-        const previewUrl = previewBtn.href;
+
+        // Build preview URL - Bear Blog uses /username/dashboard/preview/?type=post
+        // Extract username from current URL path
+        const pathMatch = window.location.pathname.match(/^\/([^\/]+)\/dashboard/);
+        if (!pathMatch) {
+            console.warn('Could not determine dashboard path for preview');
+            return;
+        }
+        const previewUrl = `/${pathMatch[1]}/dashboard/preview/?type=post`;
 
         // Create overlay container
         const overlay = document.createElement('div');
@@ -2606,7 +2615,7 @@
 
         // Create iframe for preview content
         const iframe = document.createElement('iframe');
-        iframe.src = previewUrl;
+        iframe.name = 'md-inline-preview-iframe';
         iframe.style.cssText = `
             flex: 1;
             width: 100%;
@@ -2620,6 +2629,29 @@
 
         // Add overlay to page
         document.body.appendChild(overlay);
+
+        // Create and submit form to load preview content via POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = previewUrl;
+        form.target = 'md-inline-preview-iframe';
+        form.style.display = 'none';
+
+        const headerInput = document.createElement('input');
+        headerInput.type = 'hidden';
+        headerInput.name = 'header_content';
+        headerInput.value = headerContent.innerText;
+        form.appendChild(headerInput);
+
+        const bodyInput = document.createElement('input');
+        bodyInput.type = 'hidden';
+        bodyInput.name = 'body_content';
+        bodyInput.value = bodyContent.value;
+        form.appendChild(bodyInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
 
         // Register with dialog stack for ESC key handling
         pushDialog(overlay, closeInlinePreview);
