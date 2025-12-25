@@ -449,7 +449,7 @@
         }
     }
 
-    function showAltTextNotification(message, isError = false, altText = null) {
+    function showAltTextNotification(message, isError = false, altText = null, isLoading = false) {
         // Remove existing notification if any
         const existing = document.getElementById('md-alttext-notification');
         if (existing) existing.remove();
@@ -457,8 +457,16 @@
         const notification = document.createElement('div');
         notification.id = 'md-alttext-notification';
 
-        const isClickable = altText !== null;
-        const bgColor = isError ? '#d32f2f' : (isClickable ? '#2e7d32' : (isDark ? '#004052' : '#0969da'));
+        // Add spin animation if not already present
+        if (!document.getElementById('md-spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'md-spin-style';
+            style.textContent = `@keyframes md-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+            document.head.appendChild(style);
+        }
+
+        const hasAltText = altText !== null;
+        const bgColor = isError ? '#d32f2f' : (hasAltText ? '#2e7d32' : (isDark ? '#004052' : '#0969da'));
 
         notification.style.cssText = `
             position: fixed;
@@ -472,157 +480,106 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             transition: opacity 0.3s;
             background: ${bgColor};
             color: white;
-            ${isClickable ? 'cursor: pointer;' : ''}
         `;
 
-        const icon = isError ? ICONS.caution : (isClickable ? ICONS.checkmark : ICONS.info);
+        // Build notification content
+        let iconHtml;
+        if (isLoading) {
+            iconHtml = `<svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite; flex-shrink: 0;">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>`;
+        } else if (isError) {
+            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.caution}</span>`;
+        } else if (hasAltText) {
+            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.checkmark}</span>`;
+        } else {
+            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.info}</span>`;
+        }
+
         notification.innerHTML = `
-            <span style="display:flex;">${icon}</span>
-            <span>${message}</span>
-            ${isClickable ? '<span style="opacity:0.7;font-size:11px;margin-left:8px;">(click to copy again)</span>' : ''}
+            ${iconHtml}
+            <span style="flex: 1;">${message}</span>
         `;
 
-        // If clickable, add click handler to copy alt-text again
-        if (isClickable && altText) {
-            notification.addEventListener('click', async () => {
+        // Add Copy button and Close button for successful alt-text
+        if (hasAltText) {
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy';
+            copyBtn.style.cssText = `
+                background: rgba(255,255,255,0.2);
+                border: 1px solid rgba(255,255,255,0.3);
+                color: white;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: background 0.2s;
+            `;
+            copyBtn.addEventListener('mouseenter', () => {
+                copyBtn.style.background = 'rgba(255,255,255,0.3)';
+            });
+            copyBtn.addEventListener('mouseleave', () => {
+                copyBtn.style.background = 'rgba(255,255,255,0.2)';
+            });
+            copyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 try {
                     await navigator.clipboard.writeText(altText);
-                    notification.querySelector('span:last-child').textContent = '✓ Copied!';
+                    copyBtn.textContent = '✓ Copied!';
                     setTimeout(() => {
-                        notification.querySelector('span:last-child').textContent = '(click to copy again)';
-                    }, 1000);
-                } catch (e) {
-                    debugLog('Clipboard error on click', e);
+                        copyBtn.textContent = 'Copy';
+                    }, 1500);
+                } catch (err) {
+                    debugLog('Clipboard error on click', err);
                 }
             });
+            notification.appendChild(copyBtn);
+
+            // Close button (X)
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = `
+                background: transparent;
+                border: none;
+                color: rgba(255,255,255,0.7);
+                padding: 4px 6px;
+                cursor: pointer;
+                font-size: 16px;
+                line-height: 1;
+                margin-left: 4px;
+                transition: color 0.2s;
+            `;
+            closeBtn.addEventListener('mouseenter', () => {
+                closeBtn.style.color = 'white';
+            });
+            closeBtn.addEventListener('mouseleave', () => {
+                closeBtn.style.color = 'rgba(255,255,255,0.7)';
+            });
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            });
+            notification.appendChild(closeBtn);
         }
 
         document.body.appendChild(notification);
 
-        // Auto-remove after longer time if clickable (user might want to use it)
-        const timeout = isClickable ? 10000 : 4000;
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-        }, timeout);
-    }
-
-    // Lock editor during alt-text generation to prevent user input interference
-    let editorLocked = false;
-
-    function lockEditor() {
-        if (editorLocked) return;
-
-        const textarea = document.getElementById('body_content');
-        if (!textarea) return;
-
-        editorLocked = true;
-        debugLog('Editor locked', 'preventing user input during alt-text generation');
-
-        // Store cursor position before locking
-        textarea.dataset.lockedSelectionStart = textarea.selectionStart;
-        textarea.dataset.lockedSelectionEnd = textarea.selectionEnd;
-
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.id = 'md-editor-lock-overlay';
-        overlay.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 999998;
-            pointer-events: all;
-            cursor: wait;
-        `;
-
-        // Create spinner and message
-        const message = document.createElement('div');
-        message.style.cssText = `
-            background: ${isDark ? '#1a1a1a' : 'white'};
-            color: ${isDark ? '#e0e0e0' : '#333'};
-            padding: 16px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: system-ui, sans-serif;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        `;
-        message.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-            </svg>
-            <span>Generating alt-text...</span>
-        `;
-
-        // Add spin animation if not already present
-        if (!document.getElementById('md-spin-style')) {
-            const style = document.createElement('style');
-            style.id = 'md-spin-style';
-            style.textContent = `@keyframes md-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
-            document.head.appendChild(style);
+        // Auto-remove only for errors and loading states (loading will be replaced)
+        // Success with alt-text stays until manually closed
+        if (isError) {
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
         }
-
-        overlay.appendChild(message);
-
-        // Position overlay relative to textarea
-        const wrapper = textarea.parentElement;
-        if (wrapper) {
-            const originalPosition = window.getComputedStyle(wrapper).position;
-            if (originalPosition === 'static') {
-                wrapper.style.position = 'relative';
-                wrapper.dataset.originalPosition = originalPosition;
-            }
-            wrapper.appendChild(overlay);
-        }
-
-        // Make textarea readonly and prevent focus
-        textarea.readOnly = true;
-        textarea.style.pointerEvents = 'none';
-    }
-
-    function unlockEditor() {
-        if (!editorLocked) return;
-
-        const textarea = document.getElementById('body_content');
-        const overlay = document.getElementById('md-editor-lock-overlay');
-
-        if (overlay) {
-            overlay.remove();
-        }
-
-        if (textarea) {
-            textarea.readOnly = false;
-            textarea.style.pointerEvents = '';
-
-            // Restore original wrapper position if changed
-            const wrapper = textarea.parentElement;
-            if (wrapper && wrapper.dataset.originalPosition) {
-                wrapper.style.position = wrapper.dataset.originalPosition;
-                delete wrapper.dataset.originalPosition;
-            }
-
-            // Restore cursor position
-            const start = parseInt(textarea.dataset.lockedSelectionStart || '0', 10);
-            const end = parseInt(textarea.dataset.lockedSelectionEnd || '0', 10);
-            textarea.setSelectionRange(start, end);
-            delete textarea.dataset.lockedSelectionStart;
-            delete textarea.dataset.lockedSelectionEnd;
-        }
-
-        editorLocked = false;
-        debugLog('Editor unlocked', 'user input restored');
+        // Loading and success with altText: no auto-remove (persistent)
     }
 
     // Convert File to base64 data URL
@@ -690,8 +647,8 @@
                     if (pendingImageUpload) {
                         pendingImageUpload = false;
 
-                        // Lock editor during alt-text generation
-                        lockEditor();
+                        // Show loading toast (no editor lock - user can continue typing)
+                        showAltTextNotification('Generating alt-text...', false, null, true);
 
                         debugLog('Generating alt-text from URL', imageUrl);
 
@@ -700,25 +657,14 @@
                             const altText = await generateAltTextWithOpenAI(imageUrl, false);
 
                             if (altText) {
-                                // Re-read textarea value in case it changed during async operation
-                                const currentValue = textarea.value;
-                                const currentFullMatch = `![${currentAlt}](${imageUrl})`;
-
-                                if (currentValue.includes(currentFullMatch)) {
-                                    replaceAltText(textarea, currentFullMatch, imageUrl, altText, currentAlt);
-                                } else {
-                                    debugLog('Image markdown changed during generation', 'copying to clipboard');
-                                    await navigator.clipboard.writeText(altText);
-                                    showAltTextNotification('Alt-text copied to clipboard', false, altText);
-                                }
+                                // Show persistent toast with Copy button
+                                showAltTextNotification('Alt-text ready', false, altText);
                             } else {
                                 showAltTextNotification('Failed to generate alt-text', true);
                             }
                         } catch (error) {
                             debugLog('Alt-text generation error', error);
                             showAltTextNotification('Error generating alt-text', true);
-                        } finally {
-                            unlockEditor();
                         }
                         return;
                     }
