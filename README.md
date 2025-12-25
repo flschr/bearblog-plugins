@@ -14,6 +14,22 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/markdown-toolbar.js"></script>
     ```
 
+#### AI Alt-Text Feature (Optional)
+
+The toolbar includes an optional AI-powered alt-text generator for images using OpenAI's Vision API.
+
+**Security Note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with risks:
+
+- **XSS Vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
+- **Shared Computers**: Anyone with access to your browser can view the key via Developer Tools
+- **No Encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
+
+**Recommendations:**
+1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month)
+2. **Use a dedicated API key** just for this toolbar (you can revoke it anytime)
+3. **Don't use this feature** on shared or public computers
+4. The risk is limited: an attacker can only make API calls on your behalf – they cannot access your OpenAI account or other data
+
 ### Blog Search & Infinite Scroll
 
 *   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list.

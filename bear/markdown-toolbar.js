@@ -266,20 +266,156 @@
     let $toolbar = null;
 
     // ==========================================================================
+    // CSS INJECTION (instead of repetitive inline styles)
+    // ==========================================================================
+
+    function injectStyles() {
+        if (document.getElementById('md-toolbar-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'md-toolbar-styles';
+        style.textContent = `
+            .md-btn {
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                flex-shrink: 0;
+                box-sizing: border-box;
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                transition: opacity 0.15s;
+            }
+            .md-btn:hover { opacity: 0.8; }
+            .md-btn-light {
+                background: white;
+                color: #444;
+                border: 1px solid #ccc;
+            }
+            .md-btn-dark {
+                background: #01242e;
+                color: #ddd;
+                border: 1px solid #555;
+            }
+            .md-toolbar {
+                display: flex;
+                gap: 4px;
+                padding: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            .md-toolbar-light {
+                background: #eceff4;
+                border-bottom: 1px solid lightgrey;
+            }
+            .md-toolbar-dark {
+                background: #004052;
+                border-bottom: 1px solid #005566;
+            }
+            .md-separator {
+                width: 1px;
+                height: 24px;
+                margin: 0 8px;
+            }
+            .md-separator-light { background: #ccc; }
+            .md-separator-dark { background: #555; }
+            @keyframes md-spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Helper to get button theme class
+    function getBtnClass() {
+        return isDark ? 'md-btn md-btn-dark' : 'md-btn md-btn-light';
+    }
+
+    // Helper to get toolbar theme class
+    function getToolbarClass() {
+        return isDark ? 'md-toolbar md-toolbar-dark' : 'md-toolbar md-toolbar-light';
+    }
+
+    // Helper to get separator theme class
+    function getSeparatorClass() {
+        return isDark ? 'md-separator md-separator-dark' : 'md-separator md-separator-light';
+    }
+
+    // ==========================================================================
+    // DIALOG MANAGER (centralized Escape key handling)
+    // ==========================================================================
+
+    const dialogStack = [];
+
+    function pushDialog(overlay, closeHandler) {
+        dialogStack.push({ overlay, closeHandler });
+    }
+
+    function popDialog() {
+        return dialogStack.pop();
+    }
+
+    function removeDialogFromStack(overlay) {
+        const index = dialogStack.findIndex(d => d.overlay === overlay);
+        if (index !== -1) {
+            dialogStack.splice(index, 1);
+        }
+    }
+
+    // Global Escape key handler (one listener for all dialogs)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && dialogStack.length > 0) {
+            e.preventDefault();
+            const top = dialogStack[dialogStack.length - 1];
+            if (top && top.closeHandler) {
+                top.closeHandler();
+            }
+        }
+    });
+
+    // ==========================================================================
     // USER SETTINGS (localStorage)
     // ==========================================================================
 
     const SETTINGS_KEY = 'bear_toolbar_settings';
     const PENDING_BACK_NAV_KEY = 'bear_pending_back_nav';
 
+    // Settings cache for performance (avoid repeated JSON.parse)
+    let _settingsCache = null;
+    let _settingsCacheTime = 0;
+    const SETTINGS_CACHE_TTL = 1000; // 1 second TTL
+
+    // Shortcut map for O(1) keyboard shortcut lookup
+    let _shortcutMap = null;
+
     function loadUserSettings() {
+        const now = Date.now();
+        // Return cached settings if still valid
+        if (_settingsCache !== null && (now - _settingsCacheTime) < SETTINGS_CACHE_TTL) {
+            return _settingsCache;
+        }
         try {
             const saved = localStorage.getItem(SETTINGS_KEY);
-            if (saved) {
-                return JSON.parse(saved);
-            }
-        } catch (e) {}
-        return null;
+            _settingsCache = saved ? JSON.parse(saved) : null;
+            _settingsCacheTime = now;
+            return _settingsCache;
+        } catch (e) {
+            _settingsCache = null;
+            return null;
+        }
+    }
+
+    function invalidateSettingsCache() {
+        _settingsCache = null;
+        _settingsCacheTime = 0;
+        _shortcutMap = null; // Also invalidate shortcut map
     }
 
     function saveUserSettings(settings) {
@@ -288,6 +424,7 @@
                 ...settings,
                 savedAt: Date.now()
             }));
+            invalidateSettingsCache(); // Clear cache on save
         } catch (e) {}
     }
 
@@ -705,11 +842,12 @@
         // Setup for main textarea
         setupForTextarea($textarea);
 
-        // Also observe for fullscreen textarea
+        // Also observe for fullscreen textarea (disconnect after setup to avoid performance drain)
         const observer = new MutationObserver(() => {
             const fsTextarea = document.getElementById('md-fullscreen-textarea');
             if (fsTextarea) {
                 setupForTextarea(fsTextarea);
+                observer.disconnect(); // Stop observing once fullscreen textarea is set up
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
@@ -849,13 +987,19 @@
 
         $textarea.setAttribute('data-toolbar-initialized', 'true');
 
+        // Inject CSS styles once
+        injectStyles();
+
         // Store original content for unsaved changes detection
         originalContent = $textarea.value;
 
         // Listen for dark mode changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             isDark = e.matches;
-            // Could refresh toolbar colors here if needed
+            // Refresh toolbar classes on theme change
+            if ($toolbar) {
+                $toolbar.className = getToolbarClass();
+            }
         });
 
         createToolbar();
@@ -889,19 +1033,7 @@
         wrapper.style.position = 'relative';
 
         $toolbar = document.createElement('div');
-        $toolbar.className = 'md-toolbar';
-        $toolbar.style.cssText = `
-            display: flex;
-            gap: 4px;
-            padding: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-            background: ${isDark ? '#004052' : '#eceff4'};
-            border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        `;
+        $toolbar.className = getToolbarClass();
 
         renderToolbarButtons();
 
@@ -919,26 +1051,9 @@
         if (showActionButtons) {
             const backBtn = document.createElement('button');
             backBtn.type = 'button';
-            backBtn.className = 'md-btn md-back-btn';
+            backBtn.className = getBtnClass();
             backBtn.title = 'Back';
             backBtn.innerHTML = ICONS.back;
-            backBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                box-sizing: border-box;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
             backBtn.addEventListener('click', () => handleBackNavigation());
             $toolbar.appendChild(backBtn);
         }
@@ -955,39 +1070,21 @@
             actionButtons.forEach(actionDef => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'md-btn md-action-btn';
+                btn.className = 'md-btn';
                 btn.dataset.buttonId = actionDef.id;
                 btn.title = actionDef.title;
                 btn.innerHTML = actionDef.icon;
-                btn.style.cssText = `
-                    width: 32px;
-                    height: 32px;
-                    min-width: 32px;
-                    min-height: 32px;
-                    flex-shrink: 0;
-                    box-sizing: border-box;
-                    background: ${actionDef.color || (isDark ? '#01242e' : 'white')};
-                    color: ${actionDef.color ? 'white' : (isDark ? '#ddd' : '#444')};
-                    border: 1px solid ${isDark ? '#555' : '#ccc'};
-                    border-radius: 3px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0;
-                `;
+                // Colored action buttons need custom background
+                btn.style.background = actionDef.color;
+                btn.style.color = 'white';
+                btn.style.border = `1px solid ${isDark ? '#555' : '#ccc'}`;
                 btn.addEventListener('click', () => handleAction(actionDef.action));
                 $toolbar.appendChild(btn);
             });
 
             // Separator after action buttons
             const separator = document.createElement('div');
-            separator.style.cssText = `
-                width: 1px;
-                height: 24px;
-                background: ${isDark ? '#555' : '#ccc'};
-                margin: 0 8px;
-            `;
+            separator.className = getSeparatorClass();
             $toolbar.appendChild(separator);
         }
 
@@ -1006,26 +1103,9 @@
             if (buttonId === 'image' && showAltButton) {
                 const altBtn = document.createElement('button');
                 altBtn.type = 'button';
-                altBtn.className = 'md-btn md-alt-btn';
+                altBtn.className = getBtnClass();
                 altBtn.title = 'Generate Alt-Text (select image markdown first)';
                 altBtn.innerHTML = ICONS.altText;
-                altBtn.style.cssText = `
-                    width: 32px;
-                    height: 32px;
-                    min-width: 32px;
-                    min-height: 32px;
-                    flex-shrink: 0;
-                    box-sizing: border-box;
-                    background: ${isDark ? '#01242e' : 'white'};
-                    color: ${isDark ? '#ddd' : '#333'};
-                    border: 1px solid ${isDark ? '#555' : '#ccc'};
-                    border-radius: 3px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0;
-                `;
                 altBtn.addEventListener('click', () => generateAltTextForSelection());
                 $toolbar.appendChild(altBtn);
             }
@@ -1035,26 +1115,10 @@
         if (isCustomSnippetEnabled()) {
             const snippetBtn = document.createElement('button');
             snippetBtn.type = 'button';
-            snippetBtn.className = 'md-btn md-snippet-btn';
+            snippetBtn.className = getBtnClass();
             snippetBtn.title = 'Insert Custom Snippet';
             snippetBtn.innerHTML = ICONS.heart;
-            snippetBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                box-sizing: border-box;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: #e91e63;
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
+            snippetBtn.style.color = '#e91e63'; // Custom color for heart icon
             snippetBtn.addEventListener('click', () => {
                 const snippet = getCustomSnippetText();
                 if (snippet) {
@@ -1073,26 +1137,9 @@
         if (showFullscreenButton) {
             const fsBtn = document.createElement('button');
             fsBtn.type = 'button';
-            fsBtn.className = 'md-btn md-fullscreen-btn';
+            fsBtn.className = getBtnClass();
             fsBtn.title = 'Fullscreen Editor';
             fsBtn.innerHTML = ICONS.fullscreen;
-            fsBtn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                min-width: 32px;
-                min-height: 32px;
-                flex-shrink: 0;
-                box-sizing: border-box;
-                background: ${isDark ? '#01242e' : 'white'};
-                color: ${isDark ? '#ddd' : '#444'};
-                border: 1px solid ${isDark ? '#555' : '#ccc'};
-                border-radius: 3px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            `;
             fsBtn.addEventListener('click', () => handleAction('fullscreen'));
             $toolbar.appendChild(fsBtn);
         }
@@ -1104,7 +1151,7 @@
     function createButton(id, def) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'md-btn';
+        btn.className = getBtnClass();
         btn.dataset.buttonId = id;
         btn.title = def.title;
 
@@ -1117,24 +1164,11 @@
             btn.style.fontFamily = 'system-ui, sans-serif';
         }
 
-        // Styling - consistent button dimensions
-        btn.style.cssText += `
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-            min-height: 32px;
-            flex-shrink: 0;
-            box-sizing: border-box;
-            background: ${def.color || (isDark ? '#01242e' : 'white')};
-            color: ${def.color ? 'white' : (isDark ? '#ddd' : '#444')};
-            border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 3px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        `;
+        // Custom color override if defined
+        if (def.color) {
+            btn.style.background = def.color;
+            btn.style.color = 'white';
+        }
 
         btn.addEventListener('click', () => handleButtonClick(id, def));
 
@@ -1144,29 +1178,10 @@
     function createMenuButton() {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'md-btn md-menu-btn';
+        btn.className = getBtnClass();
         btn.innerHTML = ICONS.settings;
         btn.title = 'Toolbar Settings';
-        btn.style.cssText = `
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-            min-height: 32px;
-            flex-shrink: 0;
-            box-sizing: border-box;
-            background: ${isDark ? '#01242e' : 'white'};
-            color: ${isDark ? '#ddd' : '#444'};
-            border: 1px solid ${isDark ? '#555' : '#ccc'};
-            border-radius: 3px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        `;
-
         btn.addEventListener('click', () => handleAction('settings'));
-
         return btn;
     }
 
@@ -1633,6 +1648,25 @@
         `;
         aiWrapper.appendChild(apiKeyInput);
 
+        // Security warning
+        const securityWarning = document.createElement('div');
+        securityWarning.style.cssText = `
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#3d2a1a' : '#fff3cd'};
+            border: 1px solid ${isDark ? '#664d03' : '#ffc107'};
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: ${isDark ? '#ffc107' : '#664d03'};
+        `;
+        securityWarning.innerHTML = `
+            <strong>Note:</strong> Key is stored in localStorage (unencrypted).
+            Set <a href="https://platform.openai.com/settings/organization/limits" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">spending limits</a> in OpenAI.
+            <a href="https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">More info</a>
+        `;
+        aiWrapper.appendChild(securityWarning);
+
         // Language input
         const langLabel = document.createElement('div');
         langLabel.style.cssText = `
@@ -1796,19 +1830,19 @@
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
 
+        // Close handler (used by both overlay click and Escape key)
+        const closeOverlay = () => {
+            removeDialogFromStack(overlay);
+            overlay.remove();
+        };
+
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.remove();
+            if (e.target === overlay) closeOverlay();
         });
 
-        // Close on Escape
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                overlay.remove();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+        // Register with dialog manager for Escape key handling
+        pushDialog(overlay, closeOverlay);
     }
 
     // ==========================================================================
@@ -1899,36 +1933,34 @@
         dialog.appendChild(panel);
         document.body.appendChild(dialog);
 
-        // Cancel - close dialog
-        panel.querySelector('.md-dialog-cancel').addEventListener('click', () => {
+        // Close handler
+        const closeDialog = () => {
+            removeDialogFromStack(dialog);
             dialog.remove();
-        });
+        };
+
+        // Cancel - close dialog
+        panel.querySelector('.md-dialog-cancel').addEventListener('click', closeDialog);
 
         // Discard - navigate without saving
         panel.querySelector('.md-dialog-discard').addEventListener('click', () => {
-            dialog.remove();
+            closeDialog();
             navigateBack();
         });
 
         // Save & Leave - save then navigate
         panel.querySelector('.md-dialog-save').addEventListener('click', () => {
-            dialog.remove();
+            closeDialog();
             saveAndNavigateBack();
         });
 
         // Close on overlay click
         dialog.addEventListener('click', (e) => {
-            if (e.target === dialog) dialog.remove();
+            if (e.target === dialog) closeDialog();
         });
 
-        // Close on Escape
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                dialog.remove();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+        // Register with dialog manager for Escape key handling
+        pushDialog(dialog, closeDialog);
     }
 
     function showDeleteConfirmDialog() {
@@ -1996,30 +2028,28 @@
         dialog.appendChild(panel);
         document.body.appendChild(dialog);
 
-        // Cancel - close dialog
-        panel.querySelector('.md-dialog-cancel').addEventListener('click', () => {
+        // Close handler
+        const closeDialog = () => {
+            removeDialogFromStack(dialog);
             dialog.remove();
-        });
+        };
+
+        // Cancel - close dialog
+        panel.querySelector('.md-dialog-cancel').addEventListener('click', closeDialog);
 
         // Delete - execute deletion
         panel.querySelector('.md-dialog-delete').addEventListener('click', () => {
-            dialog.remove();
+            closeDialog();
             executeDelete();
         });
 
         // Close on overlay click
         dialog.addEventListener('click', (e) => {
-            if (e.target === dialog) dialog.remove();
+            if (e.target === dialog) closeDialog();
         });
 
-        // Close on Escape
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                dialog.remove();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+        // Register with dialog manager for Escape key handling
+        pushDialog(dialog, closeDialog);
     }
 
     function executeDelete() {
@@ -2439,22 +2469,20 @@
             const ctrl = e.ctrlKey || e.metaKey;
             if (!ctrl) return;
 
-            for (const [id, def] of Object.entries(BUTTONS)) {
-                if (!def.shortcut) continue;
-                if (!enabledButtons.includes(id)) continue;
+            // O(1) lookup using shortcut map
+            const shortcutKey = `ctrl+${e.key.toLowerCase()}`;
+            const shortcut = getShortcutMap().get(shortcutKey);
 
-                if (def.shortcut.key === e.key.toLowerCase() && def.shortcut.ctrl === ctrl) {
-                    e.preventDefault();
-                    // Temporarily switch textarea reference
-                    const originalTextarea = $textarea;
-                    $textarea = fsTextarea;
-                    handleButtonClick(id, def);
-                    $textarea = originalTextarea;
-                    // Sync back
-                    originalTextarea.value = fsTextarea.value;
-                    originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    return;
-                }
+            if (shortcut) {
+                e.preventDefault();
+                // Temporarily switch textarea reference
+                const originalTextarea = $textarea;
+                $textarea = fsTextarea;
+                handleButtonClick(shortcut.id, shortcut.def);
+                $textarea = originalTextarea;
+                // Sync back
+                originalTextarea.value = fsTextarea.value;
+                originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
     }
@@ -2535,11 +2563,11 @@
         const end = $textarea.selectionEnd;
         const selected = $textarea.value.substring(start, end);
 
-        // Try to get URL from clipboard
+        // Try to get URL from clipboard (with validation)
         let url = '';
         try {
             const clip = await navigator.clipboard.readText();
-            if (clip.trim().match(/^https?:\/\//)) {
+            if (isValidUrl(clip)) {
                 url = clip.trim();
             }
         } catch (e) {}
@@ -2629,12 +2657,22 @@
         }
     }
 
-    // Check if a string looks like an image URL
-    function isImageUrl(str) {
+    // Validate and sanitize URL from clipboard
+    function isValidUrl(str) {
         if (!str || typeof str !== 'string') return false;
         const trimmed = str.trim();
+        // Max URL length to prevent abuse
+        if (trimmed.length > 2048) return false;
+        // Block dangerous protocols
+        if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return false;
         // Must start with http:// or https://
-        if (!trimmed.match(/^https?:\/\//i)) return false;
+        return /^https?:\/\//i.test(trimmed);
+    }
+
+    // Check if a string looks like an image URL
+    function isImageUrl(str) {
+        if (!isValidUrl(str)) return false;
+        const trimmed = str.trim();
         // Check for common image extensions or known image hosts
         const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)(\?.*)?$/i;
         const imageHosts = /\b(cdn\.digitaloceanspaces\.com|imgur\.com|i\.imgur\.com|cloudinary\.com|unsplash\.com|images\.unsplash\.com|pexels\.com|images\.pexels\.com|flickr\.com|staticflickr\.com|giphy\.com|media\.giphy\.com)\b/i;
@@ -2658,8 +2696,6 @@
 
     // Show dialog asking whether to use clipboard URL or upload
     function showImageUrlDialog(imageUrl) {
-        const isDark = document.body.classList.contains('dark');
-
         // Create overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
@@ -2687,18 +2723,32 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         `;
 
-        // Truncate URL for display
-        const displayUrl = imageUrl.length > 60 ? imageUrl.substring(0, 57) + '...' : imageUrl;
+        // Build dialog content safely (no innerHTML with user content)
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'margin-bottom: 15px; font-weight: bold;';
+        titleDiv.textContent = 'Image URL detected in clipboard';
 
-        dialog.innerHTML = `
-            <div style="margin-bottom: 15px; font-weight: bold;">Image URL detected in clipboard</div>
-            <div style="margin-bottom: 15px; font-size: 12px; word-break: break-all; padding: 8px; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; border-radius: 4px; font-family: monospace;">${displayUrl}</div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button id="img-dialog-upload" style="padding: 8px 16px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer;">Upload new image</button>
-                <button id="img-dialog-use" style="padding: 8px 16px; border: none; background: #4a9eff; color: white; border-radius: 4px; cursor: pointer;">Use this URL</button>
-            </div>
-        `;
+        const urlDiv = document.createElement('div');
+        urlDiv.style.cssText = `margin-bottom: 15px; font-size: 12px; word-break: break-all; padding: 8px; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; border-radius: 4px; font-family: monospace;`;
+        // Safe: textContent escapes HTML automatically
+        urlDiv.textContent = imageUrl.length > 60 ? imageUrl.substring(0, 57) + '...' : imageUrl;
 
+        const buttonDiv = document.createElement('div');
+        buttonDiv.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+
+        const uploadBtn = document.createElement('button');
+        uploadBtn.textContent = 'Upload new image';
+        uploadBtn.style.cssText = `padding: 8px 16px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer;`;
+
+        const useBtn = document.createElement('button');
+        useBtn.textContent = 'Use this URL';
+        useBtn.style.cssText = 'padding: 8px 16px; border: none; background: #4a9eff; color: white; border-radius: 4px; cursor: pointer;';
+
+        buttonDiv.appendChild(uploadBtn);
+        buttonDiv.appendChild(useBtn);
+        dialog.appendChild(titleDiv);
+        dialog.appendChild(urlDiv);
+        dialog.appendChild(buttonDiv);
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
 
@@ -2710,26 +2760,24 @@
         });
 
         // Handle "Use this URL" button
-        dialog.querySelector('#img-dialog-use').addEventListener('click', () => {
+        useBtn.addEventListener('click', () => {
             overlay.remove();
             // Insert image markdown with empty alt-text
             insertText(`![](${imageUrl})`);
         });
 
         // Handle "Upload new image" button
-        dialog.querySelector('#img-dialog-upload').addEventListener('click', () => {
+        uploadBtn.addEventListener('click', () => {
             overlay.remove();
             document.getElementById('upload-image')?.click();
         });
 
         // Focus the "Use this URL" button
-        dialog.querySelector('#img-dialog-use').focus();
+        useBtn.focus();
     }
 
     // Show confirmation dialog for reset with clear warning
     function showResetConfirmDialog(onConfirm) {
-        const isDark = document.body.classList.contains('dark');
-
         // Create overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
@@ -2745,7 +2793,7 @@
             z-index: 100002;
         `;
 
-        // Create dialog
+        // Create dialog (uses global isDark for consistency)
         const dialog = document.createElement('div');
         dialog.style.cssText = `
             background: ${isDark ? '#1a1a1a' : 'white'};
@@ -2782,23 +2830,28 @@
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
 
+        // Close handler
+        const closeOverlay = () => {
+            removeDialogFromStack(overlay);
+            overlay.remove();
+        };
+
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-            }
+            if (e.target === overlay) closeOverlay();
         });
 
         // Handle Cancel button
-        dialog.querySelector('#reset-dialog-cancel').addEventListener('click', () => {
-            overlay.remove();
-        });
+        dialog.querySelector('#reset-dialog-cancel').addEventListener('click', closeOverlay);
 
         // Handle Confirm button
         dialog.querySelector('#reset-dialog-confirm').addEventListener('click', () => {
-            overlay.remove();
+            closeOverlay();
             onConfirm();
         });
+
+        // Register with dialog manager for Escape key handling
+        pushDialog(overlay, closeOverlay);
 
         // Focus the Cancel button (safer default)
         dialog.querySelector('#reset-dialog-cancel').focus();
@@ -2905,24 +2958,32 @@
     // KEYBOARD SHORTCUTS
     // ==========================================================================
 
+    // Build shortcut map for O(1) lookup (cached, invalidated on settings change)
+    function getShortcutMap() {
+        if (_shortcutMap) return _shortcutMap;
+        _shortcutMap = new Map();
+        const enabled = getEnabledButtons();
+        for (const [id, def] of Object.entries(BUTTONS)) {
+            if (def.shortcut && enabled.includes(id)) {
+                const key = `ctrl+${def.shortcut.key}`;
+                _shortcutMap.set(key, { id, def });
+            }
+        }
+        return _shortcutMap;
+    }
+
     function setupKeyboardShortcuts() {
         $textarea.addEventListener('keydown', (e) => {
             const ctrl = e.ctrlKey || e.metaKey;
-
             if (!ctrl) return;
 
-            const enabledButtons = getEnabledButtons();
+            // O(1) lookup using shortcut map
+            const shortcutKey = `ctrl+${e.key.toLowerCase()}`;
+            const shortcut = getShortcutMap().get(shortcutKey);
 
-            // Find button with matching shortcut
-            for (const [id, def] of Object.entries(BUTTONS)) {
-                if (!def.shortcut) continue;
-                if (!enabledButtons.includes(id)) continue;
-
-                if (def.shortcut.key === e.key.toLowerCase() && def.shortcut.ctrl === ctrl) {
-                    e.preventDefault();
-                    handleButtonClick(id, def);
-                    return;
-                }
+            if (shortcut) {
+                e.preventDefault();
+                handleButtonClick(shortcut.id, shortcut.def);
             }
         });
     }
