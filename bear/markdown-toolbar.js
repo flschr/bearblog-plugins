@@ -106,6 +106,7 @@
         back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
         checkmark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 6 9 17l-5-5"/></svg>',
         trash: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+        close: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     };
 
     // Button categories for settings panel
@@ -2518,6 +2519,122 @@
     }
 
     // ==========================================================================
+    // INLINE PREVIEW
+    // ==========================================================================
+
+    function showInlinePreview() {
+        // Toggle off if already showing
+        const existing = document.getElementById('md-inline-preview-overlay');
+        if (existing) {
+            closeInlinePreview();
+            return;
+        }
+
+        // Get preview URL from the existing preview button
+        const previewBtn = document.getElementById('preview');
+        if (!previewBtn || !previewBtn.href) {
+            console.warn('Preview button not found or has no href');
+            return;
+        }
+        const previewUrl = previewBtn.href;
+
+        // Create overlay container
+        const overlay = document.createElement('div');
+        overlay.id = 'md-inline-preview-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Create header with exit button
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            align-items: center;
+            justify-content: space-between;
+            background: ${isDark ? '#004052' : '#eceff4'};
+            border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
+            flex-shrink: 0;
+        `;
+
+        // Preview label
+        const label = document.createElement('span');
+        label.textContent = 'Preview';
+        label.style.cssText = `
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: ${isDark ? '#e0e0e0' : '#333'};
+        `;
+        header.appendChild(label);
+
+        // Exit button
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.title = 'Exit Preview (Escape)';
+        exitBtn.innerHTML = ICONS.close;
+        exitBtn.style.cssText = `
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            background: #d32f2f;
+            color: white;
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        `;
+        exitBtn.addEventListener('click', closeInlinePreview);
+        header.appendChild(exitBtn);
+
+        overlay.appendChild(header);
+
+        // Create iframe for preview content
+        const iframe = document.createElement('iframe');
+        iframe.src = previewUrl;
+        iframe.style.cssText = `
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+        `;
+        overlay.appendChild(iframe);
+
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+
+        // Add overlay to page
+        document.body.appendChild(overlay);
+
+        // Register with dialog stack for ESC key handling
+        pushDialog(overlay, closeInlinePreview);
+    }
+
+    function closeInlinePreview() {
+        const overlay = document.getElementById('md-inline-preview-overlay');
+        if (overlay) {
+            removeDialogFromStack(overlay);
+            overlay.remove();
+            document.body.style.overflow = '';
+        }
+    }
+
+    // ==========================================================================
     // TEXT INSERTION (Undo-compatible)
     // ==========================================================================
 
@@ -2951,7 +3068,7 @@
             }
 
             case 'preview':
-                document.getElementById('preview')?.click();
+                showInlinePreview();
                 break;
 
             case 'help':
@@ -2989,7 +3106,13 @@
             }
 
             case 'previewPost': {
-                // Save first via AJAX, then open preview
+                // If preview is already open, close it (toggle behavior)
+                if (document.getElementById('md-inline-preview-overlay')) {
+                    closeInlinePreview();
+                    break;
+                }
+
+                // Save first via AJAX, then open inline preview
                 const publishInput = document.getElementById('publish');
                 if (publishInput) publishInput.value = 'false';
                 const form = $textarea.closest('form');
@@ -3016,16 +3139,16 @@
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
                         }
-                        // Open preview regardless of save success
-                        document.getElementById('preview')?.click();
+                        // Open inline preview regardless of save success
+                        showInlinePreview();
                     }).catch(() => {
                         clearTimeout(timeoutId);
                         // On network error or timeout, still try to preview
-                        document.getElementById('preview')?.click();
+                        showInlinePreview();
                     });
                 } else {
-                    // No form found, just open preview
-                    document.getElementById('preview')?.click();
+                    // No form found, just open inline preview
+                    showInlinePreview();
                 }
                 break;
             }
