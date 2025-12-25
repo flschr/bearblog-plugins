@@ -1648,6 +1648,25 @@
         `;
         aiWrapper.appendChild(apiKeyInput);
 
+        // Security warning
+        const securityWarning = document.createElement('div');
+        securityWarning.style.cssText = `
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#3d2a1a' : '#fff3cd'};
+            border: 1px solid ${isDark ? '#664d03' : '#ffc107'};
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: ${isDark ? '#ffc107' : '#664d03'};
+        `;
+        securityWarning.innerHTML = `
+            <strong>Note:</strong> Key is stored in localStorage (unencrypted).
+            Set <a href="https://platform.openai.com/settings/organization/limits" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">spending limits</a> in OpenAI.
+            <a href="https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">More info</a>
+        `;
+        aiWrapper.appendChild(securityWarning);
+
         // Language input
         const langLabel = document.createElement('div');
         langLabel.style.cssText = `
