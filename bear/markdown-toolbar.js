@@ -2531,7 +2531,21 @@
         }
 
         // Get preview URL from the existing preview button
-        const previewBtn = document.getElementById('preview');
+        // Try multiple selectors: id="preview", link with href containing "preview", or link with text "Preview"
+        let previewBtn = document.getElementById('preview');
+        if (!previewBtn || !previewBtn.href) {
+            previewBtn = document.querySelector('a[href*="/preview/"]');
+        }
+        if (!previewBtn || !previewBtn.href) {
+            // Find link by text content
+            const links = document.querySelectorAll('a[href]');
+            for (const link of links) {
+                if (link.textContent.trim().toLowerCase() === 'preview') {
+                    previewBtn = link;
+                    break;
+                }
+            }
+        }
         if (!previewBtn || !previewBtn.href) {
             console.warn('Preview button not found or has no href');
             return;
