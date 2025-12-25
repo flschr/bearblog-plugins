@@ -78,7 +78,8 @@
         mark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>',
         link: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
         quote: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 12a2 2 0 0 0 2-2V8H8"/><path d="M14 12a2 2 0 0 0 2-2V8h-2"/></svg>',
-        image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5 3-3 3 3"/><path d="M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></svg>',
+        image: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+        altText: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>',
         code: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
         codeBlock: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M10 9.5 8 12l2 2.5"/><path d="m14 9.5 2 2.5-2 2.5"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M4 21h16"/><path d="M9 21h1"/><path d="M14 21h1"/></svg>',
         list: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>',
@@ -582,232 +583,132 @@
         // Loading and success with altText: no auto-remove (persistent)
     }
 
-    // Convert File to base64 data URL
-    function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
+    // ==========================================================================
+    // ALT-TEXT GENERATION (Manual via ALT button)
+    // ==========================================================================
+
+    // Get selected image markdown from textarea
+    function getSelectedImageMarkdown(textarea) {
+        const selection = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        const imageMarkdownRegex = /^!\[([^\]]*)\]\(([^)]+)\)$/;
+        const match = selection.match(imageMarkdownRegex);
+        if (match) {
+            return {
+                fullMatch: match[0],
+                altText: match[1],
+                imageUrl: match[2],
+                start: textarea.selectionStart,
+                end: textarea.selectionEnd
+            };
+        }
+        return null;
     }
 
-    // Store pending alt-text for auto-replacement
-    let pendingAltText = null;
-    let lastTextareaValue = '';
-    // Flag to indicate we're waiting for BearBlog to insert an image
-    let pendingImageUpload = false;
-
-    // Watch textarea for BearBlog's image insertion and generate alt-text using the uploaded URL
-    function setupAltTextReplacement() {
-        const textarea = document.getElementById('body_content');
+    // Generate alt-text for selected image
+    async function generateAltTextForSelection() {
+        const textarea = document.getElementById('md-fullscreen-textarea') || $textarea;
         if (!textarea) return;
 
-        // Store initial value
-        lastTextareaValue = textarea.value;
+        const imageData = getSelectedImageMarkdown(textarea);
+        if (!imageData) {
+            showAltTextNotification('Please select an image markdown first (e.g., ![](url))', true);
+            return;
+        }
 
-        // Listen for input events to detect when BearBlog inserts image markdown
-        textarea.addEventListener('input', async () => {
-            // Check if we're waiting for an image upload OR have pending alt-text
-            if (!pendingImageUpload && !pendingAltText) {
-                lastTextareaValue = textarea.value;
-                return;
-            }
+        // Show loading notification
+        showAltTextNotification('Generating alt-text...', false, null, true);
 
-            const newValue = textarea.value;
-            const oldValue = lastTextareaValue;
+        try {
+            const altText = await generateAltTextWithOpenAI(imageData.imageUrl, false);
 
-            // Check if new content was added (BearBlog inserted something)
-            if (newValue.length > oldValue.length) {
-                // Look for newly inserted image markdown: ![something](url)
-                const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+            if (altText) {
+                // Replace the alt-text in the image markdown
+                const newImageMarkdown = `![${altText}](${imageData.imageUrl})`;
+                const before = textarea.value.substring(0, imageData.start);
+                const after = textarea.value.substring(imageData.end);
+                textarea.value = before + newImageMarkdown + after;
 
-                // Find all image markdowns in new value
-                const newMatches = [...newValue.matchAll(imageMarkdownRegex)];
-                const oldMatches = [...oldValue.matchAll(imageMarkdownRegex)];
-
-                // If there's a new image markdown that wasn't in old value
-                if (newMatches.length > oldMatches.length) {
-                    // Find the new one (last one is usually the newly inserted)
-                    const newMatch = newMatches[newMatches.length - 1];
-                    const fullMatch = newMatch[0];
-                    const currentAlt = newMatch[1];
-                    const imageUrl = newMatch[2];
-
-                    debugLog('New image detected', { currentAlt, imageUrl });
-
-                    // If we have pending alt-text (old flow), use it directly
-                    if (pendingAltText) {
-                        replaceAltText(textarea, fullMatch, imageUrl, pendingAltText, currentAlt);
-                        pendingAltText = null;
-                        return;
-                    }
-
-                    // New flow: generate alt-text using the uploaded image URL
-                    if (pendingImageUpload) {
-                        pendingImageUpload = false;
-
-                        // Show loading toast (no editor lock - user can continue typing)
-                        showAltTextNotification('Generating alt-text...', false, null, true);
-
-                        debugLog('Generating alt-text from URL', imageUrl);
-
-                        try {
-                            // Generate alt-text using the BearBlog-uploaded image URL (smaller, faster!)
-                            const altText = await generateAltTextWithOpenAI(imageUrl, false);
-
-                            if (altText) {
-                                // Show persistent toast with Copy button
-                                showAltTextNotification('Alt-text ready', false, altText);
-                            } else {
-                                showAltTextNotification('Failed to generate alt-text', true);
-                            }
-                        } catch (error) {
-                            debugLog('Alt-text generation error', error);
-                            showAltTextNotification('Error generating alt-text', true);
-                        }
-                        return;
-                    }
+                // Also update the other textarea (main or fullscreen)
+                const otherTextarea = textarea.id === 'md-fullscreen-textarea'
+                    ? $textarea
+                    : document.getElementById('md-fullscreen-textarea');
+                if (otherTextarea) {
+                    otherTextarea.value = textarea.value;
                 }
+
+                // Trigger input event for BearBlog to detect change
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+                // Select the new markdown
+                textarea.selectionStart = imageData.start;
+                textarea.selectionEnd = imageData.start + newImageMarkdown.length;
+                textarea.focus();
+
+                showAltTextNotification('Alt-text inserted!', false, altText);
+            } else {
+                showAltTextNotification('Failed to generate alt-text', true);
             }
-
-            lastTextareaValue = textarea.value;
-        });
-
-        debugLog('Alt-text replacement watcher setup', 'success');
+        } catch (error) {
+            debugLog('Alt-text generation error', error);
+            showAltTextNotification('Error generating alt-text', true);
+        }
     }
 
-    // Helper function to replace alt-text in textarea
-    function replaceAltText(textarea, fullMatch, imageUrl, altText, oldAlt) {
-        const newImageMarkdown = `![${altText}](${imageUrl})`;
-        const updatedValue = textarea.value.replace(fullMatch, newImageMarkdown);
+    // Setup double-click selection for image markdown
+    function setupImageMarkdownSelection() {
+        const setupForTextarea = (textarea) => {
+            if (!textarea || textarea.hasAttribute('data-image-dblclick-setup')) return;
+            textarea.setAttribute('data-image-dblclick-setup', 'true');
 
-        if (updatedValue !== textarea.value) {
-            textarea.value = updatedValue;
-            lastTextareaValue = updatedValue;
-            debugLog('Alt-text replaced', { from: oldAlt, to: altText });
-            showAltTextNotification('✓ Alt-text inserted automatically', false, altText);
+            textarea.addEventListener('dblclick', (e) => {
+                const pos = textarea.selectionStart;
+                const text = textarea.value;
 
-            // Also update fullscreen textarea if it exists
+                // Find image markdown around cursor position
+                // Search backwards for ![
+                let start = pos;
+                while (start > 0 && !(text[start] === '!' && text[start + 1] === '[')) {
+                    start--;
+                }
+                if (text[start] !== '!' || text[start + 1] !== '[') return;
+
+                // Search forwards for closing )
+                let end = pos;
+                let bracketDepth = 0;
+                let foundClosingBracket = false;
+                for (let i = start + 2; i < text.length; i++) {
+                    if (text[i] === '[') bracketDepth++;
+                    if (text[i] === ']') {
+                        if (bracketDepth > 0) bracketDepth--;
+                        else foundClosingBracket = true;
+                    }
+                    if (foundClosingBracket && text[i] === ')') {
+                        end = i + 1;
+                        break;
+                    }
+                }
+
+                // Verify it's a valid image markdown
+                const potentialMatch = text.substring(start, end);
+                if (/^!\[[^\]]*\]\([^)]+\)$/.test(potentialMatch)) {
+                    e.preventDefault();
+                    textarea.selectionStart = start;
+                    textarea.selectionEnd = end;
+                }
+            });
+        };
+
+        // Setup for main textarea
+        setupForTextarea($textarea);
+
+        // Also observe for fullscreen textarea
+        const observer = new MutationObserver(() => {
             const fsTextarea = document.getElementById('md-fullscreen-textarea');
             if (fsTextarea) {
-                fsTextarea.value = updatedValue;
-            }
-
-            // Trigger input event for BearBlog to detect change
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
-
-    // Process an image file - just set flag, alt-text will be generated after BearBlog uploads
-    function processImageForAltText(file, source = 'unknown') {
-        debugLog('Processing image', {
-            source,
-            name: file?.name,
-            type: file?.type,
-            size: file?.size
-        });
-
-        if (!file || !file.type.startsWith('image/')) {
-            debugLog('Not an image file', file?.type);
-            return;
-        }
-
-        // Set flag - we'll generate alt-text when BearBlog inserts the image markdown
-        pendingImageUpload = true;
-        debugLog('Pending image upload set', 'waiting for BearBlog to insert image');
-
-        // Clear flag after timeout (in case BearBlog upload fails)
-        setTimeout(() => {
-            if (pendingImageUpload) {
-                debugLog('Pending image upload cleared (timeout)');
-                pendingImageUpload = false;
-            }
-        }, 60000); // 60 second timeout for slow uploads
-    }
-
-    function setupImageUploadObserver() {
-        debugLog('Setup', {
-            aiEnabled: isAiAltTextEnabled(),
-            hasApiKey: !!getOpenAiApiKey()
-        });
-
-        if (!isAiAltTextEnabled() || !getOpenAiApiKey()) {
-            debugLog('Setup skipped', 'AI alt-text disabled or no API key');
-            return;
-        }
-
-        // Find the BearBlog file input (note: "upload-image" is just an <a> link, the actual input has id="file")
-        const uploadInput = document.getElementById('file');
-        debugLog('Upload input found', !!uploadInput);
-
-        if (uploadInput) {
-            // Listen for file selection - this fires when user selects files via the file dialog
-            uploadInput.addEventListener('change', async (e) => {
-                const file = e.target.files?.[0];
-                debugLog('File input change', { hasFile: !!file, fileName: file?.name });
-                if (file && file.type.startsWith('image/')) {
-                    await processImageForAltText(file, 'file-input');
-                }
-            });
-
-            debugLog('Upload listener attached', 'success');
-        } else {
-            debugLog('Upload input not found', 'will retry on mutation');
-
-            // If upload input doesn't exist yet, watch for it
-            const observer = new MutationObserver((mutations, obs) => {
-                const input = document.getElementById('file');
-                if (input) {
-                    debugLog('Upload input found via observer', 'attaching listener');
-                    obs.disconnect();
-                    setupImageUploadObserver(); // Re-run setup
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
-
-        // Listen for drag & drop on window (BearBlog uses window-level drop handler)
-        debugLog('Setting up window drop listener', true);
-        window.addEventListener('drop', async (e) => {
-            debugLog('Window drop event', {
-                hasFiles: e.dataTransfer?.files?.length > 0,
-                fileCount: e.dataTransfer?.files?.length,
-                types: Array.from(e.dataTransfer?.types || [])
-            });
-
-            const file = e.dataTransfer?.files?.[0];
-            if (file && file.type.startsWith('image/')) {
-                await processImageForAltText(file, 'drag-drop');
+                setupForTextarea(fsTextarea);
             }
         });
-        debugLog('Window drop listener attached', 'success');
-
-        // Also listen for paste events on the textarea
-        const textarea = document.getElementById('body_content');
-        if (textarea) {
-            textarea.addEventListener('paste', async (e) => {
-                debugLog('Paste event', {
-                    hasItems: e.clipboardData?.items?.length > 0,
-                    types: Array.from(e.clipboardData?.types || [])
-                });
-
-                const items = e.clipboardData?.items;
-                if (items) {
-                    for (const item of items) {
-                        if (item.type.startsWith('image/')) {
-                            const file = item.getAsFile();
-                            if (file) {
-                                await processImageForAltText(file, 'paste');
-                                break;
-                            }
-                        }
-                    }
-                }
-            });
-
-            debugLog('Paste listener attached', 'success');
-        }
+        observer.observe(document.body, { childList: true, subtree: true });
     }
 
     // Track original content for unsaved changes detection
@@ -821,6 +722,106 @@
     function updateOriginalContent() {
         if ($textarea) {
             originalContent = $textarea.value;
+        }
+    }
+
+    // ==========================================================================
+    // AJAX SAVE (prevents extra history entry)
+    // ==========================================================================
+
+    function savePostViaAjax(publish) {
+        const publishInput = document.getElementById('publish');
+        if (publishInput) publishInput.value = publish ? 'true' : 'false';
+
+        const form = $textarea.closest('form');
+        if (!form) return;
+
+        // Sync header content
+        const headerContent = document.getElementById('header_content');
+        const hiddenHeaderContent = document.getElementById('hidden_header_content');
+        if (headerContent && hiddenHeaderContent) {
+            hiddenHeaderContent.value = headerContent.innerText;
+        }
+
+        // Show saving toast
+        showSaveToast('Saving...', true);
+
+        const formData = new FormData(form);
+
+        fetch(form.action || window.location.href, {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                // Mark content as saved
+                updateOriginalContent();
+                showSaveToast(publish ? 'Published!' : 'Saved!', false);
+
+                // If the response redirects to a new URL (new post), navigate there
+                if (response.redirected && response.url !== window.location.href) {
+                    // Use replaceState to avoid extra history entry
+                    window.history.replaceState(null, '', response.url);
+                    // Update the page content by reloading without adding history
+                    window.location.replace(response.url);
+                }
+            } else {
+                showSaveToast('Error saving', false, true);
+            }
+        }).catch(() => {
+            showSaveToast('Error saving', false, true);
+        });
+    }
+
+    function showSaveToast(message, isLoading, isError = false) {
+        // Remove existing save toast
+        const existing = document.getElementById('md-save-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'md-save-toast';
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            background: ${isError ? '#d32f2f' : (isLoading ? '#1976d2' : '#2e7d32')};
+            color: white;
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10005;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: opacity 0.3s;
+        `;
+
+        if (isLoading) {
+            toast.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+                ${message}
+            `;
+        } else {
+            toast.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                    ${isError ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' : '<path d="M20 6 9 17l-5-5"/>'}
+                </svg>
+                ${message}
+            `;
+        }
+
+        document.body.appendChild(toast);
+
+        // Auto-remove success/error toast after delay
+        if (!isLoading) {
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
         }
     }
 
@@ -856,8 +857,7 @@
         createToolbar();
         createCharCounter();
         setupKeyboardShortcuts();
-        setupImageUploadObserver();
-        setupAltTextReplacement();
+        setupImageMarkdownSelection();
 
         // Hide Bear Blog default elements
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => {
@@ -988,6 +988,7 @@
         }
 
         const enabledButtons = getEnabledButtons();
+        const showAltButton = isAiAltTextEnabled() && getOpenAiApiKey();
 
         // Create enabled buttons
         enabledButtons.forEach(buttonId => {
@@ -996,6 +997,34 @@
 
             const btn = createButton(buttonId, buttonDef);
             $toolbar.appendChild(btn);
+
+            // Add ALT button right after the image button (if OpenAI is configured)
+            if (buttonId === 'image' && showAltButton) {
+                const altBtn = document.createElement('button');
+                altBtn.type = 'button';
+                altBtn.className = 'md-btn md-alt-btn';
+                altBtn.title = 'Generate Alt-Text (select image markdown first)';
+                altBtn.innerHTML = ICONS.altText;
+                altBtn.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    min-width: 32px;
+                    min-height: 32px;
+                    flex-shrink: 0;
+                    box-sizing: border-box;
+                    background: ${isDark ? '#01242e' : 'white'};
+                    color: #9c27b0;
+                    border: 1px solid ${isDark ? '#555' : '#ccc'};
+                    border-radius: 3px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                `;
+                altBtn.addEventListener('click', () => generateAltTextForSelection());
+                $toolbar.appendChild(altBtn);
+            }
         });
 
         // Custom snippet button - before spacer
@@ -1899,6 +1928,124 @@
         document.addEventListener('keydown', escHandler);
     }
 
+    function showDeleteConfirmDialog() {
+        const dialog = document.createElement('div');
+        dialog.className = 'md-delete-dialog';
+        dialog.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: ${isDark ? '#01242e' : 'white'};
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-family: system-ui, sans-serif;
+        `;
+
+        panel.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+                <span style="color:#d32f2f;flex-shrink:0;">${ICONS.caution}</span>
+                <div>
+                    <div style="font-weight:600;font-size:16px;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;">
+                        Delete Article!
+                    </div>
+                    <div style="font-size:14px;color:${isDark ? '#aaa' : '#666'};line-height:1.5;">
+                        Do you really want to delete this article? <strong style="color:${isDark ? '#ff6b6b' : '#d32f2f'};">This action cannot be undone!</strong>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="md-dialog-cancel" style="
+                    padding: 8px 16px;
+                    background: transparent;
+                    color: ${isDark ? '#888' : '#666'};
+                    border: 1px solid ${isDark ? '#444' : '#ccc'};
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                ">Cancel</button>
+                <button class="md-dialog-delete" style="
+                    padding: 8px 16px;
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                ">Delete Permanently</button>
+            </div>
+        `;
+
+        dialog.appendChild(panel);
+        document.body.appendChild(dialog);
+
+        // Cancel - close dialog
+        panel.querySelector('.md-dialog-cancel').addEventListener('click', () => {
+            dialog.remove();
+        });
+
+        // Delete - execute deletion
+        panel.querySelector('.md-dialog-delete').addEventListener('click', () => {
+            dialog.remove();
+            executeDelete();
+        });
+
+        // Close on overlay click
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) dialog.remove();
+        });
+
+        // Close on Escape
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                dialog.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    function executeDelete() {
+        // Call BearBlog's deletePost function if it exists
+        if (typeof window.deletePost === 'function') {
+            window.deletePost();
+        } else {
+            // Fallback: click the delete button if it exists
+            const deleteBtn = document.getElementById('delete-button');
+            if (deleteBtn) {
+                deleteBtn.click();
+            } else {
+                // Last resort: submit delete form
+                const form = $textarea.closest('form');
+                if (form) {
+                    const existingDeleteBtn = document.querySelector('[id="delete-button"]');
+                    if (existingDeleteBtn) {
+                        const onclick = existingDeleteBtn.getAttribute('onclick');
+                        const match = onclick?.match(/action\s*=\s*['"]([^'"]+)['"]/);
+                        if (match) {
+                            form.action = match[1];
+                            form.submit();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     function navigateBack() {
         if (document.referrer && document.referrer !== window.location.href) {
             window.location.href = document.referrer;
@@ -2232,22 +2379,6 @@
 
         // Sync content back to original textarea
         fsTextarea.addEventListener('input', () => {
-            // If there's a pending image upload, merge instead of overwrite
-            // to avoid losing BearBlog's image insertion
-            if (pendingImageUpload) {
-                // Check if original textarea has new image that fullscreen doesn't have
-                const imageMarkdownRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-                const originalImages = [...$textarea.value.matchAll(imageMarkdownRegex)];
-                const fsImages = [...fsTextarea.value.matchAll(imageMarkdownRegex)];
-
-                // If original has more images, it means BearBlog inserted one - don't overwrite
-                if (originalImages.length > fsImages.length) {
-                    debugLog('Skipping fullscreen sync - waiting for image insertion',
-                        { originalImages: originalImages.length, fsImages: fsImages.length });
-                    return;
-                }
-            }
-
             $textarea.value = fsTextarea.value;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
         });
@@ -2537,38 +2668,12 @@
                 break;
 
             case 'publishPost': {
-                const publishInput = document.getElementById('publish');
-                if (publishInput) publishInput.value = 'true';
-                const form = $textarea.closest('form');
-                if (form) {
-                    // Trigger the hidden header content update
-                    const headerContent = document.getElementById('header_content');
-                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
-                    if (headerContent && hiddenHeaderContent) {
-                        hiddenHeaderContent.value = headerContent.innerText;
-                    }
-                    // Show loading overlay to prevent flash when in fullscreen
-                    showLoadingOverlay();
-                    form.submit();
-                }
+                savePostViaAjax(true);
                 break;
             }
 
             case 'savePost': {
-                const publishInput = document.getElementById('publish');
-                if (publishInput) publishInput.value = 'false';
-                const form = $textarea.closest('form');
-                if (form) {
-                    // Trigger the hidden header content update
-                    const headerContent = document.getElementById('header_content');
-                    const hiddenHeaderContent = document.getElementById('hidden_header_content');
-                    if (headerContent && hiddenHeaderContent) {
-                        hiddenHeaderContent.value = headerContent.innerText;
-                    }
-                    // Show loading overlay to prevent flash when in fullscreen
-                    showLoadingOverlay();
-                    form.submit();
-                }
+                savePostViaAjax(false);
                 break;
             }
 
@@ -2612,33 +2717,7 @@
             }
 
             case 'deletePost': {
-                // Call BearBlog's deletePost function if it exists
-                if (typeof window.deletePost === 'function') {
-                    window.deletePost();
-                } else {
-                    // Fallback: click the delete button if it exists
-                    const deleteBtn = document.getElementById('delete-button');
-                    if (deleteBtn) {
-                        deleteBtn.click();
-                    } else {
-                        // Last resort: confirm and submit delete form
-                        if (confirm('Are you sure you want to delete this post?')) {
-                            const form = $textarea.closest('form');
-                            if (form) {
-                                // Look for delete URL pattern in existing delete button onclick
-                                const existingDeleteBtn = document.querySelector('[id="delete-button"]');
-                                if (existingDeleteBtn) {
-                                    const onclick = existingDeleteBtn.getAttribute('onclick');
-                                    const match = onclick?.match(/action\s*=\s*['"]([^'"]+)['"]/);
-                                    if (match) {
-                                        form.action = match[1];
-                                        form.submit();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                showDeleteConfirmDialog();
                 break;
             }
         }
