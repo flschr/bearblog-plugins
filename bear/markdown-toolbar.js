@@ -1018,7 +1018,7 @@
                     flex-shrink: 0;
                     box-sizing: border-box;
                     background: ${isDark ? '#01242e' : 'white'};
-                    color: #9c27b0;
+                    color: ${isDark ? '#ddd' : '#333'};
                     border: 1px solid ${isDark ? '#555' : '#ccc'};
                     border-radius: 3px;
                     cursor: pointer;
@@ -2631,10 +2631,107 @@
         }
     }
 
+    // Check if a string looks like an image URL
+    function isImageUrl(str) {
+        if (!str || typeof str !== 'string') return false;
+        const trimmed = str.trim();
+        // Must start with http:// or https://
+        if (!trimmed.match(/^https?:\/\//i)) return false;
+        // Check for common image extensions or known image hosts
+        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)(\?.*)?$/i;
+        const imageHosts = /\b(cdn\.digitaloceanspaces\.com|imgur\.com|i\.imgur\.com|cloudinary\.com|unsplash\.com|images\.unsplash\.com|pexels\.com|images\.pexels\.com|flickr\.com|staticflickr\.com|giphy\.com|media\.giphy\.com)\b/i;
+        return imageExtensions.test(trimmed) || imageHosts.test(trimmed);
+    }
+
+    // Handle smart image button with clipboard detection
+    async function handleSmartImageUpload() {
+        try {
+            const clipboardText = await navigator.clipboard.readText();
+            if (isImageUrl(clipboardText)) {
+                showImageUrlDialog(clipboardText.trim());
+                return;
+            }
+        } catch (e) {
+            // Clipboard access denied or empty - just proceed with upload
+        }
+        // No image URL in clipboard, trigger normal upload
+        document.getElementById('upload-image')?.click();
+    }
+
+    // Show dialog asking whether to use clipboard URL or upload
+    function showImageUrlDialog(imageUrl) {
+        const isDark = document.body.classList.contains('dark');
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100001;
+        `;
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: ${isDark ? '#1a1a1a' : 'white'};
+            color: ${isDark ? '#ddd' : '#333'};
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
+
+        // Truncate URL for display
+        const displayUrl = imageUrl.length > 60 ? imageUrl.substring(0, 57) + '...' : imageUrl;
+
+        dialog.innerHTML = `
+            <div style="margin-bottom: 15px; font-weight: bold;">Image URL detected in clipboard</div>
+            <div style="margin-bottom: 15px; font-size: 12px; word-break: break-all; padding: 8px; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; border-radius: 4px; font-family: monospace;">${displayUrl}</div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="img-dialog-upload" style="padding: 8px 16px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer;">Upload new image</button>
+                <button id="img-dialog-use" style="padding: 8px 16px; border: none; background: #4a9eff; color: white; border-radius: 4px; cursor: pointer;">Use this URL</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+
+        // Handle "Use this URL" button
+        dialog.querySelector('#img-dialog-use').addEventListener('click', () => {
+            overlay.remove();
+            // Insert image markdown with empty alt-text
+            insertText(`![](${imageUrl})`);
+        });
+
+        // Handle "Upload new image" button
+        dialog.querySelector('#img-dialog-upload').addEventListener('click', () => {
+            overlay.remove();
+            document.getElementById('upload-image')?.click();
+        });
+
+        // Focus the "Use this URL" button
+        dialog.querySelector('#img-dialog-use').focus();
+    }
+
     function handleAction(action) {
         switch (action) {
             case 'upload':
-                document.getElementById('upload-image')?.click();
+                handleSmartImageUpload();
                 break;
 
             case 'gallery': {
