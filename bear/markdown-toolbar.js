@@ -494,7 +494,24 @@
 
     // Check if we're on a new (unsaved) post - preview is not available until first save
     function isNewPost() {
-        return !document.getElementById('preview');
+        // Method 1: Check if URL contains '/new/' or ends with '/new'
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/new/') || currentPath.endsWith('/new')) {
+            return true;
+        }
+
+        // Method 2: Check if the link field in header is empty (no slug yet)
+        const headerContent = document.getElementById('header_content');
+        if (headerContent) {
+            const headerText = headerContent.innerText || headerContent.textContent || '';
+            // Look for "link:" followed by nothing or just whitespace before next field
+            const linkMatch = headerText.match(/\blink:\s*([^\n]*)/i);
+            if (linkMatch && linkMatch[1].trim() === '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     function getAltTextLanguage() {
