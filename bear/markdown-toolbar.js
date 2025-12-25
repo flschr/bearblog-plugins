@@ -1730,6 +1730,35 @@
                 stickyControls.style.display = actionCheckbox.checked ? 'none' : '';
             }
 
+            // If in fullscreen mode, refresh it to apply new settings
+            const fsOverlay = document.getElementById('md-fullscreen-overlay');
+            if (fsOverlay) {
+                // Save current state
+                const fsTextarea = document.getElementById('md-fullscreen-textarea');
+                const savedContent = fsTextarea ? fsTextarea.value : $textarea.value;
+                const savedSelectionStart = fsTextarea ? fsTextarea.selectionStart : 0;
+                const savedSelectionEnd = fsTextarea ? fsTextarea.selectionEnd : 0;
+                const savedScrollTop = fsTextarea ? fsTextarea.scrollTop : 0;
+
+                // Remove old fullscreen overlay
+                fsOverlay.remove();
+                document.body.style.overflow = '';
+
+                // Reopen fullscreen with new settings (after a tiny delay for DOM cleanup)
+                setTimeout(() => {
+                    showFullscreenEditor();
+                    // Restore state
+                    const newFsTextarea = document.getElementById('md-fullscreen-textarea');
+                    if (newFsTextarea) {
+                        newFsTextarea.value = savedContent;
+                        newFsTextarea.setSelectionRange(savedSelectionStart, savedSelectionEnd);
+                        newFsTextarea.scrollTop = savedScrollTop;
+                        // Also sync to main textarea
+                        $textarea.value = savedContent;
+                    }
+                }, 10);
+            }
+
             overlay.remove();
         };
 
@@ -2143,6 +2172,7 @@
 
         // Create toolbar header
         const header = document.createElement('div');
+        header.id = 'md-fullscreen-header';
         header.style.cssText = `
             display: flex;
             gap: 4px;
@@ -2228,64 +2258,78 @@
         `;
         header.appendChild(separator1);
 
-        // Add all enabled formatting buttons
-        const enabledButtons = getEnabledButtons();
-        enabledButtons.forEach(buttonId => {
-            const buttonDef = BUTTONS[buttonId];
-            if (!buttonDef) return;
+        // Container for formatting buttons (for easy re-rendering when settings change)
+        const formattingContainer = document.createElement('div');
+        formattingContainer.id = 'md-fullscreen-formatting-buttons';
+        formattingContainer.style.cssText = 'display: flex; gap: 4px; align-items: center; flex-wrap: wrap;';
+        header.appendChild(formattingContainer);
 
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.title = buttonDef.title;
+        // Function to render formatting buttons into container
+        const renderFormattingButtons = (container) => {
+            container.innerHTML = '';
 
-            // Icon or text
-            if (buttonDef.icon.startsWith('<svg') || buttonDef.icon.startsWith('<')) {
-                btn.innerHTML = buttonDef.icon;
-            } else {
-                btn.textContent = buttonDef.icon;
-                btn.style.fontWeight = '800';
-                btn.style.fontFamily = 'system-ui, sans-serif';
-            }
+            // Add all enabled formatting buttons
+            const enabledButtons = getEnabledButtons();
+            enabledButtons.forEach(buttonId => {
+                const buttonDef = BUTTONS[buttonId];
+                if (!buttonDef) return;
 
-            btn.style.cssText = buttonStyle(buttonDef.color);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.title = buttonDef.title;
 
-            btn.addEventListener('click', () => {
-                // Temporarily switch the global textarea reference to fullscreen textarea
-                const originalTextarea = $textarea;
-                $textarea = fsTextarea;
-                handleButtonClick(buttonId, buttonDef);
-                $textarea = originalTextarea;
-                // Sync back to original
-                originalTextarea.value = fsTextarea.value;
-                originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            });
+                // Icon or text
+                if (buttonDef.icon.startsWith('<svg') || buttonDef.icon.startsWith('<')) {
+                    btn.innerHTML = buttonDef.icon;
+                } else {
+                    btn.textContent = buttonDef.icon;
+                    btn.style.fontWeight = '800';
+                    btn.style.fontFamily = 'system-ui, sans-serif';
+                }
 
-            header.appendChild(btn);
-        });
+                btn.style.cssText = buttonStyle(buttonDef.color);
 
-        // Custom snippet button (after formatting buttons, like normal toolbar)
-        if (isCustomSnippetEnabled()) {
-            const snippetBtn = document.createElement('button');
-            snippetBtn.type = 'button';
-            snippetBtn.title = 'Insert Custom Snippet';
-            snippetBtn.innerHTML = ICONS.heart;
-            snippetBtn.style.cssText = buttonStyle();
-            snippetBtn.style.color = '#e91e63';
-            snippetBtn.addEventListener('click', () => {
-                const snippet = getCustomSnippetText();
-                if (snippet) {
-                    // Temporarily switch textarea reference
+                btn.addEventListener('click', () => {
+                    // Temporarily switch the global textarea reference to fullscreen textarea
                     const originalTextarea = $textarea;
                     $textarea = fsTextarea;
-                    insertText(snippet);
+                    handleButtonClick(buttonId, buttonDef);
                     $textarea = originalTextarea;
-                    // Sync back
+                    // Sync back to original
                     originalTextarea.value = fsTextarea.value;
                     originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                }
+                });
+
+                container.appendChild(btn);
             });
-            header.appendChild(snippetBtn);
-        }
+
+            // Custom snippet button (after formatting buttons, like normal toolbar)
+            if (isCustomSnippetEnabled()) {
+                const snippetBtn = document.createElement('button');
+                snippetBtn.type = 'button';
+                snippetBtn.title = 'Insert Custom Snippet';
+                snippetBtn.innerHTML = ICONS.heart;
+                snippetBtn.style.cssText = buttonStyle();
+                snippetBtn.style.color = '#e91e63';
+                snippetBtn.addEventListener('click', () => {
+                    const snippet = getCustomSnippetText();
+                    if (snippet) {
+                        // Temporarily switch textarea reference
+                        const originalTextarea = $textarea;
+                        $textarea = fsTextarea;
+                        insertText(snippet);
+                        $textarea = originalTextarea;
+                        // Sync back
+                        originalTextarea.value = fsTextarea.value;
+                        originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+                container.appendChild(snippetBtn);
+            }
+        };
+
+        // Initial render
+        renderFormattingButtons(formattingContainer);
 
         // Spacer (pushes remaining items to right)
         const spacer = document.createElement('div');
