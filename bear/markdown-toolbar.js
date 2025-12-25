@@ -110,12 +110,11 @@
 
     // Button categories for settings panel
     const BUTTON_CATEGORIES = {
-        'Formatting': ['bold', 'italic', 'strikethrough', 'mark'],
+        'Text': ['bold', 'italic', 'strikethrough', 'mark', 'code'],
         'Headings': ['h1', 'h2', 'h3'],
         'Links & Media': ['link', 'image', 'gallery'],
-        'Blocks': ['quote', 'list', 'numberedList', 'hr', 'table'],
-        'Code': ['code', 'codeBlock'],
-        'References': ['footnote'],
+        'Lists': ['list', 'numberedList', 'quote'],
+        'Structure': ['hr', 'table', 'codeBlock', 'footnote'],
         'Admonitions': ['admonitionInfo', 'admonitionWarning', 'admonitionCaution'],
     };
 
@@ -1573,7 +1572,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         `;
-        aiHeader.textContent = 'AI Alt-Text (OpenAI)';
+        aiHeader.textContent = 'Alt-Text Generation (optional)';
         aiSection.appendChild(aiHeader);
 
         const aiWrapper = document.createElement('div');
@@ -1601,7 +1600,7 @@
         aiCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
 
         const aiToggleText = document.createElement('span');
-        aiToggleText.textContent = 'Auto-generate alt-text for uploaded images';
+        aiToggleText.textContent = 'Show ALT button in toolbar';
 
         aiToggleLabel.appendChild(aiCheckbox);
         aiToggleLabel.appendChild(aiToggleText);
@@ -1670,9 +1669,9 @@
             margin-top: 8px;
             line-height: 1.4;
         `;
-        aiInfo.innerHTML = 'Uses OpenAI GPT-4o to generate descriptive alt-text for accessibility. ' +
-            'Your API key is stored locally in your browser. ' +
-            'Leave language empty for English. ' +
+        aiInfo.innerHTML = 'Adds an ALT button to generate alt-text for selected image markdown using OpenAI GPT-4o. ' +
+            'Select an image in your text, then click ALT. ' +
+            'API key is stored locally. ' +
             '<a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0969da;">Get an API key</a>';
         aiWrapper.appendChild(aiInfo);
 
@@ -1718,26 +1717,25 @@
             font-size: 13px;
         `;
         resetBtn.onclick = () => {
-            // Show confirmation dialog
-            const confirmReset = confirm('Are you sure you want to reset all toolbar settings to default?');
-            if (!confirmReset) return;
-
-            CONFIG.enabledButtons.forEach(id => {
-                if (checkboxes[id]) checkboxes[id].checked = true;
+            showResetConfirmDialog(() => {
+                // Reset all checkboxes to default
+                CONFIG.enabledButtons.forEach(id => {
+                    if (checkboxes[id]) checkboxes[id].checked = true;
+                });
+                Object.keys(checkboxes).forEach(id => {
+                    if (!CONFIG.enabledButtons.includes(id)) {
+                        checkboxes[id].checked = false;
+                    }
+                });
+                counterCheckbox.checked = true; // Default: counter enabled
+                fullscreenCheckbox.checked = true; // Default: fullscreen enabled
+                actionCheckbox.checked = false; // Default: action buttons disabled
+                snippetCheckbox.checked = false; // Default: custom snippet disabled
+                snippetTextarea.value = ''; // Default: empty snippet
+                aiCheckbox.checked = false; // Default: AI alt-text disabled
+                apiKeyInput.value = ''; // Default: no API key
+                langInput.value = ''; // Default: no language (English)
             });
-            Object.keys(checkboxes).forEach(id => {
-                if (!CONFIG.enabledButtons.includes(id)) {
-                    checkboxes[id].checked = false;
-                }
-            });
-            counterCheckbox.checked = true; // Default: counter enabled
-            fullscreenCheckbox.checked = true; // Default: fullscreen enabled
-            actionCheckbox.checked = false; // Default: action buttons disabled
-            snippetCheckbox.checked = false; // Default: custom snippet disabled
-            snippetTextarea.value = ''; // Default: empty snippet
-            aiCheckbox.checked = false; // Default: AI alt-text disabled
-            apiKeyInput.value = ''; // Default: no API key
-            langInput.value = ''; // Default: no language (English)
         };
 
         const saveBtn = document.createElement('button');
@@ -2726,6 +2724,84 @@
 
         // Focus the "Use this URL" button
         dialog.querySelector('#img-dialog-use').focus();
+    }
+
+    // Show confirmation dialog for reset with clear warning
+    function showResetConfirmDialog(onConfirm) {
+        const isDark = document.body.classList.contains('dark');
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100002;
+        `;
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: ${isDark ? '#1a1a1a' : 'white'};
+            color: ${isDark ? '#ddd' : '#333'};
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            border: 2px solid #dc3545;
+        `;
+
+        dialog.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div style="color: #dc3545; font-size: 24px;">⚠️</div>
+                <div style="font-weight: bold; font-size: 16px;">Reset all settings?</div>
+            </div>
+            <div style="margin-bottom: 20px; font-size: 14px; line-height: 1.5; color: ${isDark ? '#aaa' : '#666'};">
+                This will delete all your toolbar customizations:<br>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Button selection and order</li>
+                    <li>OpenAI API key</li>
+                    <li>Custom snippets</li>
+                    <li>All other preferences</li>
+                </ul>
+                This action cannot be undone.
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="reset-dialog-cancel" style="padding: 10px 20px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
+                <button id="reset-dialog-confirm" style="padding: 10px 20px; border: none; background: #dc3545; color: white; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">Reset Everything</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+
+        // Handle Cancel button
+        dialog.querySelector('#reset-dialog-cancel').addEventListener('click', () => {
+            overlay.remove();
+        });
+
+        // Handle Confirm button
+        dialog.querySelector('#reset-dialog-confirm').addEventListener('click', () => {
+            overlay.remove();
+            onConfirm();
+        });
+
+        // Focus the Cancel button (safer default)
+        dialog.querySelector('#reset-dialog-cancel').focus();
     }
 
     function handleAction(action) {
