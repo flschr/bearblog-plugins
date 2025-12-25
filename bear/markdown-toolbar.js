@@ -373,9 +373,19 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && dialogStack.length > 0) {
             e.preventDefault();
-            const top = dialogStack[dialogStack.length - 1];
-            if (top && top.closeHandler) {
-                top.closeHandler();
+            // Clean up stale entries (dialogs no longer in DOM)
+            while (dialogStack.length > 0) {
+                const top = dialogStack[dialogStack.length - 1];
+                if (!top || !top.overlay || !document.body.contains(top.overlay)) {
+                    // Stale entry - remove it
+                    dialogStack.pop();
+                    continue;
+                }
+                // Valid dialog found - close it
+                if (top.closeHandler) {
+                    top.closeHandler();
+                }
+                break;
             }
         }
     });
@@ -492,20 +502,26 @@
         return ''; // Default: empty
     }
 
+    // Pre-compiled regex for isNewPost (performance optimization)
+    const NEW_POST_URL_PATTERN = /\/new\/?$/;
+    const LINK_FIELD_PATTERN = /^link:\s*([^\n]*)/im;
+
     // Check if we're on a new (unsaved) post - preview is not available until first save
     function isNewPost() {
-        // Method 1: Check if URL contains '/new/' or ends with '/new'
+        // Method 1: Check if URL path ends with '/new' or '/new/'
+        // Using a stricter pattern to avoid matching paths like '/new-draft'
         const currentPath = window.location.pathname;
-        if (currentPath.includes('/new/') || currentPath.endsWith('/new')) {
+        if (NEW_POST_URL_PATTERN.test(currentPath)) {
             return true;
         }
 
         // Method 2: Check if the link field in header is empty (no slug yet)
+        // This is the definitive check - if there's no link/slug, it's a new post
         const headerContent = document.getElementById('header_content');
         if (headerContent) {
             const headerText = headerContent.innerText || headerContent.textContent || '';
-            // Look for "link:" followed by nothing or just whitespace before next field
-            const linkMatch = headerText.match(/\blink:\s*([^\n]*)/i);
+            // Look for "link:" at start of a line, followed by nothing or just whitespace
+            const linkMatch = headerText.match(LINK_FIELD_PATTERN);
             if (linkMatch && linkMatch[1].trim() === '') {
                 return true;
             }
@@ -801,10 +817,16 @@
 
         const formData = new FormData(form);
 
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         fetch(form.action || window.location.href, {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: controller.signal
         }).then(response => {
+            clearTimeout(timeoutId);
             if (response.ok) {
                 // Mark content as saved
                 updateOriginalContent();
@@ -818,10 +840,18 @@
                     window.location.replace(response.url);
                 }
             } else {
-                showSaveToast('Error saving', false, true);
+                // Server returned an error status
+                console.error('Save failed with status:', response.status);
+                showSaveToast(`Error saving (${response.status})`, false, true);
             }
-        }).catch(() => {
-            showSaveToast('Error saving', false, true);
+        }).catch((error) => {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                showSaveToast('Save timed out', false, true);
+            } else {
+                console.error('Save failed:', error);
+                showSaveToast('Network error', false, true);
+            }
         });
     }
 
@@ -1733,18 +1763,29 @@
             // If in fullscreen mode, refresh it to apply new settings
             const fsOverlay = document.getElementById('md-fullscreen-overlay');
             if (fsOverlay) {
-                // Save current state
+                // Save current state before removing
                 const fsTextarea = document.getElementById('md-fullscreen-textarea');
                 const savedContent = fsTextarea ? fsTextarea.value : $textarea.value;
                 const savedSelectionStart = fsTextarea ? fsTextarea.selectionStart : 0;
                 const savedSelectionEnd = fsTextarea ? fsTextarea.selectionEnd : 0;
                 const savedScrollTop = fsTextarea ? fsTextarea.scrollTop : 0;
 
-                // Remove old fullscreen overlay
-                fsOverlay.remove();
-                document.body.style.overflow = '';
+                // Sync content to main textarea before closing
+                if (fsTextarea) {
+                    $textarea.value = fsTextarea.value;
+                }
 
-                // Reopen fullscreen with new settings (after a tiny delay for DOM cleanup)
+                // Click the exit button to trigger proper cleanup instead of direct removal
+                const exitBtn = fsOverlay.querySelector('button[title="Exit Fullscreen (Escape)"]');
+                if (exitBtn) {
+                    exitBtn.click();
+                } else {
+                    // Fallback: direct removal (MutationObserver will handle cleanup)
+                    fsOverlay.remove();
+                    document.body.style.overflow = '';
+                }
+
+                // Reopen fullscreen with new settings (after delay for cleanup)
                 setTimeout(() => {
                     showFullscreenEditor();
                     // Restore state
@@ -1753,10 +1794,8 @@
                         newFsTextarea.value = savedContent;
                         newFsTextarea.setSelectionRange(savedSelectionStart, savedSelectionEnd);
                         newFsTextarea.scrollTop = savedScrollTop;
-                        // Also sync to main textarea
-                        $textarea.value = savedContent;
                     }
-                }, 10);
+                }, 50);
             }
 
             overlay.remove();
@@ -2011,9 +2050,12 @@
         // Fallback: temporarily override confirm to bypass the native dialog
         if (deleteBtn) {
             const originalConfirm = window.confirm;
-            window.confirm = () => true;
-            deleteBtn.click();
-            window.confirm = originalConfirm;
+            try {
+                window.confirm = () => true;
+                deleteBtn.click();
+            } finally {
+                window.confirm = originalConfirm;
+            }
         }
     }
 
@@ -2292,9 +2334,12 @@
                 btn.addEventListener('click', () => {
                     // Temporarily switch the global textarea reference to fullscreen textarea
                     const originalTextarea = $textarea;
-                    $textarea = fsTextarea;
-                    handleButtonClick(buttonId, buttonDef);
-                    $textarea = originalTextarea;
+                    try {
+                        $textarea = fsTextarea;
+                        handleButtonClick(buttonId, buttonDef);
+                    } finally {
+                        $textarea = originalTextarea;
+                    }
                     // Sync back to original
                     originalTextarea.value = fsTextarea.value;
                     originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2316,9 +2361,12 @@
                     if (snippet) {
                         // Temporarily switch textarea reference
                         const originalTextarea = $textarea;
-                        $textarea = fsTextarea;
-                        insertText(snippet);
-                        $textarea = originalTextarea;
+                        try {
+                            $textarea = fsTextarea;
+                            insertText(snippet);
+                        } finally {
+                            $textarea = originalTextarea;
+                        }
                         // Sync back
                         originalTextarea.value = fsTextarea.value;
                         originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2371,8 +2419,41 @@
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
         });
 
+        // Track cleanup state to prevent double-cleanup
+        let isCleanedUp = false;
+
+        // Escape key handler (defined early so cleanup can reference it)
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                exitFullscreen();
+            }
+        };
+
+        // MutationObserver for cleanup safety net
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.removedNodes) {
+                    if (node === overlay) {
+                        cleanup();
+                        return;
+                    }
+                }
+            }
+        });
+
+        // Centralized cleanup function
+        const cleanup = () => {
+            if (isCleanedUp) return;
+            isCleanedUp = true;
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', escHandler);
+            observer.disconnect();
+        };
+
         // Exit function
         const exitFullscreen = () => {
+            if (isCleanedUp) return;
             setFullscreenFlag(false);
 
             // Sync final content
@@ -2382,6 +2463,8 @@
             // Restore selection
             $textarea.setSelectionRange(fsTextarea.selectionStart, fsTextarea.selectionEnd);
 
+            // Cleanup before removing overlay
+            cleanup();
             overlay.remove();
             $textarea.focus();
         };
@@ -2389,34 +2472,13 @@
         // Exit button click
         exitBtn.addEventListener('click', exitFullscreen);
 
-        // Escape key to exit
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                exitFullscreen();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
+        // Register escape handler
         document.addEventListener('keydown', escHandler);
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
-        overlay.addEventListener('remove', () => {
-            document.body.style.overflow = '';
-        });
 
-        // Clean up on overlay remove
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.removedNodes.forEach((node) => {
-                    if (node === overlay) {
-                        document.body.style.overflow = '';
-                        document.removeEventListener('keydown', escHandler);
-                        observer.disconnect();
-                    }
-                });
-            });
-        });
+        // Start observing for cleanup safety net
         observer.observe(document.body, { childList: true });
 
         // Setup keyboard shortcuts for fullscreen textarea
@@ -2432,9 +2494,12 @@
                 e.preventDefault();
                 // Temporarily switch textarea reference
                 const originalTextarea = $textarea;
-                $textarea = fsTextarea;
-                handleButtonClick(shortcut.id, shortcut.def);
-                $textarea = originalTextarea;
+                try {
+                    $textarea = fsTextarea;
+                    handleButtonClick(shortcut.id, shortcut.def);
+                } finally {
+                    $textarea = originalTextarea;
+                }
                 // Sync back
                 originalTextarea.value = fsTextarea.value;
                 originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2938,21 +3003,24 @@
 
                     // Save via AJAX without page reload
                     const formData = new FormData(form);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
                     fetch(form.action || window.location.href, {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        signal: controller.signal
                     }).then(response => {
+                        clearTimeout(timeoutId);
                         if (response.ok) {
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
-                            // Open preview after save completes
-                            document.getElementById('preview')?.click();
-                        } else {
-                            // Fallback: just open preview without save
-                            document.getElementById('preview')?.click();
                         }
+                        // Open preview regardless of save success
+                        document.getElementById('preview')?.click();
                     }).catch(() => {
-                        // On network error, still try to preview
+                        clearTimeout(timeoutId);
+                        // On network error or timeout, still try to preview
                         document.getElementById('preview')?.click();
                     });
                 } else {

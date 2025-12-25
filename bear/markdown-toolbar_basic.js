@@ -3,6 +3,7 @@
 
     // 1. Setup & State
     let currentMode = 'basic';
+    let globalClickListenerAdded = false;
     try {
         currentMode = localStorage.getItem('bear_toolbar_mode') || 'basic';
     } catch(e) {
@@ -99,8 +100,8 @@
             if (btnObj.adv && currentMode === 'basic') b.style.display = 'none';
 
             b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: system-ui, sans-serif;`;
-            
-            b.onclick = () => btnObj.action ? handleAction(btnObj.action, $textarea) : insertMarkdown($textarea, btnObj.syntax[0], btnObj.syntax[1], btnObj.lineStart);
+
+            b.addEventListener('click', () => btnObj.action ? handleAction(btnObj.action, $textarea) : insertMarkdown($textarea, btnObj.syntax[0], btnObj.syntax[1], btnObj.lineStart));
             return b;
         };
 
@@ -131,33 +132,42 @@
         toggleItem.style.cssText = `padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: ${isDark ? '#ddd' : '#444'}; border-bottom: 1px solid ${isDark ? '#333' : '#eee'};`;
         toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
         
-        toggleItem.onclick = (e) => {
+        toggleItem.addEventListener('click', (e) => {
             e.stopPropagation();
             currentMode = currentMode === 'basic' ? 'advanced' : 'basic';
             try {
                 localStorage.setItem('bear_toolbar_mode', currentMode);
-            } catch(e) {
+            } catch(err) {
                 // Silent fail - localStorage might be unavailable
             }
             toolbar.querySelectorAll('.adv-btn').forEach(b => b.style.display = currentMode === 'basic' ? 'none' : 'flex');
             toolbar.querySelector('.code-btn-group').style.display = currentMode === 'basic' ? 'none' : 'flex';
             toggleItem.innerText = currentMode === 'basic' ? 'Switch to Advanced' : 'Switch to Basic';
             dropdown.style.display = 'none';
-        };
+        });
         dropdown.appendChild(toggleItem);
 
         menuItems.forEach(item => {
             const div = document.createElement('div');
             div.style.cssText = `padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${isDark ? '#ddd' : '#444'};`;
             div.innerHTML = `<span style="display:flex; width:18px;">${item.label}</span> <span>${item.text}</span>`;
-            div.onclick = () => { handleAction(item.action, $textarea); dropdown.style.display = 'none'; };
-            div.onmouseover = () => div.style.backgroundColor = isDark ? '#004052' : '#f5f5f5';
-            div.onmouseout = () => div.style.backgroundColor = 'transparent';
+            div.addEventListener('click', () => { handleAction(item.action, $textarea); dropdown.style.display = 'none'; });
+            div.addEventListener('mouseenter', () => div.style.backgroundColor = isDark ? '#004052' : '#f5f5f5');
+            div.addEventListener('mouseleave', () => div.style.backgroundColor = 'transparent');
             dropdown.appendChild(div);
         });
 
-        menuBtn.onclick = (e) => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; };
-        document.addEventListener('click', () => dropdown.style.display = 'none');
+        menuBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+
+        // Add global click listener only once to close all dropdowns
+        if (!globalClickListenerAdded) {
+            globalClickListenerAdded = true;
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.markdown-toolbar [style*="position: absolute"]').forEach(el => {
+                    el.style.display = 'none';
+                });
+            });
+        }
 
         menuWrapper.append(menuBtn, dropdown);
         toolbar.appendChild(menuWrapper);
