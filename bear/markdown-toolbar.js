@@ -492,6 +492,11 @@
         return ''; // Default: empty
     }
 
+    // Check if we're on a new (unsaved) post - preview is not available until first save
+    function isNewPost() {
+        return !document.getElementById('preview');
+    }
+
     function getAltTextLanguage() {
         const userSettings = loadUserSettings();
         if (userSettings && typeof userSettings.altTextLanguage === 'string') {
@@ -948,12 +953,14 @@
 
         // Add action buttons (Publish, Save, Preview, Delete) if enabled
         if (showActionButtons) {
+            const newPost = isNewPost();
             const actionButtons = [
                 { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
                 { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
-                { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
+                // Preview only available after first save
+                !newPost && { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
                 { id: 'actionDelete', icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
-            ];
+            ].filter(Boolean);
 
             actionButtons.forEach(actionDef => {
                 const btn = document.createElement('button');
@@ -1939,29 +1946,28 @@
     }
 
     function executeDelete() {
-        // Call BearBlog's deletePost function if it exists
-        if (typeof window.deletePost === 'function') {
-            window.deletePost();
-        } else {
-            // Fallback: click the delete button if it exists
-            const deleteBtn = document.getElementById('delete-button');
-            if (deleteBtn) {
-                deleteBtn.click();
-            } else {
-                // Last resort: submit delete form
-                const form = $textarea.closest('form');
-                if (form) {
-                    const existingDeleteBtn = document.querySelector('[id="delete-button"]');
-                    if (existingDeleteBtn) {
-                        const onclick = existingDeleteBtn.getAttribute('onclick');
-                        const match = onclick?.match(/action\s*=\s*['"]([^'"]+)['"]/);
-                        if (match) {
-                            form.action = match[1];
-                            form.submit();
-                        }
-                    }
-                }
+        // Submit the delete form directly, bypassing BearBlog's confirm dialog
+        // since we already showed our own confirmation
+        const form = $textarea.closest('form');
+        const deleteBtn = document.getElementById('delete-button');
+
+        if (deleteBtn && form) {
+            // Extract the delete action URL from the button's onclick handler
+            const onclick = deleteBtn.getAttribute('onclick');
+            const match = onclick?.match(/action\s*=\s*['"]([^'"]+)['"]/);
+            if (match) {
+                form.action = match[1];
+                form.submit();
+                return;
             }
+        }
+
+        // Fallback: temporarily override confirm to bypass the native dialog
+        if (deleteBtn) {
+            const originalConfirm = window.confirm;
+            window.confirm = () => true;
+            deleteBtn.click();
+            window.confirm = originalConfirm;
         }
     }
 
@@ -2171,12 +2177,14 @@
         header.appendChild(backBtn);
 
         // Action buttons (Publish, Save, Preview, Delete) - always visible in fullscreen
+        const newPost = isNewPost();
         const actionButtons = [
             { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
             { icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
-            { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
+            // Preview only available after first save
+            !newPost && { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
             { icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
-        ];
+        ].filter(Boolean);
 
         actionButtons.forEach(actionDef => {
             const btn = document.createElement('button');
