@@ -586,7 +586,7 @@
         }
     }
 
-    function showAltTextNotification(message, isError = false, altText = null, isLoading = false) {
+    function showAltTextNotification(message, isError = false, isLoading = false) {
         // Remove existing notification if any
         const existing = document.getElementById('md-alttext-notification');
         if (existing) existing.remove();
@@ -602,121 +602,52 @@
             document.head.appendChild(style);
         }
 
-        const hasAltText = altText !== null;
-        const bgColor = isError ? '#d32f2f' : (hasAltText ? '#2e7d32' : (isDark ? '#004052' : '#0969da'));
+        const bgColor = isError ? '#d32f2f' : (isLoading ? '#1976d2' : '#2e7d32');
 
         notification.style.cssText = `
             position: fixed;
             bottom: 60px;
             right: 20px;
-            padding: 12px 16px;
+            padding: 12px 20px;
             border-radius: 8px;
-            font-size: 13px;
+            background: ${bgColor};
+            color: white;
             font-family: system-ui, sans-serif;
-            z-index: 999999;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10005;
             display: flex;
             align-items: center;
             gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             transition: opacity 0.3s;
-            background: ${bgColor};
-            color: white;
         `;
 
-        // Build notification content
-        let iconHtml;
         if (isLoading) {
-            iconHtml = `<svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite; flex-shrink: 0;">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-            </svg>`;
-        } else if (isError) {
-            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.caution}</span>`;
-        } else if (hasAltText) {
-            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.checkmark}</span>`;
+            notification.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+                ${message}
+            `;
         } else {
-            iconHtml = `<span style="display:flex; flex-shrink: 0;">${ICONS.info}</span>`;
-        }
-
-        notification.innerHTML = `
-            ${iconHtml}
-            <span style="flex: 1;">${message}</span>
-        `;
-
-        // Add Copy button and Close button for successful alt-text
-        if (hasAltText) {
-            // Copy button
-            const copyBtn = document.createElement('button');
-            copyBtn.textContent = 'Copy';
-            copyBtn.style.cssText = `
-                background: rgba(255,255,255,0.2);
-                border: 1px solid rgba(255,255,255,0.3);
-                color: white;
-                padding: 4px 12px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 500;
-                transition: background 0.2s;
+            notification.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                    ${isError ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' : '<path d="M20 6 9 17l-5-5"/>'}
+                </svg>
+                ${message}
             `;
-            copyBtn.addEventListener('mouseenter', () => {
-                copyBtn.style.background = 'rgba(255,255,255,0.3)';
-            });
-            copyBtn.addEventListener('mouseleave', () => {
-                copyBtn.style.background = 'rgba(255,255,255,0.2)';
-            });
-            copyBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                try {
-                    await navigator.clipboard.writeText(altText);
-                    copyBtn.textContent = '✓ Copied!';
-                    setTimeout(() => {
-                        copyBtn.textContent = 'Copy';
-                    }, 1500);
-                } catch (err) {
-                    debugLog('Clipboard error on click', err);
-                }
-            });
-            notification.appendChild(copyBtn);
-
-            // Close button (X)
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '✕';
-            closeBtn.style.cssText = `
-                background: transparent;
-                border: none;
-                color: rgba(255,255,255,0.7);
-                padding: 4px 6px;
-                cursor: pointer;
-                font-size: 16px;
-                line-height: 1;
-                margin-left: 4px;
-                transition: color 0.2s;
-            `;
-            closeBtn.addEventListener('mouseenter', () => {
-                closeBtn.style.color = 'white';
-            });
-            closeBtn.addEventListener('mouseleave', () => {
-                closeBtn.style.color = 'rgba(255,255,255,0.7)';
-            });
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                notification.style.opacity = '0';
-                setTimeout(() => notification.remove(), 300);
-            });
-            notification.appendChild(closeBtn);
         }
 
         document.body.appendChild(notification);
 
-        // Auto-remove only for errors and loading states (loading will be replaced)
-        // Success with alt-text stays until manually closed
-        if (isError) {
+        // Auto-remove success/error after delay (loading will be replaced by next notification)
+        if (!isLoading) {
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => notification.remove(), 300);
-            }, 5000);
+            }, 2000);
         }
-        // Loading and success with altText: no auto-remove (persistent)
     }
 
     // ==========================================================================
@@ -756,8 +687,19 @@
             return;
         }
 
+        // Lock editor during generation
+        const otherTextarea = textarea.id === 'md-fullscreen-textarea'
+            ? $textarea
+            : document.getElementById('md-fullscreen-textarea');
+        textarea.readOnly = true;
+        textarea.style.opacity = '0.7';
+        textarea.style.cursor = 'wait';
+        if (otherTextarea) {
+            otherTextarea.readOnly = true;
+        }
+
         // Show loading notification
-        showAltTextNotification('Generating alt-text...', false, null, true);
+        showAltTextNotification('Generating alt-text...', false, true);
 
         try {
             const altText = await generateAltTextWithOpenAI(imageData.imageUrl, false);
@@ -770,9 +712,6 @@
                 textarea.value = before + newImageMarkdown + after;
 
                 // Also update the other textarea (main or fullscreen)
-                const otherTextarea = textarea.id === 'md-fullscreen-textarea'
-                    ? $textarea
-                    : document.getElementById('md-fullscreen-textarea');
                 if (otherTextarea) {
                     otherTextarea.value = textarea.value;
                 }
@@ -785,13 +724,21 @@
                 textarea.selectionEnd = imageData.start + newImageMarkdown.length;
                 textarea.focus();
 
-                showAltTextNotification('Alt-text inserted!', false, altText);
+                showAltTextNotification('Alt-text inserted!', false);
             } else {
                 showAltTextNotification('Failed to generate alt-text', true);
             }
         } catch (error) {
             debugLog('Alt-text generation error', error);
             showAltTextNotification('Error generating alt-text', true);
+        } finally {
+            // Unlock editor
+            textarea.readOnly = false;
+            textarea.style.opacity = '';
+            textarea.style.cursor = '';
+            if (otherTextarea) {
+                otherTextarea.readOnly = false;
+            }
         }
     }
 
@@ -923,7 +870,7 @@
         toast.id = 'md-save-toast';
         toast.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 60px;
             right: 20px;
             padding: 12px 20px;
             border-radius: 8px;
@@ -1648,25 +1595,6 @@
         `;
         aiWrapper.appendChild(apiKeyInput);
 
-        // Security warning
-        const securityWarning = document.createElement('div');
-        securityWarning.style.cssText = `
-            margin-top: 8px;
-            padding: 8px 10px;
-            background: ${isDark ? '#3d2a1a' : '#fff3cd'};
-            border: 1px solid ${isDark ? '#664d03' : '#ffc107'};
-            border-radius: 4px;
-            font-size: 11px;
-            line-height: 1.4;
-            color: ${isDark ? '#ffc107' : '#664d03'};
-        `;
-        securityWarning.innerHTML = `
-            <strong>Note:</strong> Key is stored in localStorage (unencrypted).
-            Set <a href="https://platform.openai.com/settings/organization/limits" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">spending limits</a> in OpenAI.
-            <a href="https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">More info</a>
-        `;
-        aiWrapper.appendChild(securityWarning);
-
         // Language input
         const langLabel = document.createElement('div');
         langLabel.style.cssText = `
@@ -1695,7 +1623,7 @@
         `;
         aiWrapper.appendChild(langInput);
 
-        // Info text
+        // Info text with "Get an API key" link
         const aiInfo = document.createElement('div');
         aiInfo.style.cssText = `
             font-size: 11px;
@@ -1705,9 +1633,26 @@
         `;
         aiInfo.innerHTML = 'Adds an ALT button to generate alt-text for selected image markdown using OpenAI GPT-4o. ' +
             'Select an image in your text, then click ALT. ' +
-            'API key is stored locally. ' +
             '<a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0969da;">Get an API key</a>';
         aiWrapper.appendChild(aiInfo);
+
+        // Security warning (below "Get an API key")
+        const securityWarning = document.createElement('div');
+        securityWarning.style.cssText = `
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#3d2a1a' : '#fff3cd'};
+            border: 1px solid ${isDark ? '#664d03' : '#ffc107'};
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: ${isDark ? '#ffc107' : '#664d03'};
+        `;
+        securityWarning.innerHTML = `
+            <strong>Note:</strong> API key is stored in localStorage (unencrypted).
+            <a href="https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">More info</a>
+        `;
+        aiWrapper.appendChild(securityWarning);
 
         aiSection.appendChild(aiWrapper);
         panel.appendChild(aiSection);
@@ -2708,69 +2653,109 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100001;
+            z-index: 10003;
         `;
 
-        // Create dialog
+        // Create dialog panel
         const dialog = document.createElement('div');
         dialog.style.cssText = `
-            background: ${isDark ? '#1a1a1a' : 'white'};
-            color: ${isDark ? '#ddd' : '#333'};
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 450px;
+            background: ${isDark ? '#01242e' : 'white'};
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 420px;
             width: 90%;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-family: system-ui, sans-serif;
         `;
 
         // Build dialog content safely (no innerHTML with user content)
+        const headerDiv = document.createElement('div');
+        headerDiv.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.style.cssText = 'color:#0969da;flex-shrink:0;';
+        iconSpan.innerHTML = ICONS.info;
+
+        const contentDiv = document.createElement('div');
+
         const titleDiv = document.createElement('div');
-        titleDiv.style.cssText = 'margin-bottom: 15px; font-weight: bold;';
-        titleDiv.textContent = 'Image URL detected in clipboard';
+        titleDiv.style.cssText = `font-weight:600;font-size:16px;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;`;
+        titleDiv.textContent = 'Image URL detected';
+
+        const descDiv = document.createElement('div');
+        descDiv.style.cssText = `font-size:14px;color:${isDark ? '#aaa' : '#666'};margin-bottom:12px;`;
+        descDiv.textContent = 'An image URL was found in your clipboard.';
 
         const urlDiv = document.createElement('div');
-        urlDiv.style.cssText = `margin-bottom: 15px; font-size: 12px; word-break: break-all; padding: 8px; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; border-radius: 4px; font-family: monospace;`;
-        // Safe: textContent escapes HTML automatically
+        urlDiv.style.cssText = `font-size:12px;word-break:break-all;padding:8px;background:${isDark ? '#002530' : '#f5f5f5'};border-radius:6px;font-family:ui-monospace,monospace;color:${isDark ? '#888' : '#666'};`;
         urlDiv.textContent = imageUrl.length > 60 ? imageUrl.substring(0, 57) + '...' : imageUrl;
 
+        contentDiv.appendChild(titleDiv);
+        contentDiv.appendChild(descDiv);
+        contentDiv.appendChild(urlDiv);
+        headerDiv.appendChild(iconSpan);
+        headerDiv.appendChild(contentDiv);
+
         const buttonDiv = document.createElement('div');
-        buttonDiv.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+        buttonDiv.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
 
         const uploadBtn = document.createElement('button');
         uploadBtn.textContent = 'Upload new image';
-        uploadBtn.style.cssText = `padding: 8px 16px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer;`;
+        uploadBtn.style.cssText = `
+            padding: 8px 16px;
+            background: transparent;
+            color: ${isDark ? '#888' : '#666'};
+            border: 1px solid ${isDark ? '#444' : '#ccc'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        `;
 
         const useBtn = document.createElement('button');
         useBtn.textContent = 'Use this URL';
-        useBtn.style.cssText = 'padding: 8px 16px; border: none; background: #4a9eff; color: white; border-radius: 4px; cursor: pointer;';
+        useBtn.style.cssText = `
+            padding: 8px 16px;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        `;
 
         buttonDiv.appendChild(uploadBtn);
         buttonDiv.appendChild(useBtn);
-        dialog.appendChild(titleDiv);
-        dialog.appendChild(urlDiv);
+        dialog.appendChild(headerDiv);
         dialog.appendChild(buttonDiv);
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
 
+        // Close handler
+        const closeOverlay = () => {
+            removeDialogFromStack(overlay);
+            overlay.remove();
+        };
+
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-            }
+            if (e.target === overlay) closeOverlay();
         });
 
         // Handle "Use this URL" button
         useBtn.addEventListener('click', () => {
-            overlay.remove();
-            // Insert image markdown with empty alt-text
+            closeOverlay();
             insertText(`![](${imageUrl})`);
         });
 
         // Handle "Upload new image" button
         uploadBtn.addEventListener('click', () => {
-            overlay.remove();
+            closeOverlay();
             document.getElementById('upload-image')?.click();
         });
+
+        // Register with dialog manager for Escape key handling
+        pushDialog(overlay, closeOverlay);
 
         // Focus the "Use this URL" button
         useBtn.focus();
@@ -2786,44 +2771,64 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.5);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100002;
+            z-index: 10003;
         `;
 
-        // Create dialog (uses global isDark for consistency)
+        // Create dialog panel
         const dialog = document.createElement('div');
         dialog.style.cssText = `
-            background: ${isDark ? '#1a1a1a' : 'white'};
-            color: ${isDark ? '#ddd' : '#333'};
-            border-radius: 8px;
+            background: ${isDark ? '#01242e' : 'white'};
+            border-radius: 12px;
             padding: 24px;
-            max-width: 400px;
+            max-width: 420px;
             width: 90%;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            border: 2px solid #dc3545;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-family: system-ui, sans-serif;
         `;
 
         dialog.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                <div style="color: #dc3545; font-size: 24px;">⚠️</div>
-                <div style="font-weight: bold; font-size: 16px;">Reset all settings?</div>
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+                <span style="color:#d32f2f;flex-shrink:0;">${ICONS.caution}</span>
+                <div>
+                    <div style="font-weight:600;font-size:16px;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;">
+                        Reset all settings?
+                    </div>
+                    <div style="font-size:14px;color:${isDark ? '#aaa' : '#666'};line-height:1.5;">
+                        This will delete all your toolbar customizations:<br>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Button selection and order</li>
+                            <li>OpenAI API key</li>
+                            <li>Custom snippets</li>
+                            <li>All other preferences</li>
+                        </ul>
+                        <strong style="color:${isDark ? '#ff6b6b' : '#d32f2f'};">This action cannot be undone!</strong>
+                    </div>
+                </div>
             </div>
-            <div style="margin-bottom: 20px; font-size: 14px; line-height: 1.5; color: ${isDark ? '#aaa' : '#666'};">
-                This will delete all your toolbar customizations:<br>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Button selection and order</li>
-                    <li>OpenAI API key</li>
-                    <li>Custom snippets</li>
-                    <li>All other preferences</li>
-                </ul>
-                This action cannot be undone.
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button id="reset-dialog-cancel" style="padding: 10px 20px; border: 1px solid ${isDark ? '#555' : '#ccc'}; background: ${isDark ? '#2a2a2a' : '#f5f5f5'}; color: ${isDark ? '#ddd' : '#333'}; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
-                <button id="reset-dialog-confirm" style="padding: 10px 20px; border: none; background: #dc3545; color: white; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">Reset Everything</button>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button id="reset-dialog-cancel" style="
+                    padding: 8px 16px;
+                    background: transparent;
+                    color: ${isDark ? '#888' : '#666'};
+                    border: 1px solid ${isDark ? '#444' : '#ccc'};
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                ">Cancel</button>
+                <button id="reset-dialog-confirm" style="
+                    padding: 8px 16px;
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                ">Reset Everything</button>
             </div>
         `;
 
