@@ -589,7 +589,12 @@
 
     // Get selected image markdown from textarea
     function getSelectedImageMarkdown(textarea) {
-        const selection = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        const rawSelection = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        // Trim whitespace and calculate offset adjustments
+        const leadingWhitespace = rawSelection.match(/^[\s]*/)[0].length;
+        const trailingWhitespace = rawSelection.match(/[\s]*$/)[0].length;
+        const selection = rawSelection.trim();
+
         const imageMarkdownRegex = /^!\[([^\]]*)\]\(([^)]+)\)$/;
         const match = selection.match(imageMarkdownRegex);
         if (match) {
@@ -597,8 +602,8 @@
                 fullMatch: match[0],
                 altText: match[1],
                 imageUrl: match[2],
-                start: textarea.selectionStart,
-                end: textarea.selectionEnd
+                start: textarea.selectionStart + leadingWhitespace,
+                end: textarea.selectionEnd - trailingWhitespace
             };
         }
         return null;
