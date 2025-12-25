@@ -2613,16 +2613,23 @@
 
         overlay.appendChild(header);
 
-        // Create iframe for preview content
-        const iframe = document.createElement('iframe');
-        iframe.name = 'md-inline-preview-iframe';
-        iframe.style.cssText = `
+        // Create content container for preview (using div instead of iframe to avoid X-Frame-Options issues)
+        const contentContainer = document.createElement('div');
+        contentContainer.id = 'md-inline-preview-content';
+        contentContainer.style.cssText = `
             flex: 1;
             width: 100%;
-            border: none;
+            overflow: auto;
             background: ${isDark ? '#01242e' : '#ffffff'};
         `;
-        overlay.appendChild(iframe);
+
+        // Show loading indicator
+        contentContainer.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: ${isDark ? '#aaa' : '#666'};">
+                <span>Loading preview...</span>
+            </div>
+        `;
+        overlay.appendChild(contentContainer);
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
@@ -2630,28 +2637,63 @@
         // Add overlay to page
         document.body.appendChild(overlay);
 
-        // Create and submit form to load preview content via POST
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = previewUrl;
-        form.target = 'md-inline-preview-iframe';
-        form.style.display = 'none';
+        // Fetch preview content via POST (avoids X-Frame-Options restrictions)
+        const formData = new FormData();
+        formData.append('header_content', headerContent.innerText);
+        formData.append('body_content', bodyContent.value);
 
-        const headerInput = document.createElement('input');
-        headerInput.type = 'hidden';
-        headerInput.name = 'header_content';
-        headerInput.value = headerContent.innerText;
-        form.appendChild(headerInput);
+        fetch(previewUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Extract the body content from the response HTML
+            // Create a temporary element to parse the HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
 
-        const bodyInput = document.createElement('input');
-        bodyInput.type = 'hidden';
-        bodyInput.name = 'body_content';
-        bodyInput.value = bodyContent.value;
-        form.appendChild(bodyInput);
+            // Get styles from the response
+            const styles = doc.querySelectorAll('style, link[rel="stylesheet"]');
+            const styleContent = Array.from(styles).map(s => s.outerHTML).join('\n');
 
-        document.body.appendChild(form);
-        form.submit();
-        form.remove();
+            // Get the main content - try to find the article/main content
+            let bodyHtml = doc.body ? doc.body.innerHTML : html;
+
+            // Create a shadow DOM for style isolation
+            const shadowHost = document.createElement('div');
+            shadowHost.style.cssText = 'height: 100%; width: 100%;';
+            contentContainer.innerHTML = '';
+            contentContainer.appendChild(shadowHost);
+
+            const shadow = shadowHost.attachShadow({ mode: 'open' });
+            shadow.innerHTML = `
+                ${styleContent}
+                <style>
+                    :host {
+                        display: block;
+                        height: 100%;
+                        overflow: auto;
+                    }
+                    body, html {
+                        margin: 0;
+                        padding: 0;
+                    }
+                </style>
+                <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+                    ${bodyHtml}
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Preview fetch error:', error);
+            contentContainer.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #d32f2f;">
+                    <span>Failed to load preview</span>
+                </div>
+            `;
+        });
 
         // Register with dialog stack for ESC key handling
         pushDialog(overlay, closeInlinePreview);
