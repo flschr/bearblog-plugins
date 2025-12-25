@@ -2557,7 +2557,7 @@
             right: 0;
             bottom: 0;
             background: ${isDark ? '#01242e' : '#ffffff'};
-            z-index: 10001;
+            z-index: 10003;
             display: flex;
             flex-direction: column;
         `;
