@@ -719,9 +719,9 @@
                 // Trigger input event for BearBlog to detect change
                 textarea.dispatchEvent(new Event('input', { bubbles: true }));
 
-                // Select the new markdown
-                textarea.selectionStart = imageData.start;
-                textarea.selectionEnd = imageData.start + newImageMarkdown.length;
+                // Position cursor after the inserted markdown (no selection)
+                const cursorPos = imageData.start + newImageMarkdown.length;
+                textarea.setSelectionRange(cursorPos, cursorPos);
                 textarea.focus();
 
                 showAltTextNotification('Alt-text inserted!', false);
@@ -740,64 +740,6 @@
                 otherTextarea.readOnly = false;
             }
         }
-    }
-
-    // Setup double-click selection for image markdown
-    function setupImageMarkdownSelection() {
-        const setupForTextarea = (textarea) => {
-            if (!textarea || textarea.hasAttribute('data-image-dblclick-setup')) return;
-            textarea.setAttribute('data-image-dblclick-setup', 'true');
-
-            textarea.addEventListener('dblclick', (e) => {
-                const pos = textarea.selectionStart;
-                const text = textarea.value;
-
-                // Find image markdown around cursor position
-                // Search backwards for ![
-                let start = pos;
-                while (start > 0 && !(text[start] === '!' && text[start + 1] === '[')) {
-                    start--;
-                }
-                if (text[start] !== '!' || text[start + 1] !== '[') return;
-
-                // Search forwards for closing )
-                let end = pos;
-                let bracketDepth = 0;
-                let foundClosingBracket = false;
-                for (let i = start + 2; i < text.length; i++) {
-                    if (text[i] === '[') bracketDepth++;
-                    if (text[i] === ']') {
-                        if (bracketDepth > 0) bracketDepth--;
-                        else foundClosingBracket = true;
-                    }
-                    if (foundClosingBracket && text[i] === ')') {
-                        end = i + 1;
-                        break;
-                    }
-                }
-
-                // Verify it's a valid image markdown
-                const potentialMatch = text.substring(start, end);
-                if (/^!\[[^\]]*\]\([^)]+\)$/.test(potentialMatch)) {
-                    e.preventDefault();
-                    textarea.selectionStart = start;
-                    textarea.selectionEnd = end;
-                }
-            });
-        };
-
-        // Setup for main textarea
-        setupForTextarea($textarea);
-
-        // Also observe for fullscreen textarea (disconnect after setup to avoid performance drain)
-        const observer = new MutationObserver(() => {
-            const fsTextarea = document.getElementById('md-fullscreen-textarea');
-            if (fsTextarea) {
-                setupForTextarea(fsTextarea);
-                observer.disconnect(); // Stop observing once fullscreen textarea is set up
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
     }
 
     // Track original content for unsaved changes detection
@@ -952,7 +894,6 @@
         createToolbar();
         createCharCounter();
         setupKeyboardShortcuts();
-        setupImageMarkdownSelection();
 
         // Hide Bear Blog default elements
         document.querySelectorAll('.helptext.sticky, body > footer').forEach(el => {
