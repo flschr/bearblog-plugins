@@ -45,6 +45,8 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/search.js" defer></script>
     ```
 
+---
+
 ### Theme Switcher
 
 *   **Description**: A two-part script for a seamless dark/light mode theme switcher that saves the user's choice for future visits.
@@ -58,6 +60,8 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
         <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/theme-switch-footer.js" defer></script>
         ```
 
+---
+
 ### Image Lazy Loading
 
 *   **Description**: Improves page load performance by automatically adding `loading="lazy"` to all images within your blog's main content area, so they only load when they are about to be viewed.
@@ -65,6 +69,9 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     ```html
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/lazy-load.js" defer></script>
     ```
+
+---
+
 
 ### Custom Date Formatting
 
