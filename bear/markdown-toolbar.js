@@ -627,6 +627,29 @@
         return false;
     }
 
+    // Check if the current post is published
+    function isPublished() {
+        const publishInput = document.getElementById('publish');
+        return publishInput?.value === 'true';
+    }
+
+    // Update Publish/Unpublish button visibility based on current status
+    function updatePublishButtons() {
+        const published = isPublished();
+
+        // Update normal toolbar buttons
+        const publishBtn = document.getElementById('actionPublish');
+        const unpublishBtn = document.getElementById('actionUnpublish');
+        if (publishBtn) publishBtn.style.display = published ? 'none' : '';
+        if (unpublishBtn) unpublishBtn.style.display = published ? '' : 'none';
+
+        // Update fullscreen toolbar buttons
+        const fsPublishBtn = document.getElementById('fsActionPublish');
+        const fsUnpublishBtn = document.getElementById('fsActionUnpublish');
+        if (fsPublishBtn) fsPublishBtn.style.display = published ? 'none' : '';
+        if (fsUnpublishBtn) fsUnpublishBtn.style.display = published ? '' : 'none';
+    }
+
     function getAltTextLanguage() {
         const userSettings = loadUserSettings();
         if (userSettings && typeof userSettings.altTextLanguage === 'string') {
@@ -946,6 +969,8 @@
                 // Mark content as saved
                 updateOriginalContent();
                 showSaveToast(customMessage || (publish ? 'Published!' : 'Saved!'), false);
+                // Update Publish/Unpublish button visibility
+                updatePublishButtons();
 
                 // If the response redirects to a new URL (new post), navigate there
                 if (response.redirected && response.url !== window.location.href) {
@@ -1162,9 +1187,11 @@
                 { id: 'actionDelete', icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
             ].filter(Boolean);
 
+            const published = isPublished();
             actionButtons.forEach(actionDef => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
+                btn.id = actionDef.id;
                 btn.className = 'md-btn';
                 btn.dataset.action = actionDef.action;
                 btn.title = actionDef.title;
@@ -1174,6 +1201,12 @@
                 btn.style.background = actionDef.color;
                 btn.style.color = 'white';
                 btn.style.border = `1px solid ${isDark ? '#555' : '#ccc'}`;
+                // Show Publish only when not published, Unpublish only when published
+                if (actionDef.id === 'actionPublish') {
+                    btn.style.display = published ? 'none' : '';
+                } else if (actionDef.id === 'actionUnpublish') {
+                    btn.style.display = published ? '' : 'none';
+                }
                 fragment.appendChild(btn);
             });
 
@@ -2505,21 +2538,29 @@
 
         // Action buttons (Publish, Unpublish, Save, Preview, Delete) - always visible in fullscreen
         const newPost = isNewPost();
+        const published = isPublished();
         const actionButtons = [
-            { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
-            { icon: ICONS.unpublish, title: 'Unpublish', action: 'unpublishPost', color: '#795548' },
-            { icon: ICONS.save, title: 'Save', action: 'savePost', color: '#2e7d32' },
+            { id: 'fsActionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
+            { id: 'fsActionUnpublish', icon: ICONS.unpublish, title: 'Unpublish', action: 'unpublishPost', color: '#795548' },
+            { id: 'fsActionSave', icon: ICONS.save, title: 'Save', action: 'savePost', color: '#2e7d32' },
             // Preview only available after first save
-            !newPost && { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
-            { icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
+            !newPost && { id: 'fsActionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
+            { id: 'fsActionDelete', icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
         ].filter(Boolean);
 
         actionButtons.forEach(actionDef => {
             const btn = document.createElement('button');
             btn.type = 'button';
+            btn.id = actionDef.id;
             btn.title = actionDef.title;
             btn.innerHTML = actionDef.icon;
             btn.style.cssText = buttonStyle(actionDef.color);
+            // Show Publish only when not published, Unpublish only when published
+            if (actionDef.id === 'fsActionPublish') {
+                btn.style.display = published ? 'none' : '';
+            } else if (actionDef.id === 'fsActionUnpublish') {
+                btn.style.display = published ? '' : 'none';
+            }
             btn.addEventListener('click', () => {
                 // Sync content before action
                 $textarea.value = fsTextarea.value;
