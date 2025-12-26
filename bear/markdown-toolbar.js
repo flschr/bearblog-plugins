@@ -165,6 +165,7 @@
         heart: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
         // Action buttons
         publish: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
+        unpublish: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M8.43 8.43 3 11l8 2 2 8 2.57-5.43"/><path d="M17.39 11.73 22 2l-9.73 4.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>',
         save: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
         eye: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>',
         back: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
@@ -912,7 +913,7 @@
     // AJAX SAVE (prevents extra history entry)
     // ==========================================================================
 
-    function savePostViaAjax(publish) {
+    function savePostViaAjax(publish, customMessage = null) {
         const publishInput = document.getElementById('publish');
         if (publishInput) publishInput.value = publish ? 'true' : 'false';
 
@@ -944,7 +945,7 @@
             if (response.ok) {
                 // Mark content as saved
                 updateOriginalContent();
-                showSaveToast(publish ? 'Published!' : 'Saved!', false);
+                showSaveToast(customMessage || (publish ? 'Published!' : 'Saved!'), false);
 
                 // If the response redirects to a new URL (new post), navigate there
                 if (response.redirected && response.url !== window.location.href) {
@@ -1154,7 +1155,8 @@
             const newPost = isNewPost();
             const actionButtons = [
                 { id: 'actionPublish', icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
-                { id: 'actionSave', icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
+                { id: 'actionUnpublish', icon: ICONS.unpublish, title: 'Unpublish', action: 'unpublishPost', color: '#795548' },
+                { id: 'actionSave', icon: ICONS.save, title: 'Save', action: 'savePost', color: '#2e7d32' },
                 // Preview only available after first save
                 !newPost && { id: 'actionPreview', icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
                 { id: 'actionDelete', icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
@@ -2501,11 +2503,12 @@
         });
         header.appendChild(backBtn);
 
-        // Action buttons (Publish, Save, Preview, Delete) - always visible in fullscreen
+        // Action buttons (Publish, Unpublish, Save, Preview, Delete) - always visible in fullscreen
         const newPost = isNewPost();
         const actionButtons = [
             { icon: ICONS.publish, title: 'Publish', action: 'publishPost', color: '#0969da' },
-            { icon: ICONS.save, title: 'Save as Draft', action: 'savePost', color: '#2e7d32' },
+            { icon: ICONS.unpublish, title: 'Unpublish', action: 'unpublishPost', color: '#795548' },
+            { icon: ICONS.save, title: 'Save', action: 'savePost', color: '#2e7d32' },
             // Preview only available after first save
             !newPost && { icon: ICONS.eye, title: 'Preview', action: 'previewPost', color: '#f57c00' },
             { icon: ICONS.trash, title: 'Delete', action: 'deletePost', color: '#d32f2f' },
@@ -3502,7 +3505,15 @@
             }
 
             case 'savePost': {
-                savePostViaAjax(false);
+                // Preserve current publish status - just save without changing it
+                const publishInput = document.getElementById('publish');
+                const currentStatus = publishInput?.value === 'true';
+                savePostViaAjax(currentStatus);
+                break;
+            }
+
+            case 'unpublishPost': {
+                savePostViaAjax(false, 'Unpublished!');
                 break;
             }
 
