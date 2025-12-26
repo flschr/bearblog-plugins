@@ -2718,39 +2718,46 @@
     // TEXT INSERTION (Undo-compatible)
     // ==========================================================================
 
+    // Get the active textarea (fullscreen or main)
+    function getActiveTextarea() {
+        return document.getElementById('md-fullscreen-textarea') || $textarea;
+    }
+
     function insertText(text) {
-        $textarea.focus();
+        const activeTextarea = getActiveTextarea();
+        activeTextarea.focus();
 
         // Use execCommand to preserve undo history
         // This is deprecated but still works and is the only way to preserve undo
         if (!document.execCommand('insertText', false, text)) {
             // Fallback for browsers where execCommand doesn't work
-            const start = $textarea.selectionStart;
-            const end = $textarea.selectionEnd;
-            const before = $textarea.value.substring(0, start);
-            const after = $textarea.value.substring(end);
-            $textarea.value = before + text + after;
-            $textarea.selectionStart = $textarea.selectionEnd = start + text.length;
+            const start = activeTextarea.selectionStart;
+            const end = activeTextarea.selectionEnd;
+            const before = activeTextarea.value.substring(0, start);
+            const after = activeTextarea.value.substring(end);
+            activeTextarea.value = before + text + after;
+            activeTextarea.selectionStart = activeTextarea.selectionEnd = start + text.length;
         }
 
-        $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        activeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function insertMarkdown(before, after, lineStart = false) {
-        const start = $textarea.selectionStart;
-        const end = $textarea.selectionEnd;
-        const selected = $textarea.value.substring(start, end);
+        const activeTextarea = getActiveTextarea();
+        const start = activeTextarea.selectionStart;
+        const end = activeTextarea.selectionEnd;
+        const selected = activeTextarea.value.substring(start, end);
 
-        $textarea.focus();
+        activeTextarea.focus();
 
         if (lineStart) {
             // For line-start syntax, we need to go to the beginning of the line
-            const textBefore = $textarea.value.substring(0, start);
+            const textBefore = activeTextarea.value.substring(0, start);
             const lineStartPos = textBefore.lastIndexOf('\n') + 1;
-            const textBeforeCursor = $textarea.value.substring(lineStartPos, start);
+            const textBeforeCursor = activeTextarea.value.substring(lineStartPos, start);
 
             // Select from line start to end of selection
-            $textarea.setSelectionRange(lineStartPos, end);
+            activeTextarea.setSelectionRange(lineStartPos, end);
 
             // Insert the new text
             const newText = before + textBeforeCursor + selected + after;
@@ -2758,7 +2765,7 @@
 
             // Position cursor
             const newPos = lineStartPos + before.length + textBeforeCursor.length + selected.length + after.length;
-            $textarea.setSelectionRange(newPos, newPos);
+            activeTextarea.setSelectionRange(newPos, newPos);
         } else {
             // Regular wrap
             const newText = before + selected + after;
@@ -2767,18 +2774,19 @@
             // Position cursor
             if (selected) {
                 const newPos = start + newText.length;
-                $textarea.setSelectionRange(newPos, newPos);
+                activeTextarea.setSelectionRange(newPos, newPos);
             } else {
                 const newPos = start + before.length;
-                $textarea.setSelectionRange(newPos, newPos);
+                activeTextarea.setSelectionRange(newPos, newPos);
             }
         }
     }
 
     async function insertLink() {
-        const start = $textarea.selectionStart;
-        const end = $textarea.selectionEnd;
-        const selected = $textarea.value.substring(start, end);
+        const activeTextarea = getActiveTextarea();
+        const start = activeTextarea.selectionStart;
+        const end = activeTextarea.selectionEnd;
+        const selected = activeTextarea.value.substring(start, end);
 
         // Try to get URL from clipboard (with validation)
         let url = '';
@@ -2789,7 +2797,7 @@
             }
         } catch (e) {}
 
-        $textarea.focus();
+        activeTextarea.focus();
 
         const linkText = selected || 'Link Text';
         const newText = `[${linkText}](${url})`;
@@ -2798,10 +2806,10 @@
         // Position cursor appropriately
         if (!selected && !url) {
             // Select "Link Text" so user can type
-            $textarea.setSelectionRange(start + 1, start + 1 + linkText.length);
+            activeTextarea.setSelectionRange(start + 1, start + 1 + linkText.length);
         } else if (!url) {
             // Position cursor in URL area
-            $textarea.setSelectionRange(start + selected.length + 3, start + selected.length + 3);
+            activeTextarea.setSelectionRange(start + selected.length + 3, start + selected.length + 3);
         }
     }
 
@@ -2810,11 +2818,12 @@
         // Cancel if user pressed Cancel button
         if (language === null) return;
 
-        const start = $textarea.selectionStart;
-        const end = $textarea.selectionEnd;
-        const selected = $textarea.value.substring(start, end);
+        const activeTextarea = getActiveTextarea();
+        const start = activeTextarea.selectionStart;
+        const end = activeTextarea.selectionEnd;
+        const selected = activeTextarea.value.substring(start, end);
 
-        $textarea.focus();
+        activeTextarea.focus();
 
         const before = '\n```' + language + '\n';
         const after = '\n```\n';
@@ -2824,13 +2833,14 @@
         // Position cursor inside the code block
         if (!selected) {
             const newPos = start + before.length;
-            $textarea.setSelectionRange(newPos, newPos);
+            activeTextarea.setSelectionRange(newPos, newPos);
         }
     }
 
     function insertFootnote() {
+        const activeTextarea = getActiveTextarea();
         // Count existing footnotes to suggest next number
-        const content = $textarea.value;
+        const content = activeTextarea.value;
         const footnoteMatches = content.match(/\[\^\d+\]/g) || [];
         const usedNumbers = footnoteMatches.map(m => parseInt(m.match(/\d+/)[0]));
         const nextNumber = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
@@ -2838,10 +2848,10 @@
         const footnoteId = prompt('Footnote ID (number or name):', nextNumber.toString());
         if (!footnoteId) return;
 
-        const start = $textarea.selectionStart;
-        const selected = $textarea.value.substring(start, $textarea.selectionEnd);
+        const start = activeTextarea.selectionStart;
+        const selected = activeTextarea.value.substring(start, activeTextarea.selectionEnd);
 
-        $textarea.focus();
+        activeTextarea.focus();
 
         // Insert footnote reference at cursor
         const ref = `[^${footnoteId}]`;
@@ -2851,14 +2861,14 @@
         const defPattern = new RegExp(`\\[\\^${footnoteId}\\]:`);
         if (!defPattern.test(content)) {
             const definition = `\n\n[^${footnoteId}]: ${selected || 'Footnote text here'}`;
-            const currentPos = $textarea.selectionStart;
+            const currentPos = activeTextarea.selectionStart;
 
             // Move to end and add definition
-            $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
+            activeTextarea.setSelectionRange(activeTextarea.value.length, activeTextarea.value.length);
             insertText(definition);
 
             // Return cursor to original position (after the reference)
-            $textarea.setSelectionRange(currentPos, currentPos);
+            activeTextarea.setSelectionRange(currentPos, currentPos);
         }
     }
 
