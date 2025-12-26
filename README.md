@@ -22,11 +22,11 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 * **Minimal Costs:** Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
 * **No Subscription:** You use your own OpenAI API Key and only pay for what you actually use.
 
-**Security Note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with some risks:
-
-- **XSS Vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
-- **Shared Computers**: Anyone with access to your browser can view the key via Developer Tools
-- **No Encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
+> [!WARNING] **Security Note**
+>  Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with some risks:
+> - **XSS Vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
+> - **Shared Computers**: Anyone with access to your browser can view the key via Developer Tools
+> - **No Encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
 
 **Recommendations:**
 1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month)
