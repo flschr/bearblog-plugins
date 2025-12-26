@@ -66,7 +66,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
         ```
     2.  Add this to `Custom footer content` to handle the click event:
         ```html
-        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/theme-switch-footer.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/theme-switch-footer.js" defer></script>
         ```
 
 ---
