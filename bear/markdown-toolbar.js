@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.5
+ * Bear Blog Markdown Toolbar v3.6
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -34,6 +34,10 @@
  *
  * Mobile Usability (v3.5):
  * - Optional Undo/Redo buttons for mobile devices (Ctrl+Z/Y equivalent)
+ *
+ * Undo/Redo Improvements (v3.6):
+ * - Undo/Redo buttons displayed after separator for visual grouping
+ * - Undo/Redo buttons now also available in fullscreen mode
  */
 (function() {
     'use strict';
@@ -1206,6 +1210,11 @@
 
         // Undo/Redo buttons (useful for mobile devices)
         if (isUndoRedoButtonsEnabled()) {
+            // Separator before undo/redo buttons
+            const undoRedoSeparator = document.createElement('div');
+            undoRedoSeparator.className = getSeparatorClass();
+            fragment.appendChild(undoRedoSeparator);
+
             const undoBtn = document.createElement('button');
             undoBtn.type = 'button';
             undoBtn.className = getBtnClass();
@@ -2620,6 +2629,47 @@
 
         // Initial render
         renderFormattingButtons(formattingContainer);
+
+        // Undo/Redo buttons (useful for mobile devices)
+        if (isUndoRedoButtonsEnabled()) {
+            // Separator before undo/redo buttons
+            const undoRedoSeparator = document.createElement('div');
+            undoRedoSeparator.style.cssText = `
+                width: 1px;
+                height: 24px;
+                background: ${isDark ? '#555' : '#ccc'};
+                margin: 0 8px;
+            `;
+            header.appendChild(undoRedoSeparator);
+
+            const undoBtn = document.createElement('button');
+            undoBtn.type = 'button';
+            undoBtn.title = 'Undo (Ctrl+Z)';
+            undoBtn.innerHTML = ICONS.undo;
+            undoBtn.style.cssText = buttonStyle();
+            undoBtn.addEventListener('click', () => {
+                fsTextarea.focus();
+                document.execCommand('undo', false, null);
+                // Sync back to original
+                $textarea.value = fsTextarea.value;
+                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            header.appendChild(undoBtn);
+
+            const redoBtn = document.createElement('button');
+            redoBtn.type = 'button';
+            redoBtn.title = 'Redo (Ctrl+Y)';
+            redoBtn.innerHTML = ICONS.redo;
+            redoBtn.style.cssText = buttonStyle();
+            redoBtn.addEventListener('click', () => {
+                fsTextarea.focus();
+                document.execCommand('redo', false, null);
+                // Sync back to original
+                $textarea.value = fsTextarea.value;
+                $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            header.appendChild(redoBtn);
+        }
 
         // Spacer (pushes remaining items to right)
         const spacer = document.createElement('div');
