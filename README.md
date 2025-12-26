@@ -51,7 +51,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list.
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/search.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/search.js" defer></script>
     ```
 
 ---
@@ -62,7 +62,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Installation**: This requires adding an element with `id="theme-toggle"` to your theme and then adding the two scripts below.
     1.  Add this to `Custom <head> content` to prevent theme flashing:
         ```html
-        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/theme-switch-head.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/theme-switch-head.js"></script>
         ```
     2.  Add this to `Custom footer content` to handle the click event:
         ```html
@@ -76,7 +76,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English).
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/privacy-embeds.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/privacy-embeds.js" defer></script>
     ```
 
 ---
@@ -86,7 +86,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Improves page load performance by automatically adding `loading="lazy"` to all images within your blog's main content area, so they only load when they are about to be viewed.
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/lazy-load.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/lazy-load.js" defer></script>
     ```
 
 ---
@@ -97,7 +97,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Overwrites Bear Blog's default date formatting. You can easily customize the date format (e.g., "18. Dez 2025") by editing the `format_string` variable inside the script. This script adds German month names and date formating.
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/date.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/date.js" defer></script>
     ```
 
 ---
