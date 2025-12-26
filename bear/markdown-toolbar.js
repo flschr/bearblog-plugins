@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.3
+ * Bear Blog Markdown Toolbar v3.4
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -26,6 +26,11 @@
  * - Error logging for catch blocks (debugging aid)
  * - Race condition guard for executeDelete()
  * - OpenAI API request timeout (prevents hanging)
+ *
+ * Performance & Security Hardening (v3.4):
+ * - Fast length check before string comparison in sync polling
+ * - XSS protection: textContent for dynamic notification messages
+ * - requestAnimationFrame for character counter UI sync
  */
 (function() {
     'use strict';
@@ -737,21 +742,26 @@
             transition: opacity 0.3s;
         `;
 
+        // Create icon element (static SVG - safe for innerHTML)
+        const iconWrapper = document.createElement('span');
+        iconWrapper.style.display = 'flex';
         if (isLoading) {
-            notification.innerHTML = `
+            iconWrapper.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-                </svg>
-                ${message}
-            `;
+                </svg>`;
         } else {
-            notification.innerHTML = `
+            iconWrapper.innerHTML = `
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
                     ${isError ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' : '<path d="M20 6 9 17l-5-5"/>'}
-                </svg>
-                ${message}
-            `;
+                </svg>`;
         }
+        notification.appendChild(iconWrapper);
+
+        // Create text element (XSS-safe: uses textContent)
+        const textNode = document.createElement('span');
+        textNode.textContent = message;
+        notification.appendChild(textNode);
 
         document.body.appendChild(notification);
 
@@ -957,21 +967,26 @@
             transition: opacity 0.3s;
         `;
 
+        // Create icon element (static SVG - safe for innerHTML)
+        const iconWrapper = document.createElement('span');
+        iconWrapper.style.display = 'flex';
         if (isLoading) {
-            toast.innerHTML = `
+            iconWrapper.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" style="animation: md-spin 1s linear infinite;">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-                </svg>
-                ${message}
-            `;
+                </svg>`;
         } else {
-            toast.innerHTML = `
+            iconWrapper.innerHTML = `
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
                     ${isError ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' : '<path d="M20 6 9 17l-5-5"/>'}
-                </svg>
-                ${message}
-            `;
+                </svg>`;
         }
+        toast.appendChild(iconWrapper);
+
+        // Create text element (XSS-safe: uses textContent)
+        const textNode = document.createElement('span');
+        textNode.textContent = message;
+        toast.appendChild(textNode);
 
         document.body.appendChild(toast);
 
@@ -1284,8 +1299,10 @@
             }
         };
 
-        // Debounce counter updates to reduce DOM operations during rapid typing
-        const debouncedUpdate = debounce(updateCounter, INTERNAL.DEBOUNCE_DELAY);
+        // Debounce counter updates and sync with browser rendering via requestAnimationFrame
+        const debouncedUpdate = debounce(() => {
+            requestAnimationFrame(updateCounter);
+        }, INTERNAL.DEBOUNCE_DELAY);
         $textarea.addEventListener('input', debouncedUpdate);
         updateCounter(); // Initial update without debounce
 
@@ -2614,7 +2631,9 @@
                 return;
             }
             // Sync if content differs (programmatic change detected)
-            if ($textarea.value !== fsTextarea.value) {
+            // Fast length check before expensive string comparison
+            if ($textarea.value.length !== fsTextarea.value.length ||
+                $textarea.value !== fsTextarea.value) {
                 isSyncing = true;
                 const cursorPos = fsTextarea.selectionStart;
                 const oldLength = fsTextarea.value.length;
