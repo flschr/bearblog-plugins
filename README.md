@@ -2,6 +2,15 @@
 
 A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader and writer experience. I mainly use them for my own purposes on [my personal website](https://fischr.org/). But of course, you can use them too. To install a plugin, you need to add it to your header, footer or dashboard configuration. Just follow the instructions below.
 
+## Plugin Overview
+
+- **[Markdown Toolbar](#markdown-toolbar)** – Powerful editor toolbar with formatting buttons and optional AI alt-text generation
+- **[Blog Search & Infinite Scroll](#blog-search--infinite-scroll)** – Client-side search with real-time highlighting and infinite scroll
+- **[Theme Switcher](#theme-switcher)** – Dark/light mode toggle that remembers user preference
+- **[Privacy Embeds](#privacy-embeds)** – GDPR-friendly consent placeholders for external content (YouTube, Maps, etc.)
+- **[Image Lazy Loading](#image-lazy-loading)** – Automatic lazy loading for all images
+- **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
+
 ---
 
 ## Available Plugins
@@ -59,6 +68,16 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
         ```html
         <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/theme-switch-footer.js" defer></script>
         ```
+
+---
+
+### Privacy Embeds
+
+*   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English).
+*   **Installation**: Add the following code to your `Custom footer content`:
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/privacy-embeds.js" defer></script>
+    ```
 
 ---
 
