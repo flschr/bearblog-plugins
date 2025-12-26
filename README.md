@@ -11,14 +11,18 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 *   **Description**: Adds a powerful Markdown toolbar to the post editor. It includes buttons for text formatting, media uploads, and custom HTML blocks like info/warning boxes.
 *   **Installation**: This is a **dashboard script**. Go to **Dashboard** -> **Settings** and add the following URL to the `Custom dashboard Javascript` field:
     ```
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/markdown-toolbar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/markdown-toolbar.js"></script>
     ```
 
 #### AI Alt-Text Feature (Optional)
 
-The toolbar includes an optional AI-powered alt-text generator for images using OpenAI's Vision API.
+The toolbar includes an optional AI-powered alt-text generator for images using the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
 
-**Security Note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with risks:
+* **Smart Privacy:** Only the URL of the selected image is sent to OpenAI when you actively click the button. No data is sent in the background.
+* **Minimal Costs:** Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
+* **No Subscription:** You use your own OpenAI API Key and only pay for what you actually use.
+
+**Security Note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with some risks:
 
 - **XSS Vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
 - **Shared Computers**: Anyone with access to your browser can view the key via Developer Tools
@@ -29,14 +33,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 2. **Use a dedicated API key** just for this toolbar (you can revoke it anytime)
 3. **Don't use this feature** on shared or public computers
 4. The risk is limited: an attacker can only make API calls on your behalf – they cannot access your OpenAI account or other data
-
-#### Deep Dive: How the AI Integration Works
-
-The AI integration uses the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
-
-* **Smart Privacy:** Only the URL of the selected image is sent to OpenAI when you actively click the button. No data is sent in the background.
-* **Minimal Costs:** Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
-* **No Subscription:** You use your own OpenAI API Key and only pay for what you actually use.
 
 ---
 
