@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.4
+ * Bear Blog Markdown Toolbar v3.5
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -31,6 +31,9 @@
  * - Fast length check before string comparison in sync polling
  * - XSS protection: textContent for dynamic notification messages
  * - requestAnimationFrame for character counter UI sync
+ *
+ * Mobile Usability (v3.5):
+ * - Optional Undo/Redo buttons for mobile devices (Ctrl+Z/Y equivalent)
  */
 (function() {
     'use strict';
@@ -154,6 +157,9 @@
         checkmark: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 6 9 17l-5-5"/></svg>',
         trash: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
         close: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+        // Undo/Redo (Lucide)
+        undo: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>',
+        redo: '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>',
     };
 
     // Button categories for settings panel
@@ -552,6 +558,14 @@
             return userSettings.customSnippetText;
         }
         return ''; // Default: empty
+    }
+
+    function isUndoRedoButtonsEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.showUndoRedoButtons === 'boolean') {
+            return userSettings.showUndoRedoButtons;
+        }
+        return false; // Default: disabled
     }
 
     function isAiAltTextEnabled() {
@@ -1190,6 +1204,27 @@
             fragment.appendChild(snippetBtn);
         }
 
+        // Undo/Redo buttons (useful for mobile devices)
+        if (isUndoRedoButtonsEnabled()) {
+            const undoBtn = document.createElement('button');
+            undoBtn.type = 'button';
+            undoBtn.className = getBtnClass();
+            undoBtn.title = 'Undo (Ctrl+Z)';
+            undoBtn.setAttribute('aria-label', 'Undo');
+            undoBtn.innerHTML = ICONS.undo;
+            undoBtn.dataset.action = 'undo';
+            fragment.appendChild(undoBtn);
+
+            const redoBtn = document.createElement('button');
+            redoBtn.type = 'button';
+            redoBtn.className = getBtnClass();
+            redoBtn.title = 'Redo (Ctrl+Y)';
+            redoBtn.setAttribute('aria-label', 'Redo');
+            redoBtn.innerHTML = ICONS.redo;
+            redoBtn.dataset.action = 'redo';
+            fragment.appendChild(redoBtn);
+        }
+
         // Spacer (pushes following buttons to the right)
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
@@ -1566,6 +1601,35 @@
         actionLabel.appendChild(actionText);
         optionsGrid.appendChild(actionLabel);
 
+        // Undo/Redo Buttons Toggle (for mobile)
+        const undoRedoLabel = document.createElement('label');
+        undoRedoLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        undoRedoLabel.onmouseover = () => undoRedoLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        undoRedoLabel.onmouseout = () => undoRedoLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const undoRedoCheckbox = document.createElement('input');
+        undoRedoCheckbox.type = 'checkbox';
+        undoRedoCheckbox.checked = isUndoRedoButtonsEnabled();
+        undoRedoCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const undoRedoText = document.createElement('span');
+        undoRedoText.textContent = 'Show Undo/Redo Buttons';
+
+        undoRedoLabel.appendChild(undoRedoCheckbox);
+        undoRedoLabel.appendChild(undoRedoText);
+        optionsGrid.appendChild(undoRedoLabel);
+
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -1835,6 +1899,7 @@
                 counterCheckbox.checked = true; // Default: counter enabled
                 fullscreenCheckbox.checked = true; // Default: fullscreen enabled
                 actionCheckbox.checked = false; // Default: action buttons disabled
+                undoRedoCheckbox.checked = false; // Default: undo/redo buttons disabled
                 snippetCheckbox.checked = false; // Default: custom snippet disabled
                 snippetTextarea.value = ''; // Default: empty snippet
                 aiCheckbox.checked = false; // Default: AI alt-text disabled
@@ -1869,6 +1934,7 @@
                 showCharCounter: counterCheckbox.checked,
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
+                showUndoRedoButtons: undoRedoCheckbox.checked,
                 showCustomSnippet: snippetCheckbox.checked,
                 customSnippetText: snippetTextarea.value,
                 enableAiAltText: aiCheckbox.checked,
@@ -3332,6 +3398,14 @@
                 }
                 break;
             }
+
+            case 'undo':
+                document.execCommand('undo', false, null);
+                break;
+
+            case 'redo':
+                document.execCommand('redo', false, null);
+                break;
 
             case 'upload':
                 handleSmartImageUpload();
