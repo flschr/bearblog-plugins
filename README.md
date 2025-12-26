@@ -59,7 +59,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 ### Theme Switcher
 
 *   **Description**: A two-part script for a seamless dark/light mode theme switcher that saves the user's choice for future visits.
-*   **Installation**: This requires adding an element with `id="theme-toggle"` to your theme and then adding the two scripts below.
+*   **Installation**: This requires adding an element with `id="theme-toggle"` to your theme and then adding the two scripts below. See it in action [on my personal website](https://fischr.org/).
     1.  Add this to `Custom <head> content` to prevent theme flashing:
         ```html
         <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/theme-switch-head.js"></script>
@@ -73,7 +73,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 
 ### Privacy Embeds
 
-*   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English).
+*   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English). See it in [on this page](https://fischr.org/oben-links-am-lago-di-benaco/).
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/privacy-embeds.js" defer></script>
