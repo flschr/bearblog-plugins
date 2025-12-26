@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.2
+ * Bear Blog Markdown Toolbar v3.3
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -19,6 +19,13 @@
  * Fullscreen Sync Fix (v3.2):
  * - Polling sync for native image uploads in fullscreen mode
  * - Catches programmatic textarea changes that don't trigger events
+ *
+ * Stability & Security Improvements (v3.3):
+ * - Centralized INTERNAL constants for all magic numbers
+ * - Configurable debug logging (disabled by default)
+ * - Error logging for catch blocks (debugging aid)
+ * - Race condition guard for executeDelete()
+ * - OpenAI API request timeout (prevents hanging)
  */
 (function() {
     'use strict';
@@ -41,6 +48,30 @@
     //   Admonitions:  'admonitionInfo', 'admonitionWarning', 'admonitionCaution'
     //
     // ==========================================================================
+
+    // ==========================================================================
+    // INTERNAL CONSTANTS (performance & stability)
+    // ==========================================================================
+
+    const INTERNAL = {
+        // Timing
+        DEBOUNCE_DELAY: 100,           // Character counter debounce (ms)
+        SYNC_POLL_INTERVAL: 300,       // Fullscreen sync polling (ms)
+        SETTINGS_CACHE_TTL: 1000,      // Settings cache lifetime (ms)
+        SAVE_TIMEOUT: 30000,           // AJAX save timeout (ms)
+        PREVIEW_SAVE_TIMEOUT: 15000,   // Preview save timeout (ms)
+        API_TIMEOUT: 30000,            // OpenAI API timeout (ms)
+        FULLSCREEN_RESTORE_DELAY: 100, // Delay before restoring fullscreen (ms)
+        TOAST_DISPLAY_TIME: 2000,      // Toast notification display time (ms)
+        TOAST_FADE_TIME: 300,          // Toast fade animation time (ms)
+
+        // Limits
+        MAX_URL_LENGTH: 2048,          // Maximum URL length for validation
+        MAX_ALT_TEXT_TOKENS: 150,      // OpenAI max tokens for alt-text
+
+        // Debug mode (set to true to enable console logging)
+        DEBUG: false,
+    };
 
     const CONFIG = {
         // Buttons to show (comment out or remove to hide)
@@ -431,7 +462,6 @@
     // Settings cache for performance (avoid repeated JSON.parse)
     let _settingsCache = null;
     let _settingsCacheTime = 0;
-    const SETTINGS_CACHE_TTL = 1000; // 1 second TTL
 
     // Shortcut map for O(1) keyboard shortcut lookup
     let _shortcutMap = null;
@@ -439,7 +469,7 @@
     function loadUserSettings() {
         const now = Date.now();
         // Return cached settings if still valid
-        if (_settingsCache !== null && (now - _settingsCacheTime) < SETTINGS_CACHE_TTL) {
+        if (_settingsCache !== null && (now - _settingsCacheTime) < INTERNAL.SETTINGS_CACHE_TTL) {
             return _settingsCache;
         }
         try {
@@ -466,7 +496,9 @@
                 savedAt: Date.now()
             }));
             invalidateSettingsCache(); // Clear cache on save
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[Toolbar] Failed to save settings:', e.message);
+        }
     }
 
     function getEnabledButtons() {
@@ -573,8 +605,9 @@
     // AI ALT-TEXT GENERATION (OpenAI Vision)
     // ==========================================================================
 
-    // Debug logging helper
+    // Debug logging helper (only logs when INTERNAL.DEBUG is true)
     function debugLog(stage, data) {
+        if (!INTERNAL.DEBUG) return;
         const timestamp = new Date().toISOString().substr(11, 12);
         console.log(`[ALT-TEXT ${timestamp}] ${stage}:`, data);
     }
@@ -597,6 +630,10 @@
             ? `Write the alt-text in ${language.toUpperCase()} language.`
             : '';
         const systemPrompt = `You are an accessibility expert. Generate concise, descriptive alt-text for images. The alt-text should be 1-2 sentences, describing the key visual elements and context. Do not start with "Image of" or "Picture of". Just describe what is shown. ${languageInstruction} Respond with only the alt-text, no quotes or extra formatting.`;
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), INTERNAL.API_TIMEOUT);
 
         try {
             debugLog('Sending request', { model: 'gpt-4o-mini' });
@@ -631,10 +668,12 @@
                             ]
                         }
                     ],
-                    max_tokens: 150
-                })
+                    max_tokens: INTERNAL.MAX_ALT_TEXT_TOKENS
+                }),
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
             debugLog('Response status', { ok: response.ok, status: response.status });
 
             if (!response.ok) {
@@ -649,8 +688,14 @@
             debugLog('Generated alt-text', { altText, length: altText?.length });
             return altText || null;
         } catch (error) {
-            debugLog('Exception', { message: error.message, stack: error.stack });
-            console.error('Failed to generate alt-text:', error);
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                debugLog('Timeout', { timeout: INTERNAL.API_TIMEOUT });
+                console.error('OpenAI API request timed out');
+            } else {
+                debugLog('Exception', { message: error.message, stack: error.stack });
+                console.error('Failed to generate alt-text:', error);
+            }
             return null;
         }
     }
@@ -714,8 +759,8 @@
         if (!isLoading) {
             setTimeout(() => {
                 notification.style.opacity = '0';
-                setTimeout(() => notification.remove(), 300);
-            }, 2000);
+                setTimeout(() => notification.remove(), INTERNAL.TOAST_FADE_TIME);
+            }, INTERNAL.TOAST_DISPLAY_TIME);
         }
     }
 
@@ -850,7 +895,7 @@
 
         // Create abort controller for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), INTERNAL.SAVE_TIMEOUT);
 
         fetch(form.action || window.location.href, {
             method: 'POST',
@@ -934,8 +979,8 @@
         if (!isLoading) {
             setTimeout(() => {
                 toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 2000);
+                setTimeout(() => toast.remove(), INTERNAL.TOAST_FADE_TIME);
+            }, INTERNAL.TOAST_DISPLAY_TIME);
         }
     }
 
@@ -952,7 +997,9 @@
                 window.location.href = pendingBackUrl;
                 return;
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[Toolbar] Failed to check pending navigation:', e.message);
+        }
 
         $textarea = document.getElementById('body_content');
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
@@ -1238,7 +1285,7 @@
         };
 
         // Debounce counter updates to reduce DOM operations during rapid typing
-        const debouncedUpdate = debounce(updateCounter, 100);
+        const debouncedUpdate = debounce(updateCounter, INTERNAL.DEBOUNCE_DELAY);
         $textarea.addEventListener('input', debouncedUpdate);
         updateCounter(); // Initial update without debounce
 
@@ -2097,6 +2144,9 @@
         pushDialog(dialog, closeDialog);
     }
 
+    // Guard to prevent concurrent confirm overrides
+    let _confirmOverrideActive = false;
+
     function executeDelete() {
         // Submit the delete form directly, bypassing BearBlog's confirm dialog
         // since we already showed our own confirmation
@@ -2115,13 +2165,26 @@
         }
 
         // Fallback: temporarily override confirm to bypass the native dialog
+        // This is necessary because BearBlog's delete button uses onclick with confirm()
         if (deleteBtn) {
+            // Prevent concurrent overrides (race condition guard)
+            if (_confirmOverrideActive) {
+                console.warn('[Toolbar] Delete already in progress');
+                return;
+            }
+
             const originalConfirm = window.confirm;
+            _confirmOverrideActive = true;
+
             try {
                 window.confirm = () => true;
                 deleteBtn.click();
             } finally {
-                window.confirm = originalConfirm;
+                // Restore immediately in a microtask to minimize exposure window
+                queueMicrotask(() => {
+                    window.confirm = originalConfirm;
+                    _confirmOverrideActive = false;
+                });
             }
         }
     }
@@ -2157,7 +2220,9 @@
                 if (backUrl) {
                     sessionStorage.setItem(PENDING_BACK_NAV_KEY, backUrl);
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[Toolbar] Failed to store back navigation URL:', e.message);
+            }
 
             // Submit form (which will navigate away)
             form.submit();
@@ -2215,7 +2280,9 @@
             } else {
                 sessionStorage.removeItem(FULLSCREEN_KEY);
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[Toolbar] Failed to set fullscreen flag:', e.message);
+        }
     }
 
     function getFullscreenFlag() {
@@ -2559,7 +2626,7 @@
                 fsTextarea.setSelectionRange(newCursorPos, newCursorPos);
                 isSyncing = false;
             }
-        }, 300); // Check every 300ms for responsive sync
+        }, INTERNAL.SYNC_POLL_INTERVAL); // Check regularly for responsive sync
 
         // Track cleanup state to prevent double-cleanup
         let isCleanedUp = false;
@@ -2657,7 +2724,7 @@
             // Small delay to ensure DOM is ready
             setTimeout(() => {
                 showFullscreenEditor();
-            }, 100);
+            }, INTERNAL.FULLSCREEN_RESTORE_DELAY);
         }
     }
 
@@ -2876,7 +2943,9 @@
             if (isValidUrl(clip)) {
                 url = clip.trim();
             }
-        } catch (e) {}
+        } catch (e) {
+            // Clipboard access denied or empty - this is expected behavior, no warning needed
+        }
 
         activeTextarea.focus();
 
@@ -2970,7 +3039,7 @@
         if (!str || typeof str !== 'string') return false;
         const trimmed = str.trim();
         // Max URL length to prevent abuse
-        if (trimmed.length > 2048) return false;
+        if (trimmed.length > INTERNAL.MAX_URL_LENGTH) return false;
         // Block dangerous protocols
         if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return false;
         // Must start with http:// or https://
@@ -3316,7 +3385,7 @@
                     // Save via AJAX without page reload
                     const formData = new FormData(form);
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                    const timeoutId = setTimeout(() => controller.abort(), INTERNAL.PREVIEW_SAVE_TIMEOUT);
 
                     fetch(form.action || window.location.href, {
                         method: 'POST',
