@@ -2476,11 +2476,37 @@
         fsTextarea.setSelectionRange(originalSelectionStart, originalSelectionEnd);
         fsTextarea.scrollTop = originalScrollTop;
 
+        // Flag to prevent sync loops between textareas
+        let isSyncing = false;
+
         // Sync content back to original textarea
         fsTextarea.addEventListener('input', () => {
+            if (isSyncing) return;
+            isSyncing = true;
             $textarea.value = fsTextarea.value;
             $textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            isSyncing = false;
         });
+
+        // Reverse sync: when Bear Blog inserts content (e.g., after image upload),
+        // sync it back to fullscreen textarea
+        const originalTextareaInputHandler = () => {
+            if (isSyncing) return;
+            // Only sync if content differs (Bear Blog inserted something)
+            if ($textarea.value !== fsTextarea.value) {
+                isSyncing = true;
+                // Preserve cursor position in fullscreen editor
+                const cursorPos = fsTextarea.selectionStart;
+                const oldLength = fsTextarea.value.length;
+                fsTextarea.value = $textarea.value;
+                // Adjust cursor position based on content length change
+                const newLength = fsTextarea.value.length;
+                const diff = newLength - oldLength;
+                fsTextarea.setSelectionRange(cursorPos + diff, cursorPos + diff);
+                isSyncing = false;
+            }
+        };
+        $textarea.addEventListener('input', originalTextareaInputHandler);
 
         // Track cleanup state to prevent double-cleanup
         let isCleanedUp = false;
@@ -2511,6 +2537,7 @@
             isCleanedUp = true;
             document.body.style.overflow = '';
             document.removeEventListener('keydown', escHandler);
+            $textarea.removeEventListener('input', originalTextareaInputHandler);
             observer.disconnect();
         };
 
