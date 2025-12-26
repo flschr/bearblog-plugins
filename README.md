@@ -30,6 +30,16 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 3. **Don't use this feature** on shared or public computers
 4. The risk is limited: an attacker can only make API calls on your behalf – they cannot access your OpenAI account or other data
 
+#### Deep Dive: How the AI Integration Works
+
+The AI integration uses the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
+
+* **Smart Privacy:** Only the URL of the selected image is sent to OpenAI when you actively click the button. No data is sent in the background.
+* **Minimal Costs:** Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
+* **No Subscription:** You use your own OpenAI API Key and only pay for what you actually use.
+
+---
+
 ### Blog Search & Infinite Scroll
 
 *   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list.
@@ -67,6 +77,12 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@main/bear/date.js" defer></script>
     ```
 
+---
+
+## Feedback & Contributions
+
+If you want to report a bug, have ideas for great features, or just want to say thank you, I'd love to hear from you! Feel free to catch me on [Mastodon](https://mastodon.social/@fischr).
+
 ## License
-This repository is licensed under the [WTFPL](https://www.wtfpl.net/) License.
-Feel free to fork and customize for your own blog!
+
+This repository is licensed under the [WTFPL](https://www.wtfpl.net/) License. Feel free to fork and customize for your own blog!
