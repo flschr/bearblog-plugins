@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.1
+ * Bear Blog Markdown Toolbar v3.2
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -15,6 +15,10 @@
  * - Debounced character counter updates
  * - DocumentFragment for batched DOM operations
  * - Accessibility improvements (aria-labels)
+ *
+ * Fullscreen Sync Fix (v3.2):
+ * - Polling sync for native image uploads in fullscreen mode
+ * - Catches programmatic textarea changes that don't trigger events
  */
 (function() {
     'use strict';
@@ -2508,6 +2512,30 @@
         };
         $textarea.addEventListener('input', originalTextareaInputHandler);
 
+        // Polling sync: catch programmatic changes (e.g., Bear Blog's native image upload)
+        // that modify the textarea without triggering input events
+        const syncInterval = setInterval(() => {
+            if (isSyncing) return;
+            // Check if fullscreen is still active
+            if (!document.getElementById('md-fullscreen-textarea')) {
+                clearInterval(syncInterval);
+                return;
+            }
+            // Sync if content differs (programmatic change detected)
+            if ($textarea.value !== fsTextarea.value) {
+                isSyncing = true;
+                const cursorPos = fsTextarea.selectionStart;
+                const oldLength = fsTextarea.value.length;
+                fsTextarea.value = $textarea.value;
+                const newLength = fsTextarea.value.length;
+                const diff = newLength - oldLength;
+                // Adjust cursor position based on content length change
+                const newCursorPos = Math.max(0, cursorPos + diff);
+                fsTextarea.setSelectionRange(newCursorPos, newCursorPos);
+                isSyncing = false;
+            }
+        }, 300); // Check every 300ms for responsive sync
+
         // Track cleanup state to prevent double-cleanup
         let isCleanedUp = false;
 
@@ -2538,6 +2566,7 @@
             document.body.style.overflow = '';
             document.removeEventListener('keydown', escHandler);
             $textarea.removeEventListener('input', originalTextareaInputHandler);
+            clearInterval(syncInterval); // Stop polling sync
             observer.disconnect();
         };
 
