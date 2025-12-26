@@ -2379,6 +2379,8 @@
 
             // Add all enabled formatting buttons
             const enabledButtons = getEnabledButtons();
+            const showAltButton = isAiAltTextEnabled() && getOpenAiApiKey();
+
             enabledButtons.forEach(buttonId => {
                 const buttonDef = BUTTONS[buttonId];
                 if (!buttonDef) return;
@@ -2413,6 +2415,29 @@
                 });
 
                 container.appendChild(btn);
+
+                // Add ALT button right after the image button (if OpenAI is configured)
+                if (buttonId === 'image' && showAltButton) {
+                    const altBtn = document.createElement('button');
+                    altBtn.type = 'button';
+                    altBtn.title = 'Generate Alt-Text (select image markdown first)';
+                    altBtn.innerHTML = ICONS.altText;
+                    altBtn.style.cssText = buttonStyle();
+                    altBtn.addEventListener('click', () => {
+                        // Temporarily switch the global textarea reference to fullscreen textarea
+                        const originalTextarea = $textarea;
+                        try {
+                            $textarea = fsTextarea;
+                            generateAltTextForSelection();
+                        } finally {
+                            $textarea = originalTextarea;
+                        }
+                        // Sync back to original
+                        originalTextarea.value = fsTextarea.value;
+                        originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    container.appendChild(altBtn);
+                }
             });
 
             // Custom snippet button (after formatting buttons, like normal toolbar)
