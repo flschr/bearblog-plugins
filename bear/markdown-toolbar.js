@@ -2846,7 +2846,8 @@
             // Clipboard access denied or empty - just proceed with upload
         }
         // No image URL in clipboard, trigger normal upload
-        document.getElementById('upload-image')?.click();
+        // Note: "upload-image" is just an <a> link, the actual file input has id="file"
+        document.getElementById('file')?.click();
     }
 
     // Show dialog asking whether to use clipboard URL or upload
@@ -2961,7 +2962,8 @@
         // Handle "Upload new image" button
         uploadBtn.addEventListener('click', () => {
             closeOverlay();
-            document.getElementById('upload-image')?.click();
+            // Note: "upload-image" is just an <a> link, the actual file input has id="file"
+            document.getElementById('file')?.click();
         });
 
         // Register with dialog manager for Escape key handling
