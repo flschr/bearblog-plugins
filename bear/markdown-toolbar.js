@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.7
+ * Bear Blog Markdown Toolbar v3.8
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -43,6 +43,11 @@
  * - Fixed race condition where markdown was not inserted in fullscreen mode
  * - Removed redundant manual sync that overwrote execCommand insertions
  * - Simplified click handlers to rely on getActiveTextarea() and input event sync
+ *
+ * Fullscreen Image Upload Cursor Fix (v3.8):
+ * - Fixed image insertion at cursor position in fullscreen mode
+ * - Sync cursor position from fullscreen textarea to main textarea before upload
+ * - Bear Blog's native upload now correctly inserts images at cursor position
  */
 (function() {
     'use strict';
@@ -3171,6 +3176,15 @@
 
     // Handle smart image button with clipboard detection
     async function handleSmartImageUpload() {
+        // Sync cursor position from fullscreen textarea to main textarea BEFORE upload
+        // This is critical because Bear Blog's native upload reads $textarea.selectionStart
+        // and without this sync, images would be inserted at position 0 instead of cursor
+        const fsTextarea = document.getElementById('md-fullscreen-textarea');
+        if (fsTextarea && $textarea) {
+            $textarea.selectionStart = fsTextarea.selectionStart;
+            $textarea.selectionEnd = fsTextarea.selectionEnd;
+        }
+
         try {
             const clipboardText = await navigator.clipboard.readText();
             if (isImageUrl(clipboardText)) {
