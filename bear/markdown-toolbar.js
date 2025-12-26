@@ -1,5 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.6
+ * Bear Blog Markdown Toolbar v3.7
  *
  * Features:
  * - Modular button registry (easily extensible)
@@ -38,6 +38,11 @@
  * Undo/Redo Improvements (v3.6):
  * - Undo/Redo buttons displayed after separator for visual grouping
  * - Undo/Redo buttons now also available in fullscreen mode
+ *
+ * Fullscreen Markdown Insertion Fix (v3.7):
+ * - Fixed race condition where markdown was not inserted in fullscreen mode
+ * - Removed redundant manual sync that overwrote execCommand insertions
+ * - Simplified click handlers to rely on getActiveTextarea() and input event sync
  */
 (function() {
     'use strict';
@@ -2560,17 +2565,11 @@
                 btn.style.cssText = buttonStyle(buttonDef.color);
 
                 btn.addEventListener('click', () => {
-                    // Temporarily switch the global textarea reference to fullscreen textarea
-                    const originalTextarea = $textarea;
-                    try {
-                        $textarea = fsTextarea;
-                        handleButtonClick(buttonId, buttonDef);
-                    } finally {
-                        $textarea = originalTextarea;
-                    }
-                    // Sync back to original
-                    originalTextarea.value = fsTextarea.value;
-                    originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    // Focus the fullscreen textarea and execute the action
+                    // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
+                    // The input event listener handles sync to the main textarea
+                    fsTextarea.focus();
+                    handleButtonClick(buttonId, buttonDef);
                 });
 
                 container.appendChild(btn);
@@ -2583,17 +2582,10 @@
                     altBtn.innerHTML = ICONS.altText;
                     altBtn.style.cssText = buttonStyle();
                     altBtn.addEventListener('click', () => {
-                        // Temporarily switch the global textarea reference to fullscreen textarea
-                        const originalTextarea = $textarea;
-                        try {
-                            $textarea = fsTextarea;
-                            generateAltTextForSelection();
-                        } finally {
-                            $textarea = originalTextarea;
-                        }
-                        // Sync back to original
-                        originalTextarea.value = fsTextarea.value;
-                        originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        // Focus the fullscreen textarea and generate alt-text
+                        // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
+                        fsTextarea.focus();
+                        generateAltTextForSelection();
                     });
                     container.appendChild(altBtn);
                 }
@@ -2610,17 +2602,11 @@
                 snippetBtn.addEventListener('click', () => {
                     const snippet = getCustomSnippetText();
                     if (snippet) {
-                        // Temporarily switch textarea reference
-                        const originalTextarea = $textarea;
-                        try {
-                            $textarea = fsTextarea;
-                            insertText(snippet);
-                        } finally {
-                            $textarea = originalTextarea;
-                        }
-                        // Sync back
-                        originalTextarea.value = fsTextarea.value;
-                        originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        // Focus the fullscreen textarea and insert snippet
+                        // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
+                        // The input event listener handles sync to the main textarea
+                        fsTextarea.focus();
+                        insertText(snippet);
                     }
                 });
                 container.appendChild(snippetBtn);
@@ -2838,17 +2824,9 @@
 
             if (shortcut) {
                 e.preventDefault();
-                // Temporarily switch textarea reference
-                const originalTextarea = $textarea;
-                try {
-                    $textarea = fsTextarea;
-                    handleButtonClick(shortcut.id, shortcut.def);
-                } finally {
-                    $textarea = originalTextarea;
-                }
-                // Sync back
-                originalTextarea.value = fsTextarea.value;
-                originalTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                // Execute the action - getActiveTextarea() automatically returns fsTextarea
+                // The input event listener handles sync to the main textarea
+                handleButtonClick(shortcut.id, shortcut.def);
             }
         });
     }
