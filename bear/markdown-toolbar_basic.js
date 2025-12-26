@@ -50,7 +50,7 @@
             noticeContent.innerHTML = `
                 <strong>🚀 New Version Available!</strong>
                 The Markdown Power Editor has been completely rewritten with many new features.
-                <a href="https://fischr.org/the-markdown-power-editor-for-bear-blog/" target="_blank"
+                <a href="https://fischr.org/markdown-power-editor-for-bear-blog/" target="_blank"
                    style="color: ${isDark ? '#7ecfff' : '#0056b3'}; font-weight: 600;">
                    Learn more & upgrade →
                 </a>
