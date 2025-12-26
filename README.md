@@ -25,9 +25,9 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 > [!WARNING]
 >  **Security Note**
 >  Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with some risks:
-> - **XSS Vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
-> - **Shared Computers**: Anyone with access to your browser can view the key via Developer Tools
-> - **No Encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
+> - If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
+> - Anyone with access to your browser can view the key via Developer Tools
+> - Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
 
 **Recommendations:**
 1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month)
