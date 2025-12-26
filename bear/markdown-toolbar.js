@@ -2530,22 +2530,30 @@
             return;
         }
 
-        // Bear Blog uses POST for preview - we need to get the current content and submit it
-        const headerContent = document.getElementById('header_content');
-        const bodyContent = document.getElementById('body_content');
-        if (!headerContent || !bodyContent) {
-            console.warn('Could not find header_content or body_content elements');
-            return;
+        // Try to get the preview URL from the "View draft" button
+        // This button has the format: window.open('//domain.com/slug?token=XXXX')
+        const viewButton = document.getElementById('view-button');
+        let previewUrl = null;
+
+        if (viewButton) {
+            const onclick = viewButton.getAttribute('onclick');
+            if (onclick) {
+                const urlMatch = onclick.match(/window\.open\(['"]([^'"]+)['"]\)/);
+                if (urlMatch) {
+                    previewUrl = urlMatch[1];
+                    // Ensure it starts with https if it's protocol-relative
+                    if (previewUrl.startsWith('//')) {
+                        previewUrl = 'https:' + previewUrl;
+                    }
+                }
+            }
         }
 
-        // Build preview URL - Bear Blog uses /username/dashboard/preview/?type=post
-        // Extract username from current URL path
-        const pathMatch = window.location.pathname.match(/^\/([^\/]+)\/dashboard/);
-        if (!pathMatch) {
-            console.warn('Could not determine dashboard path for preview');
+        // If no token URL found, the post hasn't been saved yet - can't preview
+        if (!previewUrl) {
+            console.warn('No preview URL available - post must be saved first');
             return;
         }
-        const previewUrl = `/${pathMatch[1]}/dashboard/preview/?type=post`;
 
         // Create overlay container
         const overlay = document.createElement('div');
@@ -2613,87 +2621,23 @@
 
         overlay.appendChild(header);
 
-        // Create content container for preview (using div instead of iframe to avoid X-Frame-Options issues)
-        const contentContainer = document.createElement('div');
-        contentContainer.id = 'md-inline-preview-content';
-        contentContainer.style.cssText = `
+        // Create iframe for preview (using token URL allows direct embedding)
+        const iframe = document.createElement('iframe');
+        iframe.id = 'md-inline-preview-iframe';
+        iframe.src = previewUrl;
+        iframe.style.cssText = `
             flex: 1;
             width: 100%;
-            overflow: auto;
+            border: none;
             background: ${isDark ? '#01242e' : '#ffffff'};
         `;
-
-        // Show loading indicator
-        contentContainer.innerHTML = `
-            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: ${isDark ? '#aaa' : '#666'};">
-                <span>Loading preview...</span>
-            </div>
-        `;
-        overlay.appendChild(contentContainer);
+        overlay.appendChild(iframe);
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
 
         // Add overlay to page
         document.body.appendChild(overlay);
-
-        // Fetch preview content via POST (avoids X-Frame-Options restrictions)
-        const formData = new FormData();
-        formData.append('header_content', headerContent.innerText);
-        formData.append('body_content', bodyContent.value);
-
-        fetch(previewUrl, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        })
-        .then(response => response.text())
-        .then(html => {
-            // Extract the body content from the response HTML
-            // Create a temporary element to parse the HTML
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-
-            // Get styles from the response
-            const styles = doc.querySelectorAll('style, link[rel="stylesheet"]');
-            const styleContent = Array.from(styles).map(s => s.outerHTML).join('\n');
-
-            // Get the main content - try to find the article/main content
-            let bodyHtml = doc.body ? doc.body.innerHTML : html;
-
-            // Create a shadow DOM for style isolation
-            const shadowHost = document.createElement('div');
-            shadowHost.style.cssText = 'height: 100%; width: 100%;';
-            contentContainer.innerHTML = '';
-            contentContainer.appendChild(shadowHost);
-
-            const shadow = shadowHost.attachShadow({ mode: 'open' });
-            shadow.innerHTML = `
-                ${styleContent}
-                <style>
-                    :host {
-                        display: block;
-                        height: 100%;
-                        overflow: auto;
-                    }
-                    body, html {
-                        margin: 0;
-                        padding: 0;
-                    }
-                </style>
-                <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
-                    ${bodyHtml}
-                </div>
-            `;
-        })
-        .catch(error => {
-            console.error('Preview fetch error:', error);
-            contentContainer.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #d32f2f;">
-                    <span>Failed to load preview</span>
-                </div>
-            `;
-        });
 
         // Register with dialog stack for ESC key handling
         pushDialog(overlay, closeInlinePreview);
