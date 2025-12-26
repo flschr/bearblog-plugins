@@ -33,6 +33,49 @@
         const wrapper = $textarea.parentElement;
         wrapper.style.position = 'relative';
 
+        // Notice Bar for new version announcement
+        const noticeDismissed = localStorage.getItem('bear_notice_v2_dismissed');
+        if (!noticeDismissed) {
+            const notice = document.createElement('div');
+            notice.className = 'markdown-toolbar-notice';
+            notice.style.cssText = `
+                display: flex; gap: 12px; padding: 12px 16px; align-items: center; justify-content: space-between;
+                background: linear-gradient(135deg, ${isDark ? '#1a4a5c' : '#fff3cd'} 0%, ${isDark ? '#0d3a4a' : '#ffeeba'} 100%);
+                border-bottom: 2px solid ${isDark ? '#2d6a7a' : '#ffc107'};
+                font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+                color: ${isDark ? '#f0f0f0' : '#856404'};
+            `;
+
+            const noticeContent = document.createElement('div');
+            noticeContent.innerHTML = `
+                <strong>🚀 New Version Available!</strong>
+                The Markdown Power Editor has been completely rewritten with many new features.
+                <a href="https://fischr.org/markdown-power-editor-for-bear-blog/" target="_blank"
+                   style="color: ${isDark ? '#7ecfff' : '#0056b3'}; font-weight: 600;">
+                   Learn more & upgrade →
+                </a>
+                <br><small style="opacity: 0.85;">Note: No automatic update – manual installation required.</small>
+            `;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.innerHTML = '✕';
+            closeBtn.title = 'Dismiss';
+            closeBtn.style.cssText = `
+                background: ${isDark ? '#2d6a7a' : '#ffc107'}; border: none; border-radius: 4px;
+                width: 28px; height: 28px; cursor: pointer; font-size: 14px; font-weight: bold;
+                color: ${isDark ? '#fff' : '#856404'}; flex-shrink: 0;
+            `;
+            closeBtn.addEventListener('click', () => {
+                notice.remove();
+                try { localStorage.setItem('bear_notice_v2_dismissed', 'true'); } catch(e) {}
+            });
+
+            notice.appendChild(noticeContent);
+            notice.appendChild(closeBtn);
+            wrapper.insertBefore(notice, wrapper.firstChild);
+        }
+
         const toolbar = document.createElement('div');
         toolbar.className = 'markdown-toolbar';
         toolbar.style.cssText = `
