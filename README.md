@@ -48,7 +48,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 
 ### Blog Search & Infinite Scroll
 
-*   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list.
+*   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list. See it in action [on my personal website](https://fischr.org/blog).
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
     <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/search.js" defer></script>
