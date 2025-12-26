@@ -3209,6 +3209,11 @@
 
     // Show dialog asking whether to use clipboard URL or upload
     function showImageUrlDialog(imageUrl) {
+        // Save cursor position before dialog opens (focus will be lost)
+        const activeTextarea = getActiveTextarea();
+        const savedCursorPos = activeTextarea.selectionStart;
+        const savedSelectionEnd = activeTextarea.selectionEnd;
+
         // Create overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
@@ -3313,6 +3318,9 @@
         // Handle "Use this URL" button
         useBtn.addEventListener('click', () => {
             closeOverlay();
+            // Restore cursor position before inserting
+            activeTextarea.focus();
+            activeTextarea.setSelectionRange(savedCursorPos, savedSelectionEnd);
             insertText(`![](${imageUrl})`);
         });
 
