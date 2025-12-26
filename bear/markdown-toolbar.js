@@ -2530,7 +2530,121 @@
             return;
         }
 
-        // Bear Blog uses POST for preview - we need to get the current content and submit it
+        // Try to get the preview URL from the "View draft" button
+        // This button has the format: window.open('//domain.com/slug?token=XXXX')
+        const viewButton = document.getElementById('view-button');
+        let previewUrl = null;
+
+        if (viewButton) {
+            const onclick = viewButton.getAttribute('onclick');
+            if (onclick) {
+                const urlMatch = onclick.match(/window\.open\(['"]([^'"]+)['"]\)/);
+                if (urlMatch) {
+                    previewUrl = urlMatch[1];
+                    // Ensure it starts with https if it's protocol-relative
+                    if (previewUrl.startsWith('//')) {
+                        previewUrl = 'https:' + previewUrl;
+                    }
+                }
+            }
+        }
+
+        // If no token URL found (new post that hasn't been saved yet), fall back to POST method
+        if (!previewUrl) {
+            showInlinePreviewFallback();
+            return;
+        }
+
+        // Create overlay container
+        const overlay = document.createElement('div');
+        overlay.id = 'md-inline-preview-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+            z-index: 10003;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Create header with exit button
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            align-items: center;
+            justify-content: space-between;
+            background: ${isDark ? '#004052' : '#eceff4'};
+            border-bottom: 1px solid ${isDark ? '#005566' : 'lightgrey'};
+            flex-shrink: 0;
+        `;
+
+        // Preview label
+        const label = document.createElement('span');
+        label.textContent = 'Preview';
+        label.style.cssText = `
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: ${isDark ? '#e0e0e0' : '#333'};
+        `;
+        header.appendChild(label);
+
+        // Exit button
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.title = 'Exit Preview (Escape)';
+        exitBtn.innerHTML = ICONS.close;
+        exitBtn.style.cssText = `
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            background: #d32f2f;
+            color: white;
+            border: 1px solid ${isDark ? '#555' : '#ccc'};
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        `;
+        exitBtn.addEventListener('click', closeInlinePreview);
+        header.appendChild(exitBtn);
+
+        overlay.appendChild(header);
+
+        // Create iframe for preview (using token URL allows direct embedding)
+        const iframe = document.createElement('iframe');
+        iframe.id = 'md-inline-preview-iframe';
+        iframe.src = previewUrl;
+        iframe.style.cssText = `
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: ${isDark ? '#01242e' : '#ffffff'};
+        `;
+        overlay.appendChild(iframe);
+
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+
+        // Add overlay to page
+        document.body.appendChild(overlay);
+
+        // Register with dialog stack for ESC key handling
+        pushDialog(overlay, closeInlinePreview);
+    }
+
+    // Fallback preview for new posts without a token (uses POST method)
+    function showInlinePreviewFallback() {
         const headerContent = document.getElementById('header_content');
         const bodyContent = document.getElementById('body_content');
         if (!headerContent || !bodyContent) {
@@ -2539,7 +2653,6 @@
         }
 
         // Build preview URL - Bear Blog uses /username/dashboard/preview/?type=post
-        // Extract username from current URL path
         const pathMatch = window.location.pathname.match(/^\/([^\/]+)\/dashboard/);
         if (!pathMatch) {
             console.warn('Could not determine dashboard path for preview');
@@ -2613,7 +2726,7 @@
 
         overlay.appendChild(header);
 
-        // Create content container for preview (using div instead of iframe to avoid X-Frame-Options issues)
+        // Create content container for preview
         const contentContainer = document.createElement('div');
         contentContainer.id = 'md-inline-preview-content';
         contentContainer.style.cssText = `
@@ -2637,7 +2750,7 @@
         // Add overlay to page
         document.body.appendChild(overlay);
 
-        // Fetch preview content via POST (avoids X-Frame-Options restrictions)
+        // Fetch preview content via POST
         const formData = new FormData();
         formData.append('header_content', headerContent.innerText);
         formData.append('body_content', bodyContent.value);
@@ -2649,19 +2762,14 @@
         })
         .then(response => response.text())
         .then(html => {
-            // Extract the body content from the response HTML
-            // Create a temporary element to parse the HTML
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
-            // Get styles from the response
             const styles = doc.querySelectorAll('style, link[rel="stylesheet"]');
             const styleContent = Array.from(styles).map(s => s.outerHTML).join('\n');
 
-            // Get the main content - try to find the article/main content
             let bodyHtml = doc.body ? doc.body.innerHTML : html;
 
-            // Create a shadow DOM for style isolation
             const shadowHost = document.createElement('div');
             shadowHost.style.cssText = 'height: 100%; width: 100%;';
             contentContainer.innerHTML = '';
