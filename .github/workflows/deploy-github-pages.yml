@@ -31,19 +31,15 @@ jobs:
 
       - name: Prepare deployment directory
         run: |
-          mkdir -p _site/stable
           mkdir -p _site/unstable
 
-          # Checkout stable tag and copy files
+          # Checkout stable tag and copy files to root (without /bear/ directory)
           git checkout stable
-          cp -r bear _site/stable/
+          cp -r bear/* _site/
 
-          # Also copy stable to root (default URL without /stable/ prefix)
-          cp -r bear _site/
-
-          # Checkout unstable tag and copy files
+          # Checkout unstable tag and copy files to /unstable/ (without /bear/ directory)
           git checkout unstable
-          cp -r bear _site/unstable/
+          cp -r bear/* _site/unstable/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
