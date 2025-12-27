@@ -5,7 +5,6 @@ on:
     branches:
       - main
 
-# HIER DIE RECHTE ERWEITERN:
 permissions:
   contents: write
 
@@ -23,25 +22,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
+          # Tag löschen und neu setzen
           git tag -d unstable || true
           git push origin :refs/tags/unstable || true
           
           git tag unstable
           git push origin unstable
-
-      - name: Purge jsDelivr Cache
-        run: |
-          FILES=(
-            "bear/markdown-toolbar.js"
-            "bear/search.js"
-            "bear/theme-switch-head.js"
-            "bear/theme-switch-footer.js"
-            "bear/privacy-embeds.js"
-            "bear/lazy-load.js"
-            "bear/date.js"
-          )
-          
-          for FILE in "${FILES[@]}"; do
-            echo "Purging $FILE..."
-            curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@unstable/$FILE"
-          done
