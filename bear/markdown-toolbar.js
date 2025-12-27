@@ -2282,15 +2282,14 @@
     }
 
     function navigateBack() {
-        // Build blog list URL from current path
-        // Current URL pattern: /{blogSlug}/dashboard/blog/... (edit/new/etc)
+        // Build posts list URL from current path
+        // Current URL pattern: /{blogSlug}/dashboard/posts/... (edit/new/etc)
         const pathParts = window.location.pathname.split('/').filter(Boolean);
         const blogSlug = pathParts[0] || '';
 
-        // Navigate to blog list with cache-busting parameter for forced refresh
-        const blogListUrl = new URL(`/${blogSlug}/dashboard/blog/`, window.location.origin);
-        blogListUrl.searchParams.set('_refresh', Date.now());
-        window.location.href = blogListUrl.toString();
+        // Navigate to posts list and clear sessionStorage to force refresh
+        sessionStorage.clear();
+        window.location.href = `/${blogSlug}/dashboard/posts/`;
     }
 
     function saveAndNavigateBack() {
@@ -2308,11 +2307,11 @@
 
             updateOriginalContent();
 
-            // Store blog list URL for after page reload
+            // Store posts list URL for after page reload
             try {
                 const pathParts = window.location.pathname.split('/').filter(Boolean);
                 const blogSlug = pathParts[0] || '';
-                const blogListUrl = `/${blogSlug}/dashboard/blog/`;
+                const blogListUrl = `/${blogSlug}/dashboard/posts/`;
                 sessionStorage.setItem(PENDING_BACK_NAV_KEY, blogListUrl);
             } catch (e) {
                 console.warn('[Toolbar] Failed to store back navigation URL:', e.message);
