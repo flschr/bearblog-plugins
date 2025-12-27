@@ -1063,7 +1063,10 @@
             const pendingBackUrl = sessionStorage.getItem(PENDING_BACK_NAV_KEY);
             if (pendingBackUrl) {
                 sessionStorage.removeItem(PENDING_BACK_NAV_KEY);
-                window.location.href = pendingBackUrl;
+                // Add cache-busting parameter to force reload of post list
+                const backUrl = new URL(pendingBackUrl, window.location.origin);
+                backUrl.searchParams.set('_refresh', Date.now());
+                window.location.href = backUrl.toString();
                 return;
             }
         } catch (e) {
@@ -2328,7 +2331,10 @@
 
     function navigateBack() {
         if (document.referrer && document.referrer !== window.location.href) {
-            window.location.href = document.referrer;
+            // Add cache-busting parameter to force reload of post list
+            const backUrl = new URL(document.referrer);
+            backUrl.searchParams.set('_refresh', Date.now());
+            window.location.href = backUrl.toString();
         } else {
             window.history.back();
         }
