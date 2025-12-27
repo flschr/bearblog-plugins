@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - stable
+      - unstable
   workflow_dispatch: # Ermöglicht manuellen Start
 
 permissions:
@@ -23,10 +24,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: stable
+          fetch-depth: 0
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p _site/stable
+          mkdir -p _site/unstable
+
+          # Checkout stable tag and copy files
+          git checkout stable
+          cp -r bear _site/stable/
+
+          # Checkout unstable tag and copy files
+          git checkout unstable
+          cp -r bear _site/unstable/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -34,8 +48,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload nur das bear/ Verzeichnis
-          path: './bear'
+          path: './_site'
 
       - name: Deploy to GitHub Pages
         id: deployment
