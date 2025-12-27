@@ -1,0 +1,44 @@
+name: Update Unstable Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-unstable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update Unstable Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Tag lokal und remote löschen, dann neu setzen
+          git tag -d unstable || true
+          git push origin :refs/tags/unstable || true
+          git tag unstable
+          git push origin unstable
+
+      - name: Purge jsDelivr Cache
+        run: |
+          # Liste aller Dateien aus deinem README
+          FILES=(
+            "bear/markdown-toolbar.js"
+            "bear/search.js"
+            "bear/theme-switch-head.js"
+            "bear/theme-switch-footer.js"
+            "bear/privacy-embeds.js"
+            "bear/lazy-load.js"
+            "bear/date.js"
+          )
+          
+          for FILE in "${FILES[@]}"; do
+            echo "Purging $FILE..."
+            curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@unstable/$FILE"
+          done
