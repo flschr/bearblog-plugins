@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+# HIER DIE RECHTE ERWEITERN:
+permissions:
+  contents: write
+
 jobs:
   update-unstable:
     runs-on: ubuntu-latest
@@ -19,15 +23,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Tag lokal und remote löschen, dann neu setzen
           git tag -d unstable || true
           git push origin :refs/tags/unstable || true
+          
           git tag unstable
           git push origin unstable
 
       - name: Purge jsDelivr Cache
         run: |
-          # Liste aller Dateien aus deinem README
           FILES=(
             "bear/markdown-toolbar.js"
             "bear/search.js"
