@@ -12,6 +12,8 @@ https://flschr.github.io/bearblog-plugins/[filename].js
 
 The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release.
 
+The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
+
 ## Plugin Overview
 
 - **[Markdown Toolbar](#markdown-toolbar)** – Powerful editor toolbar with formatting buttons and optional AI alt-text generation
