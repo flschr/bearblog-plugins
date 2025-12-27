@@ -3591,6 +3591,26 @@
                         if (response.ok) {
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
+
+                            // Parse response to update preview URL (in case post URL changed)
+                            return response.text().then(html => {
+                                // Extract the new view-button onclick attribute from response
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const newViewButton = doc.getElementById('view-button');
+                                const currentViewButton = document.getElementById('view-button');
+
+                                if (newViewButton && currentViewButton) {
+                                    const newOnclick = newViewButton.getAttribute('onclick');
+                                    if (newOnclick) {
+                                        // Update the current page's view button with new URL
+                                        currentViewButton.setAttribute('onclick', newOnclick);
+                                    }
+                                }
+
+                                // Open inline preview with updated URL
+                                showInlinePreview();
+                            });
                         }
                         // Open inline preview regardless of save success
                         showInlinePreview();

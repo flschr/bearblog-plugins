@@ -396,4 +396,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('beforeunload', () => {
     observer.disconnect()
   })
+
+  // ===== FORCE RELOAD WHEN RETURNING FROM EDITOR =====
+  // Wenn die Seite aus dem Browser-Cache (bfcache) geladen wird,
+  // könnte die Post-Liste veraltet sein (z.B. nach Erstellen eines neuen Posts).
+  // In diesem Fall erzwingen wir ein Reload, um die aktuelle Liste zu laden.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      // Seite wurde aus dem Cache geladen - neu laden um aktuelle Posts zu zeigen
+      window.location.reload()
+    }
+  })
 })
