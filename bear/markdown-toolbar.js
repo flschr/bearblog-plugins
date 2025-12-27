@@ -1063,7 +1063,10 @@
             const pendingBackUrl = sessionStorage.getItem(PENDING_BACK_NAV_KEY);
             if (pendingBackUrl) {
                 sessionStorage.removeItem(PENDING_BACK_NAV_KEY);
-                window.location.href = pendingBackUrl;
+                // Add cache-busting parameter to force reload of post list
+                const backUrl = new URL(pendingBackUrl, window.location.origin);
+                backUrl.searchParams.set('_refresh', Date.now());
+                window.location.href = backUrl.toString();
                 return;
             }
         } catch (e) {
@@ -2328,7 +2331,10 @@
 
     function navigateBack() {
         if (document.referrer && document.referrer !== window.location.href) {
-            window.location.href = document.referrer;
+            // Add cache-busting parameter to force reload of post list
+            const backUrl = new URL(document.referrer);
+            backUrl.searchParams.set('_refresh', Date.now());
+            window.location.href = backUrl.toString();
         } else {
             window.history.back();
         }
@@ -3591,6 +3597,26 @@
                         if (response.ok) {
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
+
+                            // Parse response to update preview URL (in case post URL changed)
+                            return response.text().then(html => {
+                                // Extract the new view-button onclick attribute from response
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const newViewButton = doc.getElementById('view-button');
+                                const currentViewButton = document.getElementById('view-button');
+
+                                if (newViewButton && currentViewButton) {
+                                    const newOnclick = newViewButton.getAttribute('onclick');
+                                    if (newOnclick) {
+                                        // Update the current page's view button with new URL
+                                        currentViewButton.setAttribute('onclick', newOnclick);
+                                    }
+                                }
+
+                                // Open inline preview with updated URL
+                                showInlinePreview();
+                            });
                         }
                         // Open inline preview regardless of save success
                         showInlinePreview();
