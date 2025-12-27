@@ -38,6 +38,9 @@ jobs:
           git checkout stable
           cp -r bear _site/stable/
 
+          # Also copy stable to root (default URL without /stable/ prefix)
+          cp -r bear _site/
+
           # Checkout unstable tag and copy files
           git checkout unstable
           cp -r bear _site/unstable/
