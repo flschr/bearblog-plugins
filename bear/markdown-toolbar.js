@@ -2330,14 +2330,15 @@
     }
 
     function navigateBack() {
-        if (document.referrer && document.referrer !== window.location.href) {
-            // Add cache-busting parameter to force reload of post list
-            const backUrl = new URL(document.referrer);
-            backUrl.searchParams.set('_refresh', Date.now());
-            window.location.href = backUrl.toString();
-        } else {
-            window.history.back();
-        }
+        // Build blog list URL from current path
+        // Current URL pattern: /{blogSlug}/dashboard/blog/... (edit/new/etc)
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const blogSlug = pathParts[0] || '';
+
+        // Navigate to blog list with cache-busting parameter for forced refresh
+        const blogListUrl = new URL(`/${blogSlug}/dashboard/blog/`, window.location.origin);
+        blogListUrl.searchParams.set('_refresh', Date.now());
+        window.location.href = blogListUrl.toString();
     }
 
     function saveAndNavigateBack() {
@@ -2355,14 +2356,12 @@
 
             updateOriginalContent();
 
-            // Store back navigation URL for after page reload
+            // Store blog list URL for after page reload
             try {
-                const backUrl = document.referrer && document.referrer !== window.location.href
-                    ? document.referrer
-                    : null;
-                if (backUrl) {
-                    sessionStorage.setItem(PENDING_BACK_NAV_KEY, backUrl);
-                }
+                const pathParts = window.location.pathname.split('/').filter(Boolean);
+                const blogSlug = pathParts[0] || '';
+                const blogListUrl = `/${blogSlug}/dashboard/blog/`;
+                sessionStorage.setItem(PENDING_BACK_NAV_KEY, blogListUrl);
             } catch (e) {
                 console.warn('[Toolbar] Failed to store back navigation URL:', e.message);
             }
