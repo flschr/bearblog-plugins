@@ -1,10 +1,11 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    tags:
-      - stable
-      - unstable
+  # Trigger when tag-update workflows complete
+  workflow_run:
+    workflows: ["Update Unstable Release", "Manual Stable Release Update"]
+    types:
+      - completed
   workflow_dispatch: # Ermöglicht manuellen Start
 
 permissions:
@@ -19,6 +20,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Only run if triggered manually or if the triggering workflow succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
