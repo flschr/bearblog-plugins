@@ -1,53 +1,5 @@
 /**
- * Bear Blog Markdown Toolbar v3.8
- *
- * Features:
- * - Modular button registry (easily extensible)
- * - Configurable buttons (show/hide individual buttons)
- * - Undo-compatible text insertion (execCommand)
- * - Fullscreen editing mode
- * - GitHub-style admonitions (Info/Warning/Caution)
- * - Dark mode support
- * - AI-powered alt-text generation (OpenAI)
- *
- * Performance Optimizations (v3.1):
- * - Event delegation for toolbar buttons (single listener)
- * - Debounced character counter updates
- * - DocumentFragment for batched DOM operations
- * - Accessibility improvements (aria-labels)
- *
- * Fullscreen Sync Fix (v3.2):
- * - Polling sync for native image uploads in fullscreen mode
- * - Catches programmatic textarea changes that don't trigger events
- *
- * Stability & Security Improvements (v3.3):
- * - Centralized INTERNAL constants for all magic numbers
- * - Configurable debug logging (disabled by default)
- * - Error logging for catch blocks (debugging aid)
- * - Race condition guard for executeDelete()
- * - OpenAI API request timeout (prevents hanging)
- *
- * Performance & Security Hardening (v3.4):
- * - Fast length check before string comparison in sync polling
- * - XSS protection: textContent for dynamic notification messages
- * - requestAnimationFrame for character counter UI sync
- *
- * Mobile Usability (v3.5):
- * - Optional Undo/Redo buttons for mobile devices (Ctrl+Z/Y equivalent)
- *
- * Undo/Redo Improvements (v3.6):
- * - Undo/Redo buttons displayed after separator for visual grouping
- * - Undo/Redo buttons now also available in fullscreen mode
- *
- * Fullscreen Markdown Insertion Fix (v3.7):
- * - Fixed race condition where markdown was not inserted in fullscreen mode
- * - Removed redundant manual sync that overwrote execCommand insertions
- * - Simplified click handlers to rely on getActiveTextarea() and input event sync
- *
- * Fullscreen Image Upload Cursor Fix (v3.8):
- * - Fixed image insertion at cursor position in fullscreen mode
- * - Sync cursor position from fullscreen textarea to main textarea before upload
- * - Bear Blog's native upload now correctly inserts images at cursor position
+ * Bear Blog Markdown Toolbar: Dec 27, 2025
  */
 (function() {
     'use strict';
