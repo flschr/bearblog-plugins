@@ -4,19 +4,13 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 
 ## 🌐 CDN URLs
 
-All plugins are available via **GitHub Pages CDN** (recommended) or jsdelivr:
+All plugins are available via GitHub Pages CDN:
 
-**GitHub Pages (Recommended):**
 ```
 https://flschr.github.io/bearblog-plugins/[filename].js
 ```
 
-**Alternative (jsdelivr with commit hash):**
-```
-https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/[filename].js
-```
-
-> **Note:** GitHub Pages has faster cache updates (10 minutes) compared to jsdelivr tags. We recommend using GitHub Pages URLs for the best experience.
+The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release.
 
 ## Plugin Overview
 
@@ -37,11 +31,6 @@ https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/[filename].js
 *   **Installation**: This is a **dashboard script**. Go to **Dashboard** -> **Settings** and add the following URL to the `Custom dashboard Javascript` field:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar.js"></script>
-    ```
-
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/markdown-toolbar.js"></script>
     ```
 
 #### AI Alt-Text Feature (Optional)
@@ -75,11 +64,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     <script src="https://flschr.github.io/bearblog-plugins/search.js" defer></script>
     ```
 
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/search.js" defer></script>
-    ```
-
 ---
 
 ### Theme Switcher
@@ -95,12 +79,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
         <script src="https://flschr.github.io/bearblog-plugins/theme-switch-footer.js" defer></script>
         ```
 
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/theme-switch-head.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/theme-switch-footer.js" defer></script>
-    ```
-
 ---
 
 ### Privacy Embeds
@@ -109,11 +87,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js" defer></script>
-    ```
-
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/privacy-embeds.js" defer></script>
     ```
 
 ---
@@ -126,11 +99,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     <script src="https://flschr.github.io/bearblog-plugins/lazy-load.js" defer></script>
     ```
 
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/lazy-load.js" defer></script>
-    ```
-
 ---
 
 
@@ -140,11 +108,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/date.js" defer></script>
-    ```
-
-    Alternative (jsdelivr):
-    ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/date.js" defer></script>
     ```
 
 ---
