@@ -2,6 +2,22 @@
 
 A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader and writer experience. I mainly use them for my own purposes on [my personal website](https://fischr.org/). But of course, you can use them too. To install a plugin, you need to add it to your header, footer or dashboard configuration. Just follow the instructions below.
 
+## 🌐 CDN URLs
+
+All plugins are available via **GitHub Pages CDN** (recommended) or jsdelivr:
+
+**GitHub Pages (Recommended):**
+```
+https://flschr.github.io/bearblog-plugins/[filename].js
+```
+
+**Alternative (jsdelivr with commit hash):**
+```
+https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/[filename].js
+```
+
+> **Note:** GitHub Pages has faster cache updates (10 minutes) compared to jsdelivr tags. We recommend using GitHub Pages URLs for the best experience.
+
 ## Plugin Overview
 
 - **[Markdown Toolbar](#markdown-toolbar)** – Powerful editor toolbar with formatting buttons and optional AI alt-text generation
@@ -19,8 +35,13 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 
 *   **Description**: Adds a powerful Markdown toolbar to the post editor. It includes buttons for text formatting, media uploads, and custom HTML blocks like info/warning boxes.
 *   **Installation**: This is a **dashboard script**. Go to **Dashboard** -> **Settings** and add the following URL to the `Custom dashboard Javascript` field:
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar.js"></script>
     ```
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/markdown-toolbar.js"></script>
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/markdown-toolbar.js"></script>
     ```
 
 #### AI Alt-Text Feature (Optional)
@@ -51,7 +72,12 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Implements a client-side search for your `/blog` page with a floating search button and real-time highlighting. It also adds an "infinite scroll" functionality for your post list. See it in action [on my personal website](https://fischr.org/blog).
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/search.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/search.js" defer></script>
+    ```
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/search.js" defer></script>
     ```
 
 ---
@@ -62,12 +88,18 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Installation**: This requires adding an element with `id="theme-toggle"` to your theme and then adding the two scripts below. See it in action [on my personal website](https://fischr.org/).
     1.  Add this to `Custom <head> content` to prevent theme flashing:
         ```html
-        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/theme-switch-head.js"></script>
+        <script src="https://flschr.github.io/bearblog-plugins/theme-switch-head.js"></script>
         ```
     2.  Add this to `Custom footer content` to handle the click event:
         ```html
-        <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/theme-switch-footer.js" defer></script>
+        <script src="https://flschr.github.io/bearblog-plugins/theme-switch-footer.js" defer></script>
         ```
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/theme-switch-head.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/theme-switch-footer.js" defer></script>
+    ```
 
 ---
 
@@ -76,7 +108,12 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English). See it in [on this page](https://fischr.org/oben-links-am-lago-di-benaco/).
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/privacy-embeds.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js" defer></script>
+    ```
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/privacy-embeds.js" defer></script>
     ```
 
 ---
@@ -86,7 +123,12 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Improves page load performance by automatically adding `loading="lazy"` to all images within your blog's main content area, so they only load when they are about to be viewed.
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/lazy-load.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/lazy-load.js" defer></script>
+    ```
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/lazy-load.js" defer></script>
     ```
 
 ---
@@ -97,7 +139,12 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Description**: Overwrites Bear Blog's default date formatting. You can easily customize the date format (e.g., "18. Dez 2025") by editing the `format_string` variable inside the script. This script adds German month names and date formating.
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
-    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@stable/bear/date.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/date.js" defer></script>
+    ```
+
+    Alternative (jsdelivr):
+    ```html
+    <script src="https://cdn.jsdelivr.net/gh/flschr/bearblog-plugins@3342c48/bear/date.js" defer></script>
     ```
 
 ---
