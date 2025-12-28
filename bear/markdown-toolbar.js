@@ -3033,13 +3033,20 @@
             const newPos = lineStartPos + before.length + textBeforeCursor.length + selected.length + after.length;
             activeTextarea.setSelectionRange(newPos, newPos);
         } else {
-            // Regular wrap
-            const newText = before + selected + after;
+            // Regular wrap - strip trailing whitespace/newlines to keep formatting on same line
+            // This fixes the issue where double-clicking a line selects the trailing newline,
+            // causing the closing syntax (e.g., **) to end up on the next line
+            const trailingMatch = selected.match(/(\s+)$/);
+            const trailingWhitespace = trailingMatch ? trailingMatch[1] : '';
+            const trimmedSelected = trailingWhitespace ? selected.slice(0, -trailingWhitespace.length) : selected;
+
+            const newText = before + trimmedSelected + after + trailingWhitespace;
             insertText(newText);
 
             // Position cursor
             if (selected) {
-                const newPos = start + newText.length;
+                // Position cursor after the closing syntax, before any trailing whitespace
+                const newPos = start + before.length + trimmedSelected.length + after.length;
                 activeTextarea.setSelectionRange(newPos, newPos);
             } else {
                 const newPos = start + before.length;
