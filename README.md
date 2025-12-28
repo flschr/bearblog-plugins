@@ -10,6 +10,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Privacy Embeds](#privacy-embeds)** – GDPR-friendly consent placeholders for external content (YouTube, Maps, etc.)
 - **[Image Lazy Loading](#image-lazy-loading)** – Automatic lazy loading for all images
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
+- **[Reply by Mail](#reply-by-mail)** – Adds a "Reply via email" link next to the upvote button
 
 ---
 
@@ -98,6 +99,16 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 *   **Installation**: Add the following code to your `Custom footer content`:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/date.js" defer></script>
+    ```
+
+---
+
+### Reply by Mail
+
+*   **Description**: Adds a "Reply via email" link next to the upvote button on post pages. When clicked, it opens the user's mail client with a pre-filled subject line containing the post title.
+*   **Installation**: This script requires customization before use. Fork the repository or host the script yourself, then change the `email` variable to your own email address. Add the following code to your `Custom footer content`:
+    ```html
+    <script src="https://your-domain.com/reply-by-mail.js" defer></script>
     ```
 
 ---
