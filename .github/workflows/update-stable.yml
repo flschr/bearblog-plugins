@@ -1,13 +1,22 @@
-name: Manual Stable Release Update
+name: Update Stable Release
 
 on:
-  workflow_dispatch: # Ermöglicht den manuellen Start-Button
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   update-stable:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -20,8 +29,32 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stable Tag neu setzen
           git tag -d stable || true
           git push origin :refs/tags/stable || true
+
           git tag stable
           git push origin stable
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p _site/unstable
+
+          # Copy stable tag files to root
+          git checkout stable
+          cp -r bear/* _site/
+
+          # Copy unstable tag files to /unstable/
+          git checkout unstable
+          cp -r bear/* _site/unstable/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
