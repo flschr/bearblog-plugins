@@ -121,9 +121,9 @@ All plugins are available via GitHub Pages CDN:
 https://flschr.github.io/bearblog-plugins/[filename].js
 ```
 
-The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release.
+The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release. The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
 
-The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
+---
 
 ## Feedback & Contributions
 
