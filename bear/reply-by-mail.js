@@ -1,10 +1,18 @@
+(function() {
+  const scriptTag = document.currentScript;
+  const email = scriptTag?.dataset.email;
+
+  if (!email) {
+    console.warn('Reply by Mail: No email configured. Add data-email="your@email.com" to the script tag.');
+    return;
+  }
+
   document.addEventListener("DOMContentLoaded", function() {
     if (document.body.classList.contains('post')) {
       const upvoteForm = document.querySelector('#upvote-form');
 
       if (upvoteForm) {
         const title = document.title;
-        const email = "blog@fischr.org";
 
         const container = document.createElement('div');
         container.style.display = 'flex';
@@ -24,3 +32,4 @@
       }
     }
   });
+})();
