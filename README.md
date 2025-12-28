@@ -106,9 +106,9 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 ### Reply by Mail
 
 *   **Description**: Adds a "Reply via email" link next to the upvote button on post pages. When clicked, it opens the user's mail client with a pre-filled subject line containing the post title.
-*   **Installation**: This script requires customization before use. Fork the repository or host the script yourself, then change the `email` variable to your own email address. Add the following code to your `Custom footer content`:
+*   **Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
     ```html
-    <script src="https://your-domain.com/reply-by-mail.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/reply-by-mail.js" data-email="your@email.com" defer></script>
     ```
 
 ---
