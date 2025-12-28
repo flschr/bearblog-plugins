@@ -2,18 +2,6 @@
 
 A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader and writer experience. I mainly use them for my own purposes on [my personal website](https://fischr.org/). But of course, you can use them too. To install a plugin, you need to add it to your header, footer or dashboard configuration. Just follow the instructions below.
 
-## 🌐 CDN URLs
-
-All plugins are available via GitHub Pages CDN:
-
-```
-https://flschr.github.io/bearblog-plugins/[filename].js
-```
-
-The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release.
-
-The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
-
 ## Plugin Overview
 
 - **[Markdown Toolbar](#markdown-toolbar)** – Powerful editor toolbar with formatting buttons and optional AI alt-text generation
@@ -113,6 +101,18 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     ```
 
 ---
+
+## 🌐 CDN URLs
+
+All plugins are available via GitHub Pages CDN:
+
+```
+https://flschr.github.io/bearblog-plugins/[filename].js
+```
+
+The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release.
+
+The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
 
 ## Feedback & Contributions
 
