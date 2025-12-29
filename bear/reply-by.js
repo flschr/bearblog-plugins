@@ -4,7 +4,7 @@
   const mastodonHandle = scriptTag?.dataset.mastodon;
 
   if (!email) {
-    console.warn('Reply by Mail: No email configured. Add data-email="your@email.com" to the script tag.');
+    console.warn('Reply by: No email configured. Add data-email="your@email.com" to the script tag.');
     return;
   }
 
