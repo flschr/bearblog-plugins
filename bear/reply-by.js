@@ -168,7 +168,11 @@
               replyText.appendChild(mastodonLink);
             }
 
-            replyText.innerHTML += ' <span class="reply-arrow">↩</span>';
+            replyText.appendChild(document.createTextNode(' '));
+            const arrowSpan = document.createElement('span');
+            arrowSpan.className = 'reply-arrow';
+            arrowSpan.textContent = '↩';
+            replyText.appendChild(arrowSpan);
 
             replySection.appendChild(replyText);
           }
