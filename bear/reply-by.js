@@ -14,7 +14,7 @@
     .reply-by-container {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       margin-top: 1.5rem;
     }
     .reply-by-section {
