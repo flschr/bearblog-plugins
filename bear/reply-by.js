@@ -11,11 +11,11 @@
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
-      prefix: 'Per ',
+      reply: '↪ antworten',
+      via: 'Per ',
       email: 'E-Mail',
       or: ' oder ',
       mastodon: 'Mastodon',
-      suffix: ' antworten',
       instancePrompt: 'Deine Mastodon-Instanz',
       instancePlaceholder: 'z.B. mastodon.social',
       submit: 'Öffnen',
@@ -23,11 +23,11 @@
       re: 'Re:'
     },
     en: {
-      prefix: 'Reply via ',
+      reply: '↪ reply',
+      via: 'Via ',
       email: 'email',
       or: ' or ',
       mastodon: 'Mastodon',
-      suffix: '',
       instancePrompt: 'Your Mastodon instance',
       instancePlaceholder: 'e.g., mastodon.social',
       submit: 'Open',
@@ -161,23 +161,52 @@
 
         const container = document.createElement('div');
         container.className = 'reply-by-container';
-        container.style.display = 'flex';
-        container.style.justifyContent = 'space-between';
-        container.style.alignItems = 'baseline';
-        container.style.marginTop = '1.5rem';
+        container.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-top:1.5rem;';
 
-        const replyLinkWrapper = document.createElement('small');
-        replyLinkWrapper.className = 'reply-by-links';
+        const rightSection = document.createElement('div');
+        rightSection.className = 'reply-by-section';
+        rightSection.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;';
+
+        const replyToggle = document.createElement('a');
+        replyToggle.href = '#';
+        replyToggle.className = 'reply-by-toggle';
+        replyToggle.textContent = t.reply;
+        replyToggle.style.cssText = 'text-decoration:none;color:inherit;opacity:0.6;transition:opacity 0.2s;font-size:0.875rem;';
+
+        const replyOptions = document.createElement('small');
+        replyOptions.className = 'reply-by-options';
+        replyOptions.style.cssText = 'overflow:hidden;max-height:0;opacity:0;transition:max-height 0.3s ease,opacity 0.3s ease;';
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a>${t.suffix}</span>`;
+          replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a></span>`;
         } else {
-          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.suffix}</span>`;
+          replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a></span>`;
         }
+
+        let expanded = false;
+        replyToggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          expanded = !expanded;
+          if (expanded) {
+            replyOptions.style.maxHeight = '2rem';
+            replyOptions.style.opacity = '1';
+            replyToggle.style.opacity = '1';
+          } else {
+            replyOptions.style.maxHeight = '0';
+            replyOptions.style.opacity = '0';
+            replyToggle.style.opacity = '0.6';
+          }
+        });
+
+        replyToggle.addEventListener('mouseenter', () => replyToggle.style.opacity = '1');
+        replyToggle.addEventListener('mouseleave', () => { if (!expanded) replyToggle.style.opacity = '0.6'; });
+
+        rightSection.appendChild(replyToggle);
+        rightSection.appendChild(replyOptions);
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
         container.appendChild(upvoteForm);
-        container.appendChild(replyLinkWrapper);
+        container.appendChild(rightSection);
 
         upvoteForm.style.margin = '0';
         upvoteForm.style.display = 'inline-block';
