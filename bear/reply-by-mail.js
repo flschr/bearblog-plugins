@@ -8,30 +8,31 @@
     return;
   }
 
-  function getMastodonShareUrl(text) {
+  function handleMastodonClick(e) {
+    e.preventDefault();
+
+    const url = window.location.href;
+    const text = `${mastodonHandle} Re: ${url}`;
+
     let instance = localStorage.getItem('mastodon_instance');
+    const needsPrompt = !instance;
 
-    if (!instance) {
+    // Open window before prompt to avoid popup blocker
+    const newWindow = window.open('about:blank', '_blank');
+
+    if (needsPrompt) {
       instance = prompt('Enter your Mastodon instance (e.g., mastodon.social):');
-      if (!instance) return null;
-
+      if (!instance) {
+        newWindow?.close();
+        return;
+      }
       instance = instance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
       localStorage.setItem('mastodon_instance', instance);
     }
 
-    return `https://${instance}/share?text=${encodeURIComponent(text)}`;
-  }
-
-  function handleMastodonClick(e) {
-    e.preventDefault();
-
-    const title = document.title;
-    const url = window.location.href;
-    const text = `${mastodonHandle} Re: ${title}\n${url}`;
-
-    const shareUrl = getMastodonShareUrl(text);
-    if (shareUrl) {
-      window.open(shareUrl, '_blank');
+    const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
+    if (newWindow) {
+      newWindow.location.href = shareUrl;
     }
   }
 
