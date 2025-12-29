@@ -16,7 +16,10 @@
       or: ' oder ',
       mastodon: 'Mastodon',
       suffix: ' antworten',
-      instancePrompt: 'Gib deine Mastodon-Instanz ein (z.B. mastodon.social):',
+      instancePrompt: 'Deine Mastodon-Instanz',
+      instancePlaceholder: 'z.B. mastodon.social',
+      submit: 'Öffnen',
+      cancel: 'Abbrechen',
       re: 'Re:'
     },
     en: {
@@ -25,48 +28,117 @@
       or: ' or ',
       mastodon: 'Mastodon',
       suffix: '',
-      instancePrompt: 'Enter your Mastodon instance (e.g., mastodon.social):',
+      instancePrompt: 'Your Mastodon instance',
+      instancePlaceholder: 'e.g., mastodon.social',
+      submit: 'Open',
+      cancel: 'Cancel',
       re: 'Re:'
     }
   };
   const t = i18n[lang];
 
-  function handleMastodonClick(e) {
-    e.preventDefault();
+  let modal = null;
+  let modalInput = null;
+
+  function createModal() {
+    modal = document.createElement('div');
+    modal.id = 'mastodon-modal';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'background:var(--bg,#fff);color:var(--text,#333);padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+
+    const label = document.createElement('label');
+    label.textContent = t.instancePrompt;
+    label.style.cssText = 'display:block;margin-bottom:0.5rem;font-weight:bold;';
+
+    modalInput = document.createElement('input');
+    modalInput.type = 'text';
+    modalInput.placeholder = t.instancePlaceholder;
+    modalInput.style.cssText = 'width:100%;padding:0.5rem;border:1px solid var(--border,#ccc);border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;';
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = t.cancel;
+    cancelBtn.type = 'button';
+    cancelBtn.style.cssText = 'padding:0.5rem 1rem;border:1px solid var(--border,#ccc);background:transparent;border-radius:4px;cursor:pointer;';
+    cancelBtn.addEventListener('click', closeModal);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.textContent = t.submit;
+    submitBtn.type = 'button';
+    submitBtn.style.cssText = 'padding:0.5rem 1rem;border:none;background:var(--accent,#6366f1);color:#fff;border-radius:4px;cursor:pointer;';
+    submitBtn.addEventListener('click', handleModalSubmit);
+
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(submitBtn);
+
+    dialog.appendChild(label);
+    dialog.appendChild(modalInput);
+    dialog.appendChild(buttonContainer);
+    modal.appendChild(dialog);
+
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeModal();
+    });
+
+    modalInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleModalSubmit();
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  function openModal() {
+    if (!modal) createModal();
+    const saved = localStorage.getItem('mastodon_instance');
+    modalInput.value = saved || '';
+    modal.style.display = 'flex';
+    modalInput.focus();
+    modalInput.select();
+  }
+
+  function closeModal() {
+    if (modal) modal.style.display = 'none';
+  }
+
+  function handleModalSubmit() {
+    let instance = modalInput.value.trim();
+    if (!instance) return;
+
+    instance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    localStorage.setItem('mastodon_instance', instance);
+    closeModal();
 
     const url = window.location.href;
     const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
-
-    let instance = localStorage.getItem('mastodon_instance');
-    const needsPrompt = !instance;
-
-    // Open window immediately to avoid iOS Safari popup blocker
-    // This must happen synchronously within the click event handler
-    const newWindow = needsPrompt ? window.open('about:blank', '_blank') : null;
-
-    if (needsPrompt) {
-      // Set a loading message in the new window to improve UX
-      if (newWindow) {
-        newWindow.document.write('<html><head><title>Mastodon</title></head><body style="font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;"><div style="text-align: center;"><p>Loading Mastodon...</p></div></body></html>');
-      }
-
-      instance = prompt(t.instancePrompt);
-      if (!instance) {
-        newWindow?.close();
-        return;
-      }
-      instance = instance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-      localStorage.setItem('mastodon_instance', instance);
-    }
-
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
 
-    if (newWindow) {
-      // Navigate the already-opened window
-      newWindow.location.href = shareUrl;
-    } else {
-      // Instance was already saved, open normally
+    // window.open() is called directly in the click handler - no popup blocker issue
+    window.open(shareUrl, '_blank');
+  }
+
+  function handleMastodonClick(e) {
+    e.preventDefault();
+
+    const instance = localStorage.getItem('mastodon_instance');
+
+    if (instance) {
+      // Instance already saved - open directly
+      const url = window.location.href;
+      const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
+      const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
       window.open(shareUrl, '_blank');
+    } else {
+      // Show modal to get instance - submit button will trigger window.open()
+      openModal();
     }
   }
 
