@@ -11,7 +11,7 @@
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
-      reply: '↪ antworten',
+      reply: '↩',
       via: 'Per ',
       email: 'E-Mail',
       or: ' oder ',
@@ -23,7 +23,7 @@
       re: 'Re:'
     },
     en: {
-      reply: '↪ reply',
+      reply: '↩',
       via: 'Via ',
       email: 'email',
       or: ' or ',
@@ -171,7 +171,6 @@
         replyToggle.href = '#';
         replyToggle.className = 'reply-by-toggle';
         replyToggle.textContent = t.reply;
-        replyToggle.style.cssText = 'text-decoration:none;color:inherit;opacity:0.6;transition:opacity 0.2s;font-size:0.875rem;';
 
         const replyOptions = document.createElement('small');
         replyOptions.className = 'reply-by-options';
@@ -190,16 +189,11 @@
           if (expanded) {
             replyOptions.style.maxHeight = '2rem';
             replyOptions.style.opacity = '1';
-            replyToggle.style.opacity = '1';
           } else {
             replyOptions.style.maxHeight = '0';
             replyOptions.style.opacity = '0';
-            replyToggle.style.opacity = '0.6';
           }
         });
-
-        replyToggle.addEventListener('mouseenter', () => replyToggle.style.opacity = '1');
-        replyToggle.addEventListener('mouseleave', () => { if (!expanded) replyToggle.style.opacity = '0.6'; });
 
         rightSection.appendChild(replyToggle);
         rightSection.appendChild(replyOptions);
