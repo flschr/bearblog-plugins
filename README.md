@@ -105,11 +105,16 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 
 ### Reply by Mail
 
-*   **Description**: Adds a "Reply via email" link next to the upvote button on post pages. When clicked, it opens the user's mail client with a pre-filled subject line containing the post title. See it in action [on my personal website](https://fischr.org/).
+*   **Description**: Adds a "Reply via email" link next to the upvote button on post pages. When clicked, it opens the user's mail client with a pre-filled subject line containing the post title. Optionally, you can add a Mastodon reply option that lets readers reply via their own Mastodon instance. See it in action [on my personal website](https://fischr.org/).
 *   **Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/reply-by-mail.js" data-email="your@email.com" defer></script>
     ```
+*   **Mastodon Reply (Optional)**: To enable Mastodon replies, add your Mastodon handle with `data-mastodon`:
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/reply-by-mail.js" data-email="your@email.com" data-mastodon="@yourhandle@instance.social" defer></script>
+    ```
+    When a reader clicks "Mastodon", they'll be asked for their instance (saved for future visits), and a new post draft opens mentioning you with the article title and URL.
 
 ---
 

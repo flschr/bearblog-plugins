@@ -1,10 +1,38 @@
 (function() {
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
+  const mastodonHandle = scriptTag?.dataset.mastodon;
 
   if (!email) {
     console.warn('Reply by Mail: No email configured. Add data-email="your@email.com" to the script tag.');
     return;
+  }
+
+  function getMastodonShareUrl(text) {
+    let instance = localStorage.getItem('mastodon_instance');
+
+    if (!instance) {
+      instance = prompt('Enter your Mastodon instance (e.g., mastodon.social):');
+      if (!instance) return null;
+
+      instance = instance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      localStorage.setItem('mastodon_instance', instance);
+    }
+
+    return `https://${instance}/share?text=${encodeURIComponent(text)}`;
+  }
+
+  function handleMastodonClick(e) {
+    e.preventDefault();
+
+    const title = document.title;
+    const url = window.location.href;
+    const text = `${mastodonHandle} Re: ${title}\n${url}`;
+
+    const shareUrl = getMastodonShareUrl(text);
+    if (shareUrl) {
+      window.open(shareUrl, '_blank');
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -21,7 +49,12 @@
         container.style.marginTop = '1.5rem';
 
         const replyLinkWrapper = document.createElement('small');
-        replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=Re: ${encodeURIComponent(title)}">Reply via email</a></b>`;
+
+        if (mastodonHandle) {
+          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=Re: ${encodeURIComponent(title)}">Reply via email</a> or <a href="#" id="mastodon-reply">Mastodon</a></b>`;
+        } else {
+          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=Re: ${encodeURIComponent(title)}">Reply via email</a></b>`;
+        }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
         container.appendChild(upvoteForm);
@@ -29,6 +62,11 @@
 
         upvoteForm.style.margin = '0';
         upvoteForm.style.display = 'inline-block';
+
+        if (mastodonHandle) {
+          const mastodonLink = document.getElementById('mastodon-reply');
+          mastodonLink?.addEventListener('click', handleMastodonClick);
+        }
       }
     }
   });
