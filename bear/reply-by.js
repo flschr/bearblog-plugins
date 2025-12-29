@@ -144,7 +144,8 @@
 
             const replyText = document.createElement('span');
             replyText.className = 'reply-by-text';
-            replyText.textContent = 'reply by ';
+
+            replyText.appendChild(document.createTextNode('reply by '));
 
             const emailLink = document.createElement('a');
             emailLink.href = `mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}`;
@@ -169,10 +170,17 @@
             }
 
             replyText.appendChild(document.createTextNode(' '));
-            const arrowSpan = document.createElement('span');
-            arrowSpan.className = 'reply-arrow';
-            arrowSpan.textContent = '↩';
-            replyText.appendChild(arrowSpan);
+            const arrowLink = document.createElement('a');
+            arrowLink.href = '#';
+            arrowLink.className = 'reply-arrow';
+            arrowLink.textContent = '↩';
+            arrowLink.addEventListener('click', function(e) {
+              e.preventDefault();
+              expanded = false;
+              replySection.innerHTML = '';
+              replySection.appendChild(replyLink);
+            });
+            replyText.appendChild(arrowLink);
 
             replySection.appendChild(replyText);
           }
