@@ -38,10 +38,21 @@
     const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
 
     let instance = localStorage.getItem('mastodon_instance');
+    const needsPrompt = !instance;
 
-    if (!instance) {
+    // Open window immediately to avoid iOS Safari popup blocker
+    // This must happen synchronously within the click event handler
+    const newWindow = needsPrompt ? window.open('about:blank', '_blank') : null;
+
+    if (needsPrompt) {
+      // Set a loading message in the new window to improve UX
+      if (newWindow) {
+        newWindow.document.write('<html><head><title>Mastodon</title></head><body style="font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;"><div style="text-align: center;"><p>Loading Mastodon...</p></div></body></html>');
+      }
+
       instance = prompt(t.instancePrompt);
       if (!instance) {
+        newWindow?.close();
         return;
       }
       instance = instance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -49,7 +60,14 @@
     }
 
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, '_blank');
+
+    if (newWindow) {
+      // Navigate the already-opened window
+      newWindow.location.href = shareUrl;
+    } else {
+      // Instance was already saved, open normally
+      window.open(shareUrl, '_blank');
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function() {
