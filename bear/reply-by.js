@@ -43,7 +43,7 @@
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
-      reply: 'antworten ↩',
+      reply: 'antworten',
       via: 'Per ',
       email: 'E-Mail',
       or: ' oder ',
@@ -55,7 +55,7 @@
       re: 'Re:'
     },
     en: {
-      reply: 'reply ↩',
+      reply: 'reply',
       via: 'Via ',
       email: 'email',
       or: ' or ',
