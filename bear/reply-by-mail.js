@@ -12,7 +12,7 @@
     e.preventDefault();
 
     const url = window.location.href;
-    const text = `${mastodonHandle} Re: ${url}`;
+    const text = `${mastodonHandle} Re: ${url}\n\n`;
 
     let instance = localStorage.getItem('mastodon_instance');
     const needsPrompt = !instance;
