@@ -3530,9 +3530,8 @@
 
                 // Save first via AJAX, then open inline preview
                 const publishInput = document.getElementById('publish');
-                // Store original publish status to restore after save
+                // Store original publish status to preserve during save
                 const originalPublishStatus = publishInput?.value;
-                if (publishInput) publishInput.value = 'false';
                 const form = $textarea.closest('form');
                 if (form) {
                     // Sync header content
@@ -3544,6 +3543,10 @@
 
                     // Save via AJAX without page reload
                     const formData = new FormData(form);
+                    // Ensure publish status is preserved - preview should NEVER change it
+                    if (originalPublishStatus !== undefined) {
+                        formData.set('publish', originalPublishStatus);
+                    }
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), INTERNAL.PREVIEW_SAVE_TIMEOUT);
 
@@ -3553,10 +3556,6 @@
                         signal: controller.signal
                     }).then(response => {
                         clearTimeout(timeoutId);
-                        // Restore original publish status after preview save
-                        if (publishInput && originalPublishStatus !== undefined) {
-                            publishInput.value = originalPublishStatus;
-                        }
                         if (response.ok) {
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
@@ -3585,10 +3584,6 @@
                         showInlinePreview();
                     }).catch(() => {
                         clearTimeout(timeoutId);
-                        // Restore original publish status on error
-                        if (publishInput && originalPublishStatus !== undefined) {
-                            publishInput.value = originalPublishStatus;
-                        }
                         // On network error or timeout, still try to preview
                         showInlinePreview();
                     });
