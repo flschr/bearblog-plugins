@@ -170,10 +170,17 @@
             }
 
             replyText.appendChild(document.createTextNode(' '));
-            const arrowSpan = document.createElement('span');
-            arrowSpan.className = 'reply-arrow';
-            arrowSpan.textContent = '↩';
-            replyText.appendChild(arrowSpan);
+            const arrowLink = document.createElement('a');
+            arrowLink.href = '#';
+            arrowLink.className = 'reply-arrow';
+            arrowLink.textContent = '↩';
+            arrowLink.addEventListener('click', function(e) {
+              e.preventDefault();
+              expanded = false;
+              replySection.innerHTML = '';
+              replySection.appendChild(replyLink);
+            });
+            replyText.appendChild(arrowLink);
 
             replySection.appendChild(replyText);
           }
