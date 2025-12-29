@@ -114,19 +114,7 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/reply-by.js" data-email="your@email.com" data-mastodon="@yourhandle@instance.social" defer></script>
     ```
-    When a reader clicks "Mastodon", they'll be asked for their instance (saved for future visits), and a new post draft opens mentioning you with the article title and URL.
-
----
-
-## 🌐 CDN URLs
-
-All plugins are available via GitHub Pages CDN:
-
-```
-https://flschr.github.io/bearblog-plugins/[filename].js
-```
-
-The CDN automatically deploys from the `stable` tag and updates within 10-15 minutes after a new release. The `unstable` tag is the development branch with potentially untested and breaking changes. Please do only use it on advice and your own risk. 
+    When a reader clicks "Mastodon", they'll be asked for their instance (saved for future visits), and a new post draft opens mentioning you with the URL.
 
 ---
 
