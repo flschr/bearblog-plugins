@@ -69,7 +69,7 @@
     const submitBtn = document.createElement('button');
     submitBtn.textContent = t.submit;
     submitBtn.type = 'button';
-    submitBtn.style.cssText = 'padding:0.5rem 1rem;border:1px solid var(--text,#333);background:var(--text,#333);color:var(--bg,#fff);border-radius:4px;cursor:pointer;';
+    submitBtn.style.cssText = 'padding:0.5rem 1rem;border:none;background:#6364ff;color:#fff;border-radius:4px;cursor:pointer;';
     submitBtn.addEventListener('click', handleModalSubmit);
 
     buttonContainer.appendChild(cancelBtn);
