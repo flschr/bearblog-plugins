@@ -8,10 +8,42 @@
     return;
   }
 
+  // Inject default styles (easily overridable via CSS)
+  const style = document.createElement('style');
+  style.textContent = `
+    .reply-by-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 1.5rem;
+    }
+    .reply-by-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
+    .reply-by-options {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+    }
+    .reply-by-options.expanded {
+      max-height: 2rem;
+      opacity: 1;
+    }
+    .reply-by-upvote {
+      margin: 0;
+      display: inline-block;
+    }
+  `;
+  document.head.appendChild(style);
+
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
-      reply: '↩',
+      reply: 'antworten ↩',
       via: 'Per ',
       email: 'E-Mail',
       or: ' oder ',
@@ -23,7 +55,7 @@
       re: 'Re:'
     },
     en: {
-      reply: '↩',
+      reply: 'reply ↩',
       via: 'Via ',
       email: 'email',
       or: ' or ',
@@ -161,11 +193,9 @@
 
         const container = document.createElement('div');
         container.className = 'reply-by-container';
-        container.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-top:1.5rem;';
 
         const rightSection = document.createElement('div');
         rightSection.className = 'reply-by-section';
-        rightSection.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;';
 
         const replyToggle = document.createElement('a');
         replyToggle.href = '#';
@@ -174,7 +204,6 @@
 
         const replyOptions = document.createElement('small');
         replyOptions.className = 'reply-by-options';
-        replyOptions.style.cssText = 'overflow:hidden;max-height:0;opacity:0;transition:max-height 0.3s ease,opacity 0.3s ease;';
 
         if (mastodonHandle) {
           replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a></span>`;
@@ -182,17 +211,9 @@
           replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a></span>`;
         }
 
-        let expanded = false;
         replyToggle.addEventListener('click', function(e) {
           e.preventDefault();
-          expanded = !expanded;
-          if (expanded) {
-            replyOptions.style.maxHeight = '2rem';
-            replyOptions.style.opacity = '1';
-          } else {
-            replyOptions.style.maxHeight = '0';
-            replyOptions.style.opacity = '0';
-          }
+          replyOptions.classList.toggle('expanded');
         });
 
         rightSection.appendChild(replyToggle);
@@ -202,8 +223,7 @@
         container.appendChild(upvoteForm);
         container.appendChild(rightSection);
 
-        upvoteForm.style.margin = '0';
-        upvoteForm.style.display = 'inline-block';
+        upvoteForm.classList.add('reply-by-upvote');
 
         if (mastodonHandle) {
           const mastodonLink = document.getElementById('mastodon-reply');
