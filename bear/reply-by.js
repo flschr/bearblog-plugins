@@ -160,17 +160,19 @@
         const cleanTitle = stripBlogName(title);
 
         const container = document.createElement('div');
+        container.className = 'reply-by-container';
         container.style.display = 'flex';
         container.style.justifyContent = 'space-between';
         container.style.alignItems = 'baseline';
         container.style.marginTop = '1.5rem';
 
         const replyLinkWrapper = document.createElement('small');
+        replyLinkWrapper.className = 'reply-by-links';
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}">${t.email}</a>${t.or}<a href="#" id="mastodon-reply">${t.mastodon}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a>${t.suffix}</span>`;
         } else {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}">${t.email}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.suffix}</span>`;
         }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
