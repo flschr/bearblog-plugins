@@ -138,7 +138,7 @@
     const url = window.location.href;
     const title = document.title;
     const cleanTitle = stripBlogName(title);
-    const text = `${mastodonHandle} ${t.re} ${cleanTitle}\n\n${url}\n\n`;
+    const text = `${mastodonHandle} ${t.re} ${cleanTitle} ${url}`;
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
 
     // window.open() is called directly in the click handler - no popup blocker issue
