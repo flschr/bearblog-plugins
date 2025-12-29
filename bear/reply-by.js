@@ -8,35 +8,6 @@
     return;
   }
 
-  const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
-  const i18n = {
-    de: {
-      reply: 'antworten',
-      via: 'Per ',
-      email: 'E-Mail',
-      or: ' oder ',
-      mastodon: 'Mastodon',
-      instancePrompt: 'Deine Mastodon-Instanz',
-      instancePlaceholder: 'z.B. mastodon.social',
-      submit: 'Öffnen',
-      cancel: 'Abbrechen',
-      re: 'Re:'
-    },
-    en: {
-      reply: 'reply',
-      via: 'Via ',
-      email: 'email',
-      or: ' or ',
-      mastodon: 'Mastodon',
-      instancePrompt: 'Your Mastodon instance',
-      instancePlaceholder: 'e.g., mastodon.social',
-      submit: 'Open',
-      cancel: 'Cancel',
-      re: 'Re:'
-    }
-  };
-  const t = i18n[lang];
-
   let modal = null;
   let modalInput = null;
 
@@ -67,25 +38,25 @@
     dialog.style.cssText = `background:${dark ? '#1e1e1e' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${dark ? '0.4' : '0.15'});`;
 
     const label = document.createElement('label');
-    label.textContent = t.instancePrompt;
+    label.textContent = 'Your Mastodon instance';
     label.style.cssText = 'display:block;margin-bottom:0.5rem;font-weight:bold;';
 
     modalInput = document.createElement('input');
     modalInput.type = 'text';
-    modalInput.placeholder = t.instancePlaceholder;
+    modalInput.placeholder = 'e.g., mastodon.social';
     modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${dark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${dark ? '#2a2a2a' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};`;
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
 
     const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = t.cancel;
+    cancelBtn.textContent = 'Cancel';
     cancelBtn.type = 'button';
     cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${dark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${dark ? '#e0e0e0' : '#333'};`;
     cancelBtn.addEventListener('click', closeModal);
 
     const submitBtn = document.createElement('button');
-    submitBtn.textContent = t.submit;
+    submitBtn.textContent = 'Open';
     submitBtn.type = 'button';
     submitBtn.style.cssText = 'padding:0.5rem 1rem;border:none;background:#6364ff;color:#fff;border-radius:4px;cursor:pointer;';
     submitBtn.addEventListener('click', handleModalSubmit);
@@ -138,17 +109,10 @@
     const url = window.location.href;
     const title = document.title;
     const cleanTitle = stripBlogName(title);
-    const text = `${mastodonHandle} ${t.re} ${cleanTitle} ${url}`;
+    const text = `${mastodonHandle} Re: ${cleanTitle} ${url}`;
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
 
-    // window.open() is called directly in the click handler - no popup blocker issue
     window.open(shareUrl, '_blank');
-  }
-
-  function handleMastodonClick(e) {
-    e.preventDefault();
-    // Always show modal - it will be pre-filled with saved instance if available
-    openModal();
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -162,41 +126,61 @@
         const container = document.createElement('div');
         container.className = 'reply-by-container';
 
-        const rightSection = document.createElement('div');
-        rightSection.className = 'reply-by-section';
+        const replySection = document.createElement('div');
+        replySection.className = 'reply-by-section';
 
-        const replyToggle = document.createElement('a');
-        replyToggle.href = '#';
-        replyToggle.className = 'reply-by-toggle';
-        replyToggle.textContent = t.reply;
+        const replyLink = document.createElement('a');
+        replyLink.href = '#';
+        replyLink.className = 'reply-by-toggle';
+        replyLink.innerHTML = 'reply <span class="reply-arrow">↩</span>';
 
-        const replyOptions = document.createElement('small');
-        replyOptions.className = 'reply-by-options';
+        let expanded = false;
 
-        if (mastodonHandle) {
-          replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a></span>`;
-        } else {
-          replyOptions.innerHTML = `<span class="reply-by-text">${t.via}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a></span>`;
-        }
-
-        replyToggle.addEventListener('click', function(e) {
+        replyLink.addEventListener('click', function(e) {
           e.preventDefault();
-          replyOptions.classList.toggle('expanded');
+          if (!expanded) {
+            expanded = true;
+            replySection.innerHTML = '';
+
+            const replyText = document.createElement('span');
+            replyText.className = 'reply-by-text';
+            replyText.textContent = 'reply by ';
+
+            const emailLink = document.createElement('a');
+            emailLink.href = `mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}`;
+            emailLink.className = 'reply-by-email';
+            emailLink.textContent = 'Mail';
+
+            replyText.appendChild(emailLink);
+
+            if (mastodonHandle) {
+              replyText.appendChild(document.createTextNode(' or '));
+
+              const mastodonLink = document.createElement('a');
+              mastodonLink.href = '#';
+              mastodonLink.className = 'reply-by-mastodon';
+              mastodonLink.textContent = 'Mastodon';
+              mastodonLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                openModal();
+              });
+
+              replyText.appendChild(mastodonLink);
+            }
+
+            replyText.innerHTML += ' <span class="reply-arrow">↩</span>';
+
+            replySection.appendChild(replyText);
+          }
         });
 
-        rightSection.appendChild(replyToggle);
-        rightSection.appendChild(replyOptions);
+        replySection.appendChild(replyLink);
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
         container.appendChild(upvoteForm);
-        container.appendChild(rightSection);
+        container.appendChild(replySection);
 
         upvoteForm.classList.add('reply-by-upvote');
-
-        if (mastodonHandle) {
-          const mastodonLink = document.getElementById('mastodon-reply');
-          mastodonLink?.addEventListener('click', handleMastodonClick);
-        }
       }
     }
   });
