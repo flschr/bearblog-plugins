@@ -1,7 +1,28 @@
 (function() {
   'use strict';
 
-  document.addEventListener('DOMContentLoaded', () => {
+  // Immediately neutralize iframe src attributes to prevent loading before JS runs
+  // This runs synchronously when the script is parsed
+  function neutralizeIframes() {
+    const iframes = document.querySelectorAll('iframe[src]');
+    iframes.forEach(iframe => {
+      const src = iframe.getAttribute('src');
+      if (src && src.startsWith('http')) {
+        iframe.setAttribute('data-src', src);
+        iframe.removeAttribute('src');
+      }
+    });
+  }
+
+  // Run immediately to catch iframes as early as possible
+  neutralizeIframes();
+
+  // Also run when DOM is ready in case more iframes were added
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', neutralizeIframes);
+  }
+
+  function initPrivacyEmbeds() {
     // Detect browser language (fallback to German if not English)
     const lang = navigator.language || navigator.userLanguage || 'de';
     const isEn = lang.startsWith('en');
@@ -64,13 +85,15 @@
       }
     ];
 
-    // Get all iframes on the page
-    const iframes = document.querySelectorAll('iframe[src], iframe[data-src]');
+    // Get all iframes that haven't been processed yet
+    const iframes = document.querySelectorAll('iframe[data-src]:not([data-privacy-processed])');
 
     iframes.forEach(iframe => {
-      // Support both src and data-src attributes
-      const originalSrc = iframe.src || iframe.dataset.src;
+      const originalSrc = iframe.dataset.src;
       if (!originalSrc) return;
+
+      // Mark as processed to avoid re-processing on bfcache restore
+      iframe.setAttribute('data-privacy-processed', 'true');
 
       // Skip iframes without http(s) protocol (e.g., about:blank)
       if (!originalSrc.startsWith('http')) return;
@@ -130,5 +153,21 @@
       btn.addEventListener('click', handleClick, { once: true });
       iframe.replaceWith(wrapper);
     });
+  }
+
+  // Initialize on DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPrivacyEmbeds);
+  } else {
+    initPrivacyEmbeds();
+  }
+
+  // Re-initialize on pageshow to handle bfcache (browser back/forward)
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      // Page was restored from bfcache - re-neutralize and re-init
+      neutralizeIframes();
+      initPrivacyEmbeds();
+    }
   });
 })();
