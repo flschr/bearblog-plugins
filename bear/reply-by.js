@@ -11,14 +11,20 @@
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
-      replyViaEmail: 'Antwort per E-Mail',
-      or: 'oder',
+      prefix: 'Per ',
+      email: 'E-Mail',
+      or: ' oder ',
+      mastodon: 'Mastodon',
+      suffix: ' antworten',
       instancePrompt: 'Gib deine Mastodon-Instanz ein (z.B. mastodon.social):',
       re: 'Re:'
     },
     en: {
-      replyViaEmail: 'Reply via email',
-      or: 'or',
+      prefix: 'Reply via ',
+      email: 'email',
+      or: ' or ',
+      mastodon: 'Mastodon',
+      suffix: '',
       instancePrompt: 'Enter your Mastodon instance (e.g., mastodon.social):',
       re: 'Re:'
     }
@@ -69,9 +75,9 @@
         const replyLinkWrapper = document.createElement('small');
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.replyViaEmail}</a> ${t.or} <a href="#" id="mastodon-reply">Mastodon</a></b>`;
+          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.or}<a href="#" id="mastodon-reply">${t.mastodon}</a>${t.suffix}</b>`;
         } else {
-          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.replyViaEmail}</a></b>`;
+          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.suffix}</b>`;
         }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
