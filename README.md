@@ -10,7 +10,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Privacy Embeds](#privacy-embeds)** – GDPR-friendly consent placeholders for external content (YouTube, Maps, etc.)
 - **[Image Lazy Loading](#image-lazy-loading)** – Automatic lazy loading for all images
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
-- **[Reply by](#reply-by)** – Adds a "Reply via email" link next to the upvote button
+- **[Reply by](#reply-by)** – Adds a "Reply via email / Mastodon" link next to the upvote button
 
 ---
 
