@@ -127,19 +127,8 @@
 
   function handleMastodonClick(e) {
     e.preventDefault();
-
-    const instance = localStorage.getItem('mastodon_instance');
-
-    if (instance) {
-      // Instance already saved - open directly
-      const url = window.location.href;
-      const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
-      const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
-      window.open(shareUrl, '_blank');
-    } else {
-      // Show modal to get instance - submit button will trigger window.open()
-      openModal();
-    }
+    // Always show modal - it will be pre-filled with saved instance if available
+    openModal();
   }
 
   document.addEventListener("DOMContentLoaded", function() {
