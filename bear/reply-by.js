@@ -38,15 +38,10 @@
     const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
 
     let instance = localStorage.getItem('mastodon_instance');
-    const needsPrompt = !instance;
 
-    // Open window before prompt to avoid popup blocker
-    const newWindow = window.open('about:blank', '_blank');
-
-    if (needsPrompt) {
+    if (!instance) {
       instance = prompt(t.instancePrompt);
       if (!instance) {
-        newWindow?.close();
         return;
       }
       instance = instance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -54,9 +49,7 @@
     }
 
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
-    if (newWindow) {
-      newWindow.location.href = shareUrl;
-    }
+    window.open(shareUrl, '_blank');
   }
 
   document.addEventListener("DOMContentLoaded", function() {
