@@ -8,38 +8,6 @@
     return;
   }
 
-  // Inject default styles (easily overridable via CSS)
-  const style = document.createElement('style');
-  style.textContent = `
-    .reply-by-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-top: 1.5rem;
-    }
-    .reply-by-section {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.25rem;
-    }
-    .reply-by-options {
-      overflow: hidden;
-      max-height: 0;
-      opacity: 0;
-      transition: max-height 0.3s ease, opacity 0.3s ease;
-    }
-    .reply-by-options.expanded {
-      max-height: 2rem;
-      opacity: 1;
-    }
-    .reply-by-upvote {
-      margin: 0;
-      display: inline-block;
-    }
-  `;
-  document.head.appendChild(style);
-
   const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
   const i18n = {
     de: {
