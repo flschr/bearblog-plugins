@@ -75,9 +75,9 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 ### Privacy Embeds
 
 *   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English). See it in [on this page](https://fischr.org/oben-links-am-lago-di-benaco/).
-*   **Installation**: Add the following code to your `Custom footer content`:
+*   **Installation**: Add this to `Custom <head> content` (not footer!) to block iframes before the browser's preload scanner can see them:
     ```html
-    <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
     ```
 
 ---
