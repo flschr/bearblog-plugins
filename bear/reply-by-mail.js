@@ -8,11 +8,28 @@
     return;
   }
 
+  const lang = document.documentElement.lang?.toLowerCase().startsWith('de') ? 'de' : 'en';
+  const i18n = {
+    de: {
+      replyViaEmail: 'Antwort per E-Mail',
+      or: 'oder',
+      instancePrompt: 'Gib deine Mastodon-Instanz ein (z.B. mastodon.social):',
+      re: 'Re:'
+    },
+    en: {
+      replyViaEmail: 'Reply via email',
+      or: 'or',
+      instancePrompt: 'Enter your Mastodon instance (e.g., mastodon.social):',
+      re: 'Re:'
+    }
+  };
+  const t = i18n[lang];
+
   function handleMastodonClick(e) {
     e.preventDefault();
 
     const url = window.location.href;
-    const text = `${mastodonHandle} Re: ${url}`;
+    const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
 
     let instance = localStorage.getItem('mastodon_instance');
     const needsPrompt = !instance;
@@ -21,7 +38,7 @@
     const newWindow = window.open('about:blank', '_blank');
 
     if (needsPrompt) {
-      instance = prompt('Enter your Mastodon instance (e.g., mastodon.social):');
+      instance = prompt(t.instancePrompt);
       if (!instance) {
         newWindow?.close();
         return;
@@ -52,9 +69,9 @@
         const replyLinkWrapper = document.createElement('small');
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=Re: ${encodeURIComponent(title)}">Reply via email</a> or <a href="#" id="mastodon-reply">Mastodon</a></b>`;
+          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.replyViaEmail}</a> ${t.or} <a href="#" id="mastodon-reply">Mastodon</a></b>`;
         } else {
-          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=Re: ${encodeURIComponent(title)}">Reply via email</a></b>`;
+          replyLinkWrapper.innerHTML = `<b><a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.replyViaEmail}</a></b>`;
         }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
