@@ -40,6 +40,12 @@
   let modal = null;
   let modalInput = null;
 
+  function stripBlogName(title) {
+    const lastPipeIndex = title.lastIndexOf('|');
+    if (lastPipeIndex === -1) return title;
+    return title.substring(0, lastPipeIndex).trim();
+  }
+
   function isDarkMode() {
     const bgColor = getComputedStyle(document.body).backgroundColor;
     const match = bgColor.match(/\d+/g);
@@ -130,7 +136,9 @@
     closeModal();
 
     const url = window.location.href;
-    const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
+    const title = document.title;
+    const cleanTitle = stripBlogName(title);
+    const text = `${mastodonHandle} ${t.re} ${cleanTitle}\n\n${url}\n\n`;
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
 
     // window.open() is called directly in the click handler - no popup blocker issue
@@ -149,19 +157,22 @@
 
       if (upvoteForm) {
         const title = document.title;
+        const cleanTitle = stripBlogName(title);
 
         const container = document.createElement('div');
+        container.className = 'reply-by-container';
         container.style.display = 'flex';
         container.style.justifyContent = 'space-between';
         container.style.alignItems = 'baseline';
         container.style.marginTop = '1.5rem';
 
         const replyLinkWrapper = document.createElement('small');
+        replyLinkWrapper.className = 'reply-by-links';
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.or}<a href="#" id="mastodon-reply">${t.mastodon}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.or}<a href="#" id="mastodon-reply" class="reply-by-mastodon">${t.mastodon}</a>${t.suffix}</span>`;
         } else {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<span class="reply-by-text">${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}" class="reply-by-email">${t.email}</a>${t.suffix}</span>`;
         }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);

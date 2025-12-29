@@ -116,6 +116,60 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
     ```
     When a reader clicks "Mastodon", they'll be asked for their instance (saved for future visits), and a new post draft opens mentioning you with the URL.
 
+#### CSS Customization
+
+The plugin uses CSS classes that you can style in your own stylesheet. Add custom styles to your `Custom CSS` to change appearance, colors, positioning, and more:
+
+```css
+/* Container for upvote button and reply links */
+.reply-by-container {
+  /* Default: display: flex; justify-content: space-between; align-items: baseline; margin-top: 1.5rem; */
+  /* Center content instead of space-between */
+  justify-content: center;
+  gap: 2rem; /* Add spacing between upvote and links */
+}
+
+/* Wrapper for the reply links */
+.reply-by-links {
+  /* Change font size, alignment, etc. */
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+/* The text and links inside */
+.reply-by-text {
+  font-weight: bold; /* Make text bold */
+  color: #666; /* Custom color */
+}
+
+/* Email link styling */
+.reply-by-email {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.reply-by-email:hover {
+  text-decoration: underline;
+}
+
+/* Mastodon link styling */
+.reply-by-mastodon {
+  color: #6364ff;
+  text-decoration: none;
+}
+
+.reply-by-mastodon:hover {
+  text-decoration: underline;
+}
+```
+
+**Available CSS classes:**
+- `.reply-by-container` – Main container (flex layout by default)
+- `.reply-by-links` – Wrapper for the reply links (small element)
+- `.reply-by-text` – Text content wrapper (span element)
+- `.reply-by-email` – Email link
+- `.reply-by-mastodon` – Mastodon link
+
 ---
 
 ## Feedback & Contributions
