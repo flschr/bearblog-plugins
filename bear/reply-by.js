@@ -40,13 +40,25 @@
   let modal = null;
   let modalInput = null;
 
+  function isDarkMode() {
+    const bgColor = getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/\d+/g);
+    if (match) {
+      const [r, g, b] = match.map(Number);
+      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+      return luminance < 128;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
   function createModal() {
+    const dark = isDarkMode();
     modal = document.createElement('div');
     modal.id = 'mastodon-modal';
     modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
 
     const dialog = document.createElement('div');
-    dialog.style.cssText = 'background:var(--bg,#fff);color:var(--text,#333);padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+    dialog.style.cssText = `background:${dark ? '#1e1e1e' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${dark ? '0.4' : '0.15'});`;
 
     const label = document.createElement('label');
     label.textContent = t.instancePrompt;
@@ -55,7 +67,7 @@
     modalInput = document.createElement('input');
     modalInput.type = 'text';
     modalInput.placeholder = t.instancePlaceholder;
-    modalInput.style.cssText = 'width:100%;padding:0.5rem;border:1px solid var(--border,#ccc);border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;';
+    modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${dark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${dark ? '#2a2a2a' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};`;
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
@@ -63,7 +75,7 @@
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = t.cancel;
     cancelBtn.type = 'button';
-    cancelBtn.style.cssText = 'padding:0.5rem 1rem;border:1px solid var(--border,#ccc);background:transparent;border-radius:4px;cursor:pointer;';
+    cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${dark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${dark ? '#e0e0e0' : '#333'};`;
     cancelBtn.addEventListener('click', closeModal);
 
     const submitBtn = document.createElement('button');
