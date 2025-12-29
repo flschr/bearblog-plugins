@@ -144,7 +144,8 @@
 
             const replyText = document.createElement('span');
             replyText.className = 'reply-by-text';
-            replyText.textContent = 'reply by ';
+
+            replyText.appendChild(document.createTextNode('reply by '));
 
             const emailLink = document.createElement('a');
             emailLink.href = `mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}`;
