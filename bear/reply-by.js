@@ -40,6 +40,12 @@
   let modal = null;
   let modalInput = null;
 
+  function stripBlogName(title) {
+    const lastPipeIndex = title.lastIndexOf('|');
+    if (lastPipeIndex === -1) return title;
+    return title.substring(0, lastPipeIndex).trim();
+  }
+
   function isDarkMode() {
     const bgColor = getComputedStyle(document.body).backgroundColor;
     const match = bgColor.match(/\d+/g);
@@ -130,7 +136,9 @@
     closeModal();
 
     const url = window.location.href;
-    const text = `${mastodonHandle} ${t.re} ${url}\n\n`;
+    const title = document.title;
+    const cleanTitle = stripBlogName(title);
+    const text = `${mastodonHandle} ${t.re} ${cleanTitle}\n\n${url}\n\n`;
     const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
 
     // window.open() is called directly in the click handler - no popup blocker issue
@@ -149,6 +157,7 @@
 
       if (upvoteForm) {
         const title = document.title;
+        const cleanTitle = stripBlogName(title);
 
         const container = document.createElement('div');
         container.style.display = 'flex';
@@ -159,9 +168,9 @@
         const replyLinkWrapper = document.createElement('small');
 
         if (mastodonHandle) {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.or}<a href="#" id="mastodon-reply">${t.mastodon}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}">${t.email}</a>${t.or}<a href="#" id="mastodon-reply">${t.mastodon}</a>${t.suffix}</b>`;
         } else {
-          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(title)}">${t.email}</a>${t.suffix}</b>`;
+          replyLinkWrapper.innerHTML = `<b>${t.prefix}<a href="mailto:${email}?subject=${t.re} ${encodeURIComponent(cleanTitle)}">${t.email}</a>${t.suffix}</b>`;
         }
 
         upvoteForm.parentNode.insertBefore(container, upvoteForm);
