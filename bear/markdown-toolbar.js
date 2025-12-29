@@ -3530,6 +3530,8 @@
 
                 // Save first via AJAX, then open inline preview
                 const publishInput = document.getElementById('publish');
+                // Store original publish status to restore after save
+                const originalPublishStatus = publishInput?.value;
                 if (publishInput) publishInput.value = 'false';
                 const form = $textarea.closest('form');
                 if (form) {
@@ -3551,6 +3553,10 @@
                         signal: controller.signal
                     }).then(response => {
                         clearTimeout(timeoutId);
+                        // Restore original publish status after preview save
+                        if (publishInput && originalPublishStatus !== undefined) {
+                            publishInput.value = originalPublishStatus;
+                        }
                         if (response.ok) {
                             // Mark content as saved so back button doesn't show warning
                             updateOriginalContent();
@@ -3579,6 +3585,10 @@
                         showInlinePreview();
                     }).catch(() => {
                         clearTimeout(timeoutId);
+                        // Restore original publish status on error
+                        if (publishInput && originalPublishStatus !== undefined) {
+                            publishInput.value = originalPublishStatus;
+                        }
                         // On network error or timeout, still try to preview
                         showInlinePreview();
                     });
