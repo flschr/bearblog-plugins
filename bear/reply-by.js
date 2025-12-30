@@ -116,84 +116,37 @@
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    if (document.body.classList.contains('post')) {
-      const upvoteForm = document.querySelector('#upvote-form');
+    if (!document.body.classList.contains('post')) return;
 
-      if (upvoteForm) {
-        const title = document.title;
-        const cleanTitle = stripBlogName(title);
+    const replyContainer = document.querySelector('.reply-by');
+    if (!replyContainer) return;
 
-        const container = document.createElement('div');
-        container.className = 'reply-by-container';
+    const title = document.title;
+    const cleanTitle = stripBlogName(title);
 
-        const replySection = document.createElement('div');
-        replySection.className = 'reply-by-section';
+    // Replace [Mail] placeholder with email link
+    const html = replyContainer.innerHTML;
+    let newHtml = html.replace(/\[Mail\]/g, `<a href="mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}">Mail</a>`);
 
-        const replyLink = document.createElement('a');
-        replyLink.href = '#';
-        replyLink.className = 'reply-by-toggle';
-        replyLink.innerHTML = 'reply <span class="reply-arrow">↩</span>';
+    // Replace [Mastodon] placeholder with link (if handle configured)
+    if (mastodonHandle) {
+      newHtml = newHtml.replace(/\[Mastodon\]/g, '<a href="#" class="reply-by-mastodon">Mastodon</a>');
+    } else {
+      // Remove [Mastodon] and surrounding " or " if no handle configured
+      newHtml = newHtml.replace(/\s*or\s*\[Mastodon\]/g, '');
+      newHtml = newHtml.replace(/\[Mastodon\]\s*or\s*/g, '');
+      newHtml = newHtml.replace(/\[Mastodon\]/g, '');
+    }
 
-        let expanded = false;
+    replyContainer.innerHTML = newHtml;
 
-        replyLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (!expanded) {
-            expanded = true;
-            replySection.innerHTML = '';
-
-            const replyText = document.createElement('span');
-            replyText.className = 'reply-by-text';
-
-            replyText.appendChild(document.createTextNode('reply by '));
-
-            const emailLink = document.createElement('a');
-            emailLink.href = `mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}`;
-            emailLink.className = 'reply-by-email';
-            emailLink.textContent = 'Mail';
-
-            replyText.appendChild(emailLink);
-
-            if (mastodonHandle) {
-              replyText.appendChild(document.createTextNode(' or '));
-
-              const mastodonLink = document.createElement('a');
-              mastodonLink.href = '#';
-              mastodonLink.className = 'reply-by-mastodon';
-              mastodonLink.textContent = 'Mastodon';
-              mastodonLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                openModal();
-              });
-
-              replyText.appendChild(mastodonLink);
-            }
-
-            replyText.appendChild(document.createTextNode(' '));
-            const arrowLink = document.createElement('a');
-            arrowLink.href = '#';
-            arrowLink.className = 'reply-arrow';
-            arrowLink.textContent = '↩';
-            arrowLink.addEventListener('click', function(e) {
-              e.preventDefault();
-              expanded = false;
-              replySection.innerHTML = '';
-              replySection.appendChild(replyLink);
-            });
-            replyText.appendChild(arrowLink);
-
-            replySection.appendChild(replyText);
-          }
-        });
-
-        replySection.appendChild(replyLink);
-
-        upvoteForm.parentNode.insertBefore(container, upvoteForm);
-        container.appendChild(upvoteForm);
-        container.appendChild(replySection);
-
-        upvoteForm.classList.add('reply-by-upvote');
-      }
+    // Add click handler for Mastodon link
+    const mastodonLink = replyContainer.querySelector('.reply-by-mastodon');
+    if (mastodonLink) {
+      mastodonLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        openModal();
+      });
     }
   });
 })();
