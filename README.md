@@ -18,43 +18,19 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 
 ### Markdown Toolbar
 
-*   **Description**: Adds a powerful Markdown toolbar to the post editor. It includes buttons for text formatting, media uploads, and custom HTML blocks like info/warning boxes.
+*   **Description**: Adds a Markdown toolbar to the post editor with buttons for text formatting, media uploads, and custom HTML blocks. Includes an optional AI-powered alt-text generator using OpenAI's Vision API.
 *   **Installation**: This is a **dashboard script**. Go to **Dashboard** -> **Settings** and add the following URL to the `Custom dashboard Javascript` field:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar.js"></script>
     ```
 
-#### AI Alt-Text Feature (Optional)
+#### AI Alt-Text (Optional)
 
-The toolbar includes an optional AI-powered alt-text generator for images using the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
+Uses OpenAI's gpt-4o-mini model to generate image descriptions. Costs ~$0.001 per image. Your API key is stored in localStorage – use a dedicated key with [spending limits](https://platform.openai.com/settings/organization/limits) for safety.
 
-* **Smart Privacy:** Only the URL of the selected image is sent to OpenAI when you actively click the button. No data is sent in the background.
-* **Minimal Costs:** Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
-* **No Subscription:** You use your own OpenAI API Key and only pay for what you actually use.
+#### Mobile Note
 
-> [!WARNING]
->  **Security Note**
->  Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with some risks:
-> - If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key
-> - Anyone with access to your browser can view the key via Developer Tools
-> - Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript)
-
-**Recommendations:**
-1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month)
-2. **Use a dedicated API key** just for this toolbar (you can revoke it anytime)
-3. **Don't use this feature** on shared or public computers
-4. The risk is limited: an attacker can only make API calls on your behalf – they cannot access your OpenAI account or other data
-
-#### Mobile Usage & Smart Clipboard
-
-The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS that cannot be avoided:
-
-**The Problem:** When you click the Link or Image button, the toolbar tries to read URLs from your clipboard to auto-paste them. On iOS, this triggers a system permission popup ("Allow Paste from [App]?") every time. This is an iOS security feature and cannot be bypassed by any website or script.
-
-**The Solution:** You can disable this feature in the toolbar settings by unchecking **"Smart Clipboard (auto-paste URLs)"**.
-
-> [!TIP]
-> Desktop users can keep Smart Clipboard enabled for the convenience of auto-pasting URLs. Mobile users who find the popup annoying can simply disable it.
+On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can disable it in the toolbar settings if this becomes annoying.
 
 ---
 
