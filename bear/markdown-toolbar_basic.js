@@ -287,7 +287,14 @@
 
         $textarea.value = newText;
         $textarea.setSelectionRange(newPos, newPos);
+
+        // Prevent iOS paste menu by temporarily making textarea readonly during focus
+        $textarea.readOnly = true;
         $textarea.focus();
+        setTimeout(() => {
+            $textarea.readOnly = false;
+        }, 10);
+
         $textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
 })();
