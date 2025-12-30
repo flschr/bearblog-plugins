@@ -147,7 +147,7 @@ To customize the like button text use: `data-like="Like|Liked!"` (= text before|
 .reply-button-like
 .reply-button-like.liked
 .reply-button-mail.
-reply-button-mastodon
+.reply-button-mastodon
 ```
 
 ---
