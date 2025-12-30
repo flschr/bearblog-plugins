@@ -5,6 +5,7 @@
   const lang = scriptTag?.dataset.lang || 'en';
 
   const showLikeButton = scriptTag?.dataset.like !== undefined;
+  const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
   // Translations
   const translations = {
@@ -12,6 +13,7 @@
       mail: 'Per Mail antworten',
       mastodon: 'Auf Mastodon antworten',
       like: 'Gefällt mir',
+      liked: 'Gefällt mir',
       modalTitle: 'Deine Mastodon-Instanz',
       modalPlaceholder: 'z.B. mastodon.social',
       modalCancel: 'Abbrechen',
@@ -21,6 +23,7 @@
       mail: 'Reply by mail',
       mastodon: 'Reply on Mastodon',
       like: 'Like this post',
+      liked: 'Liked',
       modalTitle: 'Your Mastodon instance',
       modalPlaceholder: 'e.g., mastodon.social',
       modalCancel: 'Cancel',
@@ -29,6 +32,10 @@
   };
 
   const t = translations[lang] || translations.en;
+
+  // Override like/liked texts if custom values provided via data-like="text|likedText"
+  if (likeTexts[0]) t.like = likeTexts[0].trim();
+  if (likeTexts[1]) t.liked = likeTexts[1].trim();
 
   if (!email) {
     console.warn('Reply by: No email configured. Add data-email="your@email.com" to the script tag.');
@@ -152,10 +159,39 @@
       const likeButton = document.createElement('button');
       likeButton.className = 'reply-button reply-button-like';
       likeButton.type = 'button';
-      likeButton.textContent = t.like;
       likeButton.setAttribute('aria-label', t.like);
+      likeButton.textContent = t.like;
+
+      // Function to update button state based on native upvote
+      function updateLikeState() {
+        const isLiked = upvoteButton.classList.contains('upvoted') ||
+                        upvoteButton.disabled ||
+                        upvoteButton.hasAttribute('disabled');
+        if (isLiked) {
+          likeButton.classList.add('liked');
+          likeButton.textContent = t.liked;
+          likeButton.disabled = true;
+        } else {
+          likeButton.classList.remove('liked');
+          likeButton.textContent = t.like;
+          likeButton.disabled = false;
+        }
+      }
+
+      // Initial state check
+      updateLikeState();
+
+      // Watch for changes on the native upvote button
+      const observer = new MutationObserver(updateLikeState);
+      observer.observe(upvoteButton, {
+        attributes: true,
+        attributeFilter: ['class', 'disabled']
+      });
+
       likeButton.addEventListener('click', function() {
         upvoteButton.click();
+        // Optimistic update
+        setTimeout(updateLikeState, 100);
       });
 
       container.appendChild(likeButton);
@@ -244,7 +280,40 @@
       }
 
       .reply-button-like {
-        /* Custom styles for like button can be added */
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .reply-button-like::before {
+        content: "\\2661"; /* ♡ outline heart */
+        display: inline-block;
+        margin-right: 0.3em;
+        font-size: 1.2em;
+        line-height: 1;
+        color: #e88a9e;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+        transition: transform 0.15s ease;
+      }
+
+      .reply-button-like:not(.liked):not([disabled]):hover::before {
+        transform: scale(1.25);
+      }
+
+      .reply-button-like.liked::before,
+      .reply-button-like[disabled]::before {
+        content: "\\2665"; /* ♥ filled heart */
+        color: #e25d7c;
+      }
+
+      .reply-button-like[disabled] {
+        cursor: default;
+        opacity: 0.8;
+      }
+
+      .reply-button-like:hover {
+        background-color: transparent;
+        color: inherit;
+        opacity: 1;
       }
 
       .reply-button-mail {
