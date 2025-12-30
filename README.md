@@ -4,7 +4,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 
 ## Plugin Overview
 
-- **[Markdown Toolbar](#markdown-toolbar)** – Powerful Markdown editor toolbar with formatting buttons and optional AI alt-text generation
+- **[Markdown Toolbar](#markdown-toolbar)** – Powerful Markdown editor toolbar with some smart functions buttons
 - **[Blog Search & Infinite Scroll](#blog-search--infinite-scroll)** – Client-side search with real-time highlighting and infinite scroll
 - **[Theme Switcher](#theme-switcher)** – Dark/light mode toggle that remembers user preference
 - **[Privacy Embeds](#privacy-embeds)** – GDPR-friendly consent placeholders for external content (YouTube, Maps, etc.)
