@@ -539,6 +539,14 @@
         return false; // Default: disabled
     }
 
+    function isSmartClipboardEnabled() {
+        const userSettings = loadUserSettings();
+        if (userSettings && typeof userSettings.enableSmartClipboard === 'boolean') {
+            return userSettings.enableSmartClipboard;
+        }
+        return true; // Default: enabled (existing behavior)
+    }
+
     function isAiAltTextEnabled() {
         const userSettings = loadUserSettings();
         if (userSettings && typeof userSettings.enableAiAltText === 'boolean') {
@@ -1652,6 +1660,35 @@
         undoRedoLabel.appendChild(undoRedoText);
         optionsGrid.appendChild(undoRedoLabel);
 
+        // Smart Clipboard Toggle (auto-paste URLs from clipboard)
+        const clipboardLabel = document.createElement('label');
+        clipboardLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: ${isDark ? '#002530' : '#f8f9fa'};
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: ${isDark ? '#ddd' : '#444'};
+            transition: background 0.15s;
+        `;
+        clipboardLabel.onmouseover = () => clipboardLabel.style.background = isDark ? '#003545' : '#eef0f2';
+        clipboardLabel.onmouseout = () => clipboardLabel.style.background = isDark ? '#002530' : '#f8f9fa';
+
+        const clipboardCheckbox = document.createElement('input');
+        clipboardCheckbox.type = 'checkbox';
+        clipboardCheckbox.checked = isSmartClipboardEnabled();
+        clipboardCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+        const clipboardText = document.createElement('span');
+        clipboardText.textContent = 'Smart Clipboard (auto-paste URLs)';
+
+        clipboardLabel.appendChild(clipboardCheckbox);
+        clipboardLabel.appendChild(clipboardText);
+        optionsGrid.appendChild(clipboardLabel);
+
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -1922,6 +1959,7 @@
                 fullscreenCheckbox.checked = true; // Default: fullscreen enabled
                 actionCheckbox.checked = false; // Default: action buttons disabled
                 undoRedoCheckbox.checked = false; // Default: undo/redo buttons disabled
+                clipboardCheckbox.checked = true; // Default: smart clipboard enabled
                 snippetCheckbox.checked = false; // Default: custom snippet disabled
                 snippetTextarea.value = ''; // Default: empty snippet
                 aiCheckbox.checked = false; // Default: AI alt-text disabled
@@ -1957,6 +1995,7 @@
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
                 showUndoRedoButtons: undoRedoCheckbox.checked,
+                enableSmartClipboard: clipboardCheckbox.checked,
                 showCustomSnippet: snippetCheckbox.checked,
                 customSnippetText: snippetTextarea.value,
                 enableAiAltText: aiCheckbox.checked,
@@ -3105,23 +3144,21 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        // iOS fix: blur and wait before clipboard access
-        // The delay allows iOS to complete its paste menu behavior
-        activeTextarea.blur();
-        await new Promise(r => setTimeout(r, 150));
-
         // Try to get URL from clipboard (with validation)
+        // Only if Smart Clipboard is enabled - iOS users can disable this to avoid paste menu
         let url = '';
-        try {
-            const clip = await navigator.clipboard.readText();
-            if (isValidUrl(clip)) {
-                url = clip.trim();
+        if (isSmartClipboardEnabled()) {
+            try {
+                const clip = await navigator.clipboard.readText();
+                if (isValidUrl(clip)) {
+                    url = clip.trim();
+                }
+            } catch (e) {
+                // Clipboard access denied or empty - this is expected behavior, no warning needed
             }
-        } catch (e) {
-            // Clipboard access denied or empty - this is expected behavior, no warning needed
         }
 
-        // Restore focus and selection
+        // Ensure focus is on textarea
         activeTextarea.focus();
         activeTextarea.setSelectionRange(start, end);
 
@@ -3236,7 +3273,7 @@
     async function handleSmartImageUpload() {
         const activeTextarea = getActiveTextarea();
 
-        // Save cursor position before blur
+        // Save cursor position
         const savedStart = activeTextarea ? activeTextarea.selectionStart : 0;
         const savedEnd = activeTextarea ? activeTextarea.selectionEnd : 0;
 
@@ -3249,28 +3286,27 @@
             $textarea.selectionEnd = fsTextarea.selectionEnd;
         }
 
-        // iOS fix: blur and wait before clipboard access
-        // The delay allows iOS to complete its paste menu behavior
-        if (activeTextarea) activeTextarea.blur();
-        await new Promise(r => setTimeout(r, 150));
-
-        try {
-            const clipboardText = await navigator.clipboard.readText();
-            if (isImageUrl(clipboardText)) {
-                showImageUrlDialog(clipboardText.trim());
-                return;
+        // Check clipboard for image URL only if Smart Clipboard is enabled
+        // iOS users can disable this to avoid the paste menu popup
+        if (isSmartClipboardEnabled()) {
+            try {
+                const clipboardText = await navigator.clipboard.readText();
+                if (isImageUrl(clipboardText)) {
+                    showImageUrlDialog(clipboardText.trim());
+                    return;
+                }
+            } catch (e) {
+                // Clipboard access denied or empty - just proceed with upload
             }
-        } catch (e) {
-            // Clipboard access denied or empty - just proceed with upload
         }
 
-        // Restore focus and cursor position before triggering upload
+        // Ensure focus and cursor position before triggering upload
         if (activeTextarea) {
             activeTextarea.focus();
             activeTextarea.setSelectionRange(savedStart, savedEnd);
         }
 
-        // No image URL in clipboard, trigger normal upload
+        // No image URL in clipboard (or Smart Clipboard disabled), trigger normal upload
         // Note: "upload-image" is just an <a> link, the actual file input has id="file"
         document.getElementById('file')?.click();
     }
