@@ -105,70 +105,136 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 
 ### Reply by
 
-*   **Description**: Adds a "Reply via email" link next to the upvote button on post pages. When clicked, it opens the user's mail client with a pre-filled subject line containing the post title. Optionally, you can add a Mastodon reply option that lets readers reply via their own Mastodon instance. See it in action [on my personal website](https://fischr.org/).
-*   **Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
+*   **Description**: Adds two customizable reply buttons next to the upvote button: Reply by Mail and Reply on Mastodon. Each button has its own styling, supports custom icons, and includes multilingual support (German/English). The native Bear Blog upvote button serves as the like/favorite functionality. See it in action [on my personal website](https://fischr.org/).
+*   **Basic Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/reply-by.js" data-email="your@email.com" defer></script>
     ```
-*   **Mastodon Reply (Optional)**: To enable Mastodon replies, add your Mastodon handle with `data-mastodon`:
-    ```html
-    <script src="https://flschr.github.io/bearblog-plugins/reply-by.js" data-email="your@email.com" data-mastodon="@yourhandle@instance.social" defer></script>
-    ```
-    When a reader clicks "Mastodon", they'll be asked for their instance (saved for future visits), and a new post draft opens mentioning you with the URL.
+
+#### Configuration Options
+
+**Language Selection** (default: English):
+```html
+<!-- German -->
+<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+        data-email="your@email.com"
+        data-lang="de"
+        defer></script>
+
+<!-- English -->
+<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+        data-email="your@email.com"
+        data-lang="en"
+        defer></script>
+```
+
+**Mastodon Reply** (optional):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+        data-email="your@email.com"
+        data-mastodon="@yourhandle@instance.social"
+        defer></script>
+```
+
+**Custom Icons** (optional):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+        data-email="your@email.com"
+        data-icon-mail="✉️"
+        data-icon-mastodon="🐘"
+        defer></script>
+```
+
+#### Translations
+
+**German** (`data-lang="de"`):
+- Per Mail antworten
+- Auf Mastodon antworten
+
+**English** (`data-lang="en"`):
+- Reply by mail
+- Reply on Mastodon
 
 #### CSS Customization
 
-The plugin uses CSS classes that you can style in your own stylesheet. Add custom styles to your `Custom CSS` to change appearance, colors, positioning, and more:
+The plugin includes default styling with hover and pressed states, but you can completely customize the appearance using CSS classes. Add custom styles to your `Custom CSS`:
 
 ```css
-/* Container for upvote button and reply links */
-.reply-by-container {
-  /* Default: display: flex; justify-content: space-between; align-items: baseline; margin-top: 1.5rem; */
-  /* Center content instead of space-between */
-  justify-content: center;
-  gap: 2rem; /* Add spacing between upvote and links */
+/* Main container for all three buttons */
+.reply-buttons-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
 }
 
-/* Wrapper for the reply links */
-.reply-by-links {
-  /* Change font size, alignment, etc. */
+/* All buttons share this base class */
+.reply-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid currentColor;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 0.9rem;
-  text-align: right;
+  font-family: inherit;
+  color: inherit;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
 }
 
-/* The text and links inside */
-.reply-by-text {
-  font-weight: bold; /* Make text bold */
-  color: #666; /* Custom color */
+/* Hover state */
+.reply-button:hover {
+  background-color: currentColor;
+  color: #fff;
+  opacity: 0.9;
 }
 
-/* Email link styling */
-.reply-by-email {
+/* Pressed/Active state */
+.reply-button:active {
+  transform: scale(0.95);
+}
+
+/* Individual button styling */
+.reply-button-mail {
+  /* Custom mail button styles */
+  border-color: #0066cc;
   color: #0066cc;
-  text-decoration: none;
 }
 
-.reply-by-email:hover {
-  text-decoration: underline;
-}
-
-/* Mastodon link styling */
-.reply-by-mastodon {
+.reply-button-mastodon {
+  /* Custom mastodon button styles */
+  border-color: #6364ff;
   color: #6364ff;
-  text-decoration: none;
-}
-
-.reply-by-mastodon:hover {
-  text-decoration: underline;
 }
 ```
 
 **Available CSS classes:**
-- `.reply-by-container` – Main container (flex layout by default)
-- `.reply-by-links` – Wrapper for the reply links (small element)
-- `.reply-by-text` – Text content wrapper (span element)
-- `.reply-by-email` – Email link
-- `.reply-by-mastodon` – Mastodon link
+- `.reply-interaction-wrapper` – Wrapper containing both upvote button and reply buttons
+- `.reply-buttons-container` – Container holding the reply buttons
+- `.reply-button` – Base class for all reply buttons
+- `.reply-button-mail` – Mail/Email button
+- `.reply-button-mastodon` – Mastodon button
+- `.reply-button:hover` – Hover state
+- `.reply-button:active` – Pressed state
+- `.reply-button:focus-visible` – Keyboard focus state
+
+**Data attributes:**
+- `data-lang` – Language attribute on container (e.g., `data-lang="de"`)
+
+**Example: Styling upvote and reply buttons together**
+```css
+/* Change the layout of upvote + reply buttons */
+.reply-interaction-wrapper {
+  display: flex;
+  justify-content: space-between; /* Upvote on left, buttons on right */
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Or center everything */
+.reply-interaction-wrapper {
+  justify-content: center;
+}
+```
 
 ---
 

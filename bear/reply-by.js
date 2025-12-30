@@ -2,6 +2,33 @@
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
   const mastodonHandle = scriptTag?.dataset.mastodon;
+  const lang = scriptTag?.dataset.lang || 'en';
+
+  // Custom icons (optional)
+  const iconMail = scriptTag?.dataset.iconMail || '';
+  const iconMastodon = scriptTag?.dataset.iconMastodon || '';
+
+  // Translations
+  const translations = {
+    de: {
+      mail: 'Per Mail antworten',
+      mastodon: 'Auf Mastodon antworten',
+      modalTitle: 'Deine Mastodon-Instanz',
+      modalPlaceholder: 'z.B. mastodon.social',
+      modalCancel: 'Abbrechen',
+      modalOpen: 'Öffnen'
+    },
+    en: {
+      mail: 'Reply by mail',
+      mastodon: 'Reply on Mastodon',
+      modalTitle: 'Your Mastodon instance',
+      modalPlaceholder: 'e.g., mastodon.social',
+      modalCancel: 'Cancel',
+      modalOpen: 'Open'
+    }
+  };
+
+  const t = translations[lang] || translations.en;
 
   if (!email) {
     console.warn('Reply by: No email configured. Add data-email="your@email.com" to the script tag.');
@@ -38,25 +65,25 @@
     dialog.style.cssText = `background:${dark ? '#1e1e1e' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${dark ? '0.4' : '0.15'});`;
 
     const label = document.createElement('label');
-    label.textContent = 'Your Mastodon instance';
+    label.textContent = t.modalTitle;
     label.style.cssText = 'display:block;margin-bottom:0.5rem;font-weight:bold;';
 
     modalInput = document.createElement('input');
     modalInput.type = 'text';
-    modalInput.placeholder = 'e.g., mastodon.social';
+    modalInput.placeholder = t.modalPlaceholder;
     modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${dark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${dark ? '#2a2a2a' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};`;
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
 
     const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
+    cancelBtn.textContent = t.modalCancel;
     cancelBtn.type = 'button';
     cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${dark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${dark ? '#e0e0e0' : '#333'};`;
     cancelBtn.addEventListener('click', closeModal);
 
     const submitBtn = document.createElement('button');
-    submitBtn.textContent = 'Open';
+    submitBtn.textContent = t.modalOpen;
     submitBtn.type = 'button';
     submitBtn.style.cssText = 'padding:0.5rem 1rem;border:none;background:#6364ff;color:#fff;border-radius:4px;cursor:pointer;';
     submitBtn.addEventListener('click', handleModalSubmit);
@@ -115,38 +142,127 @@
     window.open(shareUrl, '_blank');
   }
 
-  document.addEventListener("DOMContentLoaded", function() {
-    if (!document.body.classList.contains('post')) return;
+  function createButtons() {
+    const container = document.createElement('div');
+    container.className = 'reply-buttons-container';
+    container.setAttribute('data-lang', lang);
 
-    const replyContainer = document.querySelector('.reply-by');
-    if (!replyContainer) return;
+    // Mail button
+    const mailButton = document.createElement('button');
+    mailButton.className = 'reply-button reply-button-mail';
+    mailButton.type = 'button';
+    mailButton.textContent = iconMail || t.mail;
+    mailButton.setAttribute('aria-label', t.mail);
 
     const title = document.title;
     const cleanTitle = stripBlogName(title);
+    mailButton.addEventListener('click', function() {
+      window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}`;
+    });
 
-    // Replace [Mail] placeholder with email link
-    const html = replyContainer.innerHTML;
-    let newHtml = html.replace(/\[Mail\]/g, `<a href="mailto:${email}?subject=Re: ${encodeURIComponent(cleanTitle)}">Mail</a>`);
+    container.appendChild(mailButton);
 
-    // Replace [Mastodon] placeholder with link (if handle configured)
+    // Mastodon button (if configured)
     if (mastodonHandle) {
-      newHtml = newHtml.replace(/\[Mastodon\]/g, '<a href="#" class="reply-by-mastodon">Mastodon</a>');
-    } else {
-      // Remove [Mastodon] and surrounding " or " if no handle configured
-      newHtml = newHtml.replace(/\s*or\s*\[Mastodon\]/g, '');
-      newHtml = newHtml.replace(/\[Mastodon\]\s*or\s*/g, '');
-      newHtml = newHtml.replace(/\[Mastodon\]/g, '');
-    }
-
-    replyContainer.innerHTML = newHtml;
-
-    // Add click handler for Mastodon link
-    const mastodonLink = replyContainer.querySelector('.reply-by-mastodon');
-    if (mastodonLink) {
-      mastodonLink.addEventListener('click', function(e) {
+      const mastodonButton = document.createElement('button');
+      mastodonButton.className = 'reply-button reply-button-mastodon';
+      mastodonButton.type = 'button';
+      mastodonButton.textContent = iconMastodon || t.mastodon;
+      mastodonButton.setAttribute('aria-label', t.mastodon);
+      mastodonButton.addEventListener('click', function(e) {
         e.preventDefault();
         openModal();
       });
+
+      container.appendChild(mastodonButton);
     }
+
+    return container;
+  }
+
+  function injectDefaultStyles() {
+    // Only inject if no custom styles are already present
+    if (document.getElementById('reply-buttons-default-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'reply-buttons-default-styles';
+    style.textContent = `
+      .reply-interaction-wrapper {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .reply-buttons-container {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .reply-button {
+        padding: 0.5rem 1rem;
+        border: 1px solid currentColor;
+        background: transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-family: inherit;
+        color: inherit;
+        transition: background-color 0.2s, color 0.2s, transform 0.1s;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .reply-button:hover {
+        background-color: currentColor;
+        color: var(--bg-color, #fff);
+        opacity: 0.9;
+      }
+
+      .reply-button:active {
+        transform: scale(0.95);
+      }
+
+      .reply-button:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
+
+      .reply-button-mail {
+        /* Custom styles for mail button can be added */
+      }
+
+      .reply-button-mastodon {
+        /* Custom styles for mastodon button can be added */
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (!document.body.classList.contains('post')) return;
+
+    // Inject default styles
+    injectDefaultStyles();
+
+    // Find the upvote container
+    const upvoteContainer = document.querySelector('.upvote-container, .upvote');
+    if (!upvoteContainer) {
+      console.warn('Reply by: Could not find upvote container');
+      return;
+    }
+
+    // Create a wrapper that contains both upvote and reply buttons
+    const wrapper = document.createElement('div');
+    wrapper.className = 'reply-interaction-wrapper';
+
+    // Move upvote into wrapper
+    upvoteContainer.parentNode.insertBefore(wrapper, upvoteContainer);
+    wrapper.appendChild(upvoteContainer);
+
+    // Add reply buttons to wrapper
+    const buttonsContainer = createButtons();
+    wrapper.appendChild(buttonsContainer);
   });
 })();
