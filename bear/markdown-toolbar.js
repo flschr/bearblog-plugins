@@ -850,7 +850,7 @@
                 // Position cursor after the inserted markdown (no selection)
                 const cursorPos = imageData.start + newImageMarkdown.length;
                 textarea.setSelectionRange(cursorPos, cursorPos);
-                textarea.focus();
+                focusTextarea(textarea);
 
                 showAltTextNotification('Alt-text inserted!', false);
             } else {
@@ -2589,7 +2589,7 @@
                     // Focus the fullscreen textarea and execute the action
                     // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
                     // The input event listener handles sync to the main textarea
-                    fsTextarea.focus();
+                    focusTextarea(fsTextarea);
                     handleButtonClick(buttonId, buttonDef);
                 });
 
@@ -2605,7 +2605,7 @@
                     altBtn.addEventListener('click', () => {
                         // Focus the fullscreen textarea and generate alt-text
                         // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
-                        fsTextarea.focus();
+                        focusTextarea(fsTextarea);
                         generateAltTextForSelection();
                     });
                     container.appendChild(altBtn);
@@ -2626,7 +2626,7 @@
                         // Focus the fullscreen textarea and insert snippet
                         // getActiveTextarea() automatically returns fsTextarea in fullscreen mode
                         // The input event listener handles sync to the main textarea
-                        fsTextarea.focus();
+                        focusTextarea(fsTextarea);
                         insertText(snippet);
                     }
                 });
@@ -2655,7 +2655,7 @@
             undoBtn.innerHTML = ICONS.undo;
             undoBtn.style.cssText = buttonStyle();
             undoBtn.addEventListener('click', () => {
-                fsTextarea.focus();
+                focusTextarea(fsTextarea);
                 document.execCommand('undo', false, null);
                 // Sync back to original
                 $textarea.value = fsTextarea.value;
@@ -2669,7 +2669,7 @@
             redoBtn.innerHTML = ICONS.redo;
             redoBtn.style.cssText = buttonStyle();
             redoBtn.addEventListener('click', () => {
-                fsTextarea.focus();
+                focusTextarea(fsTextarea);
                 document.execCommand('redo', false, null);
                 // Sync back to original
                 $textarea.value = fsTextarea.value;
@@ -2711,7 +2711,7 @@
         document.body.appendChild(overlay);
 
         // Focus the fullscreen textarea and restore selection
-        fsTextarea.focus();
+        focusTextarea(fsTextarea);
         fsTextarea.setSelectionRange(originalSelectionStart, originalSelectionEnd);
         fsTextarea.scrollTop = originalScrollTop;
 
@@ -2822,7 +2822,7 @@
             // Cleanup before removing overlay
             cleanup();
             overlay.remove();
-            $textarea.focus();
+            focusTextarea($textarea);
         };
 
         // Exit button click
@@ -3011,9 +3011,19 @@
         return document.getElementById('md-fullscreen-textarea') || $textarea;
     }
 
+    // Focus textarea without triggering iOS paste menu
+    function focusTextarea(textarea) {
+        // Temporarily make textarea readonly to prevent iOS paste menu
+        textarea.readOnly = true;
+        textarea.focus();
+        setTimeout(() => {
+            textarea.readOnly = false;
+        }, 10);
+    }
+
     function insertText(text) {
         const activeTextarea = getActiveTextarea();
-        activeTextarea.focus();
+        focusTextarea(activeTextarea);
 
         // Use execCommand to preserve undo history
         // This is deprecated but still works and is the only way to preserve undo
@@ -3036,7 +3046,7 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        activeTextarea.focus();
+        focusTextarea(activeTextarea);
 
         if (lineStart) {
             // For line-start syntax, we need to go to the beginning of the line
@@ -3094,7 +3104,7 @@
             // Clipboard access denied or empty - this is expected behavior, no warning needed
         }
 
-        activeTextarea.focus();
+        focusTextarea(activeTextarea);
 
         const linkText = selected || 'Link Text';
         const newText = `[${linkText}](${url})`;
@@ -3120,7 +3130,7 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        activeTextarea.focus();
+        focusTextarea(activeTextarea);
 
         const before = '\n```' + language + '\n';
         const after = '\n```\n';
@@ -3148,7 +3158,7 @@
         const start = activeTextarea.selectionStart;
         const selected = activeTextarea.value.substring(start, activeTextarea.selectionEnd);
 
-        activeTextarea.focus();
+        focusTextarea(activeTextarea);
 
         // Insert footnote reference at cursor
         const ref = `[^${footnoteId}]`;
@@ -3340,7 +3350,7 @@
         useBtn.addEventListener('click', () => {
             closeOverlay();
             // Restore cursor position before inserting
-            activeTextarea.focus();
+            focusTextarea(activeTextarea);
             activeTextarea.setSelectionRange(savedCursorPos, savedSelectionEnd);
             insertText(`![](${imageUrl})`);
         });
