@@ -145,6 +145,10 @@
             b.style.cssText += `width: 32px; height: 32px; flex-shrink: 0; background: ${isDark ? '#01242e' : 'white'}; color: ${isDark ? '#ddd' : '#444'}; border: 1px solid ${isDark ? '#555' : '#ccc'}; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: system-ui, sans-serif;`;
 
             b.addEventListener('click', () => btnObj.action ? handleAction(btnObj.action, $textarea) : insertMarkdown($textarea, btnObj.syntax[0], btnObj.syntax[1], btnObj.lineStart));
+
+            // Prevent context menu on mobile devices
+            b.addEventListener('contextmenu', (e) => e.preventDefault());
+
             return b;
         };
 
