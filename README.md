@@ -45,6 +45,26 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 3. **Don't use this feature** on shared or public computers
 4. The risk is limited: an attacker can only make API calls on your behalf – they cannot access your OpenAI account or other data
 
+#### Mobile Usage & Smart Clipboard
+
+The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS that cannot be avoided:
+
+**The Problem:** When you click the Link or Image button, the toolbar tries to read URLs from your clipboard to auto-paste them. On iOS, this triggers a system permission popup ("Allow Paste from [App]?") every time. This is an iOS security feature and cannot be bypassed by any website or script.
+
+**The Solution:** You can disable this feature in the toolbar settings:
+
+1. Click the **gear icon** (⚙️) in the toolbar to open Settings
+2. Uncheck **"Smart Clipboard (auto-paste URLs)"**
+3. Click **Save & Apply**
+
+With Smart Clipboard disabled:
+- No more iOS paste popups when using Link/Image buttons
+- You'll need to manually paste URLs into the link/image fields
+- All other toolbar features work normally
+
+> [!TIP]
+> Desktop users can keep Smart Clipboard enabled for the convenience of auto-pasting URLs. Mobile users who find the popup annoying can simply disable it.
+
 ---
 
 ### Blog Search & Infinite Scroll
