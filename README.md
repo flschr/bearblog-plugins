@@ -136,15 +136,6 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
         defer></script>
 ```
 
-**Custom Icons** (optional):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
-        data-email="your@email.com"
-        data-icon-mail="✉️"
-        data-icon-mastodon="🐘"
-        defer></script>
-```
-
 #### Translations
 
 **German** (`data-lang="de"`):
@@ -159,8 +150,9 @@ The toolbar includes an optional AI-powered alt-text generator for images using 
 
 The plugin includes default styling with hover and pressed states, but you can completely customize the appearance using CSS classes. Add custom styles to your `Custom CSS`:
 
+**Basic Button Styling:**
 ```css
-/* Main container for all three buttons */
+/* Main container for all buttons */
 .reply-buttons-container {
   display: flex;
   gap: 0.5rem;
@@ -195,15 +187,81 @@ The plugin includes default styling with hover and pressed states, but you can c
 
 /* Individual button styling */
 .reply-button-mail {
-  /* Custom mail button styles */
   border-color: #0066cc;
   color: #0066cc;
 }
 
 .reply-button-mastodon {
-  /* Custom mastodon button styles */
   border-color: #6364ff;
   color: #6364ff;
+}
+```
+
+**Adding Icons via CSS:**
+
+Icons can be added flexibly using CSS - supporting Unicode, emoji, icon fonts, or SVG:
+
+```css
+/* Option 1: Unicode/Emoji Icons (simplest) */
+.reply-button-mail::before {
+  content: "✉️ ";
+}
+
+.reply-button-mastodon::before {
+  content: "🐘 ";
+}
+
+/* Option 2: Icon-only buttons (hide text) */
+.reply-button {
+  font-size: 0; /* Hide text */
+}
+
+.reply-button::before {
+  font-size: 1.2rem; /* Show icon */
+}
+
+/* Option 3: SVG as background-image */
+.reply-button-mail {
+  padding-left: 2.5rem;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230066cc"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: 0.5rem center;
+  background-size: 1.2rem;
+}
+
+/* Option 4: Font Awesome or similar icon fonts */
+.reply-button-mail::before {
+  font-family: "Font Awesome 6 Free";
+  content: "\f0e0"; /* envelope icon */
+  margin-right: 0.5rem;
+}
+
+.reply-button-mastodon::before {
+  font-family: "Font Awesome 6 Brands";
+  content: "\f4f6"; /* mastodon icon */
+  margin-right: 0.5rem;
+}
+
+/* Option 5: Custom positioning and styling */
+.reply-button::before {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 1.1em;
+  vertical-align: middle;
+}
+
+/* Option 6: Icon-only with accessible label */
+.reply-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  font-size: 0;
+  border-radius: 50%;
+}
+
+.reply-button::before {
+  font-size: 1.2rem;
+  line-height: 2.5rem;
 }
 ```
 

@@ -4,10 +4,6 @@
   const mastodonHandle = scriptTag?.dataset.mastodon;
   const lang = scriptTag?.dataset.lang || 'en';
 
-  // Custom icons (optional)
-  const iconMail = scriptTag?.dataset.iconMail || '';
-  const iconMastodon = scriptTag?.dataset.iconMastodon || '';
-
   // Translations
   const translations = {
     de: {
@@ -151,7 +147,7 @@
     const mailButton = document.createElement('button');
     mailButton.className = 'reply-button reply-button-mail';
     mailButton.type = 'button';
-    mailButton.textContent = iconMail || t.mail;
+    mailButton.textContent = t.mail;
     mailButton.setAttribute('aria-label', t.mail);
 
     const title = document.title;
@@ -167,7 +163,7 @@
       const mastodonButton = document.createElement('button');
       mastodonButton.className = 'reply-button reply-button-mastodon';
       mastodonButton.type = 'button';
-      mastodonButton.textContent = iconMastodon || t.mastodon;
+      mastodonButton.textContent = t.mastodon;
       mastodonButton.setAttribute('aria-label', t.mastodon);
       mastodonButton.addEventListener('click', function(e) {
         e.preventDefault();
