@@ -26,11 +26,11 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 
 #### AI Alt-Text (Optional)
 
-Uses OpenAI's gpt-4o-mini model to generate image descriptions. Costs ~$0.001 per image. Your API key is stored in localStorage – use a dedicated key with [spending limits](https://platform.openai.com/settings/organization/limits) for safety.
+Uses OpenAI's gpt-4o-mini model to generate image descriptions. Costs ~$0.001 per image. Your API key is stored in localStorage,  use a dedicated key with [spending limits](https://platform.openai.com/settings/organization/limits) for safety and do not use this feature on shared computers.
 
 #### Mobile Note
 
-On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can disable it in the toolbar settings if this becomes annoying.
+On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can disable this feature in the toolbar settings if this becomes annoying.
 
 ---
 
