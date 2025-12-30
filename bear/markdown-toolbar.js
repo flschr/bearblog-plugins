@@ -1030,6 +1030,12 @@
 
         $textarea.setAttribute('data-toolbar-initialized', 'true');
 
+        // Disable browser autocomplete/autocorrect features on mobile
+        $textarea.setAttribute('autocomplete', 'off');
+        $textarea.setAttribute('autocorrect', 'off');
+        $textarea.setAttribute('autocapitalize', 'off');
+        $textarea.setAttribute('spellcheck', 'false');
+
         // Inject CSS styles once
         injectStyles();
 
@@ -2425,6 +2431,13 @@
         const fsTextarea = document.createElement('textarea');
         fsTextarea.id = 'md-fullscreen-textarea';
         fsTextarea.value = $textarea.value;
+
+        // Disable browser autocomplete/autocorrect features on mobile
+        fsTextarea.setAttribute('autocomplete', 'off');
+        fsTextarea.setAttribute('autocorrect', 'off');
+        fsTextarea.setAttribute('autocapitalize', 'off');
+        fsTextarea.setAttribute('spellcheck', 'false');
+
         fsTextarea.style.cssText = `
             flex: 1;
             width: 100%;
