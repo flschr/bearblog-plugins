@@ -270,15 +270,10 @@
         // Set readonly at the start to prevent iOS paste menu during any operations
         $textarea.readOnly = true;
 
-        // Smart clipboard integration for links
+        // Link insertion (no auto-clipboard to avoid iOS paste menu issues)
         if (before === '[' && after === '](') {
-            let url = '';
-            try {
-                const clip = await navigator.clipboard.readText();
-                if (clip.trim().startsWith('http')) url = clip.trim();
-            } catch(e) {}
-            newText = $textarea.value.substring(0, start) + '[' + selected + '](' + url + ')' + $textarea.value.substring(end);
-            newPos = url ? start + selected.length + url.length + 3 : start + selected.length + 3;
+            newText = $textarea.value.substring(0, start) + '[' + selected + ']()' + $textarea.value.substring(end);
+            newPos = start + selected.length + 3; // Position cursor in URL area
         } else if (lineStart) {
             const lineStartPos = $textarea.value.substring(0, start).lastIndexOf('\n') + 1;
             newText = $textarea.value.substring(0, lineStartPos) + before + $textarea.value.substring(lineStartPos, start) + selected + after + $textarea.value.substring(end);
