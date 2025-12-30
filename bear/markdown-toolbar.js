@@ -3105,9 +3105,10 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        // iOS fix: Remove focus completely before clipboard access
-        // This prevents iOS from showing paste menu (no focused input = no paste target)
+        // iOS fix: blur and wait before clipboard access
+        // The delay allows iOS to complete its paste menu behavior
         activeTextarea.blur();
+        await new Promise(r => setTimeout(r, 150));
 
         // Try to get URL from clipboard (with validation)
         let url = '';
@@ -3248,9 +3249,10 @@
             $textarea.selectionEnd = fsTextarea.selectionEnd;
         }
 
-        // iOS fix: Remove focus completely before clipboard access
-        // This prevents iOS from showing paste menu (no focused input = no paste target)
+        // iOS fix: blur and wait before clipboard access
+        // The delay allows iOS to complete its paste menu behavior
         if (activeTextarea) activeTextarea.blur();
+        await new Promise(r => setTimeout(r, 150));
 
         try {
             const clipboardText = await navigator.clipboard.readText();
