@@ -12,6 +12,7 @@
       mail: 'Per Mail antworten',
       mastodon: 'Auf Mastodon antworten',
       like: 'Gefällt mir',
+      liked: 'Gefällt mir',
       modalTitle: 'Deine Mastodon-Instanz',
       modalPlaceholder: 'z.B. mastodon.social',
       modalCancel: 'Abbrechen',
@@ -21,6 +22,7 @@
       mail: 'Reply by mail',
       mastodon: 'Reply on Mastodon',
       like: 'Like this post',
+      liked: 'Liked',
       modalTitle: 'Your Mastodon instance',
       modalPlaceholder: 'e.g., mastodon.social',
       modalCancel: 'Cancel',
@@ -152,10 +154,53 @@
       const likeButton = document.createElement('button');
       likeButton.className = 'reply-button reply-button-like';
       likeButton.type = 'button';
-      likeButton.textContent = t.like;
       likeButton.setAttribute('aria-label', t.like);
+
+      // Create heart icon span
+      const heartSpan = document.createElement('span');
+      heartSpan.className = 'like-heart';
+      heartSpan.textContent = '\u2661'; // ♡ outline heart
+
+      // Create text span
+      const textSpan = document.createElement('span');
+      textSpan.className = 'like-text';
+      textSpan.textContent = t.like;
+
+      likeButton.appendChild(heartSpan);
+      likeButton.appendChild(textSpan);
+
+      // Function to update button state based on native upvote
+      function updateLikeState() {
+        const isLiked = upvoteButton.classList.contains('upvoted') ||
+                        upvoteButton.disabled ||
+                        upvoteButton.hasAttribute('disabled');
+        if (isLiked) {
+          likeButton.classList.add('liked');
+          heartSpan.textContent = '\u2665'; // ♥ filled heart
+          textSpan.textContent = t.liked;
+          likeButton.disabled = true;
+        } else {
+          likeButton.classList.remove('liked');
+          heartSpan.textContent = '\u2661'; // ♡ outline heart
+          textSpan.textContent = t.like;
+          likeButton.disabled = false;
+        }
+      }
+
+      // Initial state check
+      updateLikeState();
+
+      // Watch for changes on the native upvote button
+      const observer = new MutationObserver(updateLikeState);
+      observer.observe(upvoteButton, {
+        attributes: true,
+        attributeFilter: ['class', 'disabled']
+      });
+
       likeButton.addEventListener('click', function() {
         upvoteButton.click();
+        // Optimistic update
+        setTimeout(updateLikeState, 100);
       });
 
       container.appendChild(likeButton);
@@ -244,7 +289,37 @@
       }
 
       .reply-button-like {
-        /* Custom styles for like button can be added */
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3em;
+      }
+
+      .reply-button-like .like-heart {
+        font-size: 1.2em;
+        line-height: 1;
+        color: #e88a9e;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+        transition: transform 0.15s ease;
+      }
+
+      .reply-button-like:not(.liked):not([disabled]):hover .like-heart {
+        transform: scale(1.25);
+      }
+
+      .reply-button-like.liked .like-heart,
+      .reply-button-like[disabled] .like-heart {
+        color: #e25d7c;
+      }
+
+      .reply-button-like[disabled] {
+        cursor: default;
+        opacity: 0.8;
+      }
+
+      .reply-button-like:hover {
+        background-color: transparent;
+        color: inherit;
+        opacity: 1;
       }
 
       .reply-button-mail {
