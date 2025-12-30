@@ -5,6 +5,7 @@
   const lang = scriptTag?.dataset.lang || 'en';
 
   const showLikeButton = scriptTag?.dataset.like !== undefined;
+  const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
   // Translations
   const translations = {
@@ -31,6 +32,10 @@
   };
 
   const t = translations[lang] || translations.en;
+
+  // Override like/liked texts if custom values provided via data-like="text|likedText"
+  if (likeTexts[0]) t.like = likeTexts[0].trim();
+  if (likeTexts[1]) t.liked = likeTexts[1].trim();
 
   if (!email) {
     console.warn('Reply by: No email configured. Add data-email="your@email.com" to the script tag.');
@@ -155,19 +160,7 @@
       likeButton.className = 'reply-button reply-button-like';
       likeButton.type = 'button';
       likeButton.setAttribute('aria-label', t.like);
-
-      // Create heart icon span
-      const heartSpan = document.createElement('span');
-      heartSpan.className = 'like-heart';
-      heartSpan.textContent = '\u2661'; // ♡ outline heart
-
-      // Create text span
-      const textSpan = document.createElement('span');
-      textSpan.className = 'like-text';
-      textSpan.textContent = t.like;
-
-      likeButton.appendChild(heartSpan);
-      likeButton.appendChild(textSpan);
+      likeButton.textContent = t.like;
 
       // Function to update button state based on native upvote
       function updateLikeState() {
@@ -176,13 +169,11 @@
                         upvoteButton.hasAttribute('disabled');
         if (isLiked) {
           likeButton.classList.add('liked');
-          heartSpan.textContent = '\u2665'; // ♥ filled heart
-          textSpan.textContent = t.liked;
+          likeButton.textContent = t.liked;
           likeButton.disabled = true;
         } else {
           likeButton.classList.remove('liked');
-          heartSpan.textContent = '\u2661'; // ♡ outline heart
-          textSpan.textContent = t.like;
+          likeButton.textContent = t.like;
           likeButton.disabled = false;
         }
       }
@@ -291,10 +282,12 @@
       .reply-button-like {
         display: inline-flex;
         align-items: center;
-        gap: 0.3em;
       }
 
-      .reply-button-like .like-heart {
+      .reply-button-like::before {
+        content: "\\2661"; /* ♡ outline heart */
+        display: inline-block;
+        margin-right: 0.3em;
         font-size: 1.2em;
         line-height: 1;
         color: #e88a9e;
@@ -302,12 +295,13 @@
         transition: transform 0.15s ease;
       }
 
-      .reply-button-like:not(.liked):not([disabled]):hover .like-heart {
+      .reply-button-like:not(.liked):not([disabled]):hover::before {
         transform: scale(1.25);
       }
 
-      .reply-button-like.liked .like-heart,
-      .reply-button-like[disabled] .like-heart {
+      .reply-button-like.liked::before,
+      .reply-button-like[disabled]::before {
+        content: "\\2665"; /* ♥ filled heart */
         color: #e25d7c;
       }
 
