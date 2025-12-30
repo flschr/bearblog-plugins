@@ -15,6 +15,13 @@
         if (!$textarea || $textarea.hasAttribute('data-toolbar-initialized')) return;
 
         $textarea.setAttribute('data-toolbar-initialized', 'true');
+
+        // Disable browser autocomplete/autocorrect features on mobile
+        $textarea.setAttribute('autocomplete', 'off');
+        $textarea.setAttribute('autocorrect', 'off');
+        $textarea.setAttribute('autocapitalize', 'off');
+        $textarea.setAttribute('spellcheck', 'false');
+
         createMarkdownToolbar($textarea);
 
         // Bear Blog Standard-Kram ausblenden
