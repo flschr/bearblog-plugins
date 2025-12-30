@@ -309,6 +309,10 @@
                 justify-content: center;
                 padding: 0;
                 transition: opacity 0.15s;
+                -webkit-user-select: none;
+                user-select: none;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
             }
             .md-btn:hover { opacity: 0.8; }
             .md-btn-light {
@@ -2487,6 +2491,10 @@
             align-items: center;
             justify-content: center;
             padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         `;
 
         // Back button first (leftmost position - consistent with normal toolbar)
@@ -2962,6 +2970,10 @@
             align-items: center;
             justify-content: center;
             padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         `;
         exitBtn.addEventListener('click', closeInlinePreview);
         header.appendChild(exitBtn);
