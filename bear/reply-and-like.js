@@ -20,7 +20,7 @@
       modalOpen: 'Öffnen'
     },
     en: {
-      mail: 'Reply by mMil',
+      mail: 'Reply by Mail',
       mastodon: 'Reply on Mastodon',
       like: 'Like this post',
       liked: 'Liked',
