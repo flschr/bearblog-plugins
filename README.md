@@ -52,7 +52,6 @@ The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS th
 **The Problem:** When you click the Link or Image button, the toolbar tries to read URLs from your clipboard to auto-paste them. On iOS, this triggers a system permission popup ("Allow Paste from [App]?") every time. This is an iOS security feature and cannot be bypassed by any website or script.
 
 **The Solution:** You can disable this feature in the toolbar settings by unchecking **"Smart Clipboard (auto-paste URLs)"**.
-3. Click **Save & Apply**
 
 > [!TIP]
 > Desktop users can keep Smart Clipboard enabled for the convenience of auto-pasting URLs. Mobile users who find the popup annoying can simply disable it.
