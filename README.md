@@ -116,79 +116,31 @@ The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS th
 
 ### Reply and Like
 
-*   **Description**: Adds customizable reply buttons (Mail and Mastodon) next to the upvote button. Optionally replaces Bear Blog's native upvote with a styled like button. Each button supports custom styling, icons, and multilingual support (German/English). See it in action [on my personal website](https://fischr.org/).
-*   **Basic Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
+*   **Description**: Adds reply buttons (Mail/Mastodon) and an optional styled like button that replaces Bear Blog's native upvote. Supports German/English. See it in action [on my personal website](https://fischr.org/).
+*   **Installation**: Add to `Custom footer content`:
     ```html
-    <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js" data-email="your@email.com" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
+            data-email="your@email.com"
+            data-mastodon="@yourhandle@instance.social"
+            data-like
+            data-lang="de"
+            defer></script>
     ```
 
-#### Configuration Options
+#### Options
 
-**Language Selection** (default: English):
-```html
-<!-- German -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-lang="de"
-        defer></script>
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-email` | Yes | Your email address for the reply button |
+| `data-mastodon` | No | Your Mastodon handle (e.g., `@user@instance.social`) |
+| `data-like` | No | Show styled like button instead of native upvote |
+| `data-lang` | No | Language: `de` or `en` (default) |
 
-<!-- English -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-lang="en"
-        defer></script>
-```
+Custom like button text: `data-like="Like|Liked!"` (before/after click).
 
-**Like Button** (optional):
+#### CSS Classes
 
-Replaces the native Bear Blog upvote button with a styled like button that matches your reply buttons. The native upvote functionality is preserved – clicking the like button triggers the original upvote.
-
-```html
-<!-- Default text: "Like this post" / "Liked" -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-like
-        defer></script>
-
-<!-- Custom text: data-like="Button text|Clicked text" -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-like="♥ Like|♥ Liked!"
-        defer></script>
-```
-
-**Mastodon Reply** (optional):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-mastodon="@yourhandle@instance.social"
-        defer></script>
-```
-
-**Full Example** (all options):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-mastodon="@yourhandle@instance.social"
-        data-like
-        data-lang="de"
-        defer></script>
-```
-
-#### CSS Customization
-
-The plugin includes default styling, but you can customize the appearance using CSS classes. Add custom styles to your `Custom CSS`.
-
-**Available CSS classes:**
-- `.reply-interaction-wrapper` – Wrapper containing upvote/like and reply buttons
-- `.reply-buttons-container` – Container holding all buttons
-- `.reply-button` – Base class for all buttons
-- `.reply-button-like` – Like button (when `data-like` is used)
-- `.reply-button-like.liked` – Like button in "liked" state
-- `.reply-button-mail` – Mail button
-- `.reply-button-mastodon` – Mastodon button
-
-For a real-world implementation with custom icons and styling, see [my personal website](https://fischr.org/).
+`.reply-interaction-wrapper`, `.reply-buttons-container`, `.reply-button`, `.reply-button-like`, `.reply-button-like.liked`, `.reply-button-mail`, `.reply-button-mastodon`
 
 ---
 
