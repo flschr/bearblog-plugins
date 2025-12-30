@@ -3093,6 +3093,9 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
+        // Set readonly BEFORE clipboard access to prevent iOS paste menu
+        activeTextarea.readOnly = true;
+
         // Try to get URL from clipboard (with validation)
         let url = '';
         try {
@@ -3104,6 +3107,8 @@
             // Clipboard access denied or empty - this is expected behavior, no warning needed
         }
 
+        // Restore readonly and focus
+        activeTextarea.readOnly = false;
         focusTextarea(activeTextarea);
 
         const linkText = selected || 'Link Text';

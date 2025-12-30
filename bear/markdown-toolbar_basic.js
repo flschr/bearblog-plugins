@@ -267,6 +267,9 @@
         const selected = $textarea.value.substring(start, end);
         let newText, newPos;
 
+        // Set readonly at the start to prevent iOS paste menu during any operations
+        $textarea.readOnly = true;
+
         // Smart clipboard integration for links
         if (before === '[' && after === '](') {
             let url = '';
