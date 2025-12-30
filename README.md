@@ -136,11 +136,19 @@ The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS th
 | `data-like` | No | Show styled like button instead of native upvote |
 | `data-lang` | No | Language: `de` or `en` (default) |
 
-Custom like button text: `data-like="Like|Liked!"` (before/after click).
+To customize the like button text use: `data-like="Like|Liked!"` (= text before|after click).
 
 #### CSS Classes
 
-`.reply-interaction-wrapper`, `.reply-buttons-container`, `.reply-button`, `.reply-button-like`, `.reply-button-like.liked`, `.reply-button-mail`, `.reply-button-mastodon`
+``` CSS
+.reply-interaction-wrapper
+.reply-buttons-container
+.reply-button
+.reply-button-like
+.reply-button-like.liked
+.reply-button-mail.
+reply-button-mastodon
+```
 
 ---
 
