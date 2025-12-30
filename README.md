@@ -10,7 +10,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Privacy Embeds](#privacy-embeds)** – GDPR-friendly consent placeholders for external content (YouTube, Maps, etc.)
 - **[Image Lazy Loading](#image-lazy-loading)** – Automatic lazy loading for all images
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
-- **[Reply by](#reply-by)** – Adds a "Reply via email / Mastodon" link next to the upvote button
+- **[Reply and Like](#reply-and-like)** – Adds customizable reply buttons (Mail/Mastodon) and optional styled like button
 
 ---
 
@@ -114,12 +114,12 @@ The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS th
 
 ---
 
-### Reply by
+### Reply and Like
 
-*   **Description**: Adds two customizable reply buttons next to the upvote button: Reply by Mail and Reply on Mastodon. Each button has its own styling, supports custom icons, and includes multilingual support (German/English). The native Bear Blog upvote button serves as the like/favorite functionality. See it in action [on my personal website](https://fischr.org/).
+*   **Description**: Adds customizable reply buttons (Mail and Mastodon) next to the upvote button. Optionally replaces Bear Blog's native upvote with a styled like button. Each button supports custom styling, icons, and multilingual support (German/English). See it in action [on my personal website](https://fischr.org/).
 *   **Basic Installation**: Add the following code to your `Custom footer content` and replace `your@email.com` with your email address:
     ```html
-    <script src="https://flschr.github.io/bearblog-plugins/reply-by.js" data-email="your@email.com" defer></script>
+    <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js" data-email="your@email.com" defer></script>
     ```
 
 #### Configuration Options
@@ -127,183 +127,80 @@ The toolbar works on mobile devices, but there's a limitation with iOS/iPadOS th
 **Language Selection** (default: English):
 ```html
 <!-- German -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
         data-email="your@email.com"
         data-lang="de"
         defer></script>
 
 <!-- English -->
-<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
         data-email="your@email.com"
         data-lang="en"
         defer></script>
 ```
 
+**Like Button** (optional):
+
+Replaces the native Bear Blog upvote button with a styled like button that matches your reply buttons. The native upvote functionality is preserved – clicking the like button triggers the original upvote.
+
+```html
+<!-- Default text: "Like this post" / "Liked" -->
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
+        data-email="your@email.com"
+        data-like
+        defer></script>
+
+<!-- Custom text: data-like="Button text|Clicked text" -->
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
+        data-email="your@email.com"
+        data-like="♥ Like|♥ Liked!"
+        defer></script>
+```
+
 **Mastodon Reply** (optional):
 ```html
-<script src="https://flschr.github.io/bearblog-plugins/reply-by.js"
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
         data-email="your@email.com"
         data-mastodon="@yourhandle@instance.social"
+        defer></script>
+```
+
+**Full Example** (all options):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
+        data-email="your@email.com"
+        data-mastodon="@yourhandle@instance.social"
+        data-like
+        data-lang="de"
         defer></script>
 ```
 
 #### Translations
 
 **German** (`data-lang="de"`):
+- Gefällt mir / Gefällt mir (like button)
 - Per Mail antworten
 - Auf Mastodon antworten
 
 **English** (`data-lang="en"`):
-- Reply by mail
+- Like this post / Liked (like button)
+- Reply by Mail
 - Reply on Mastodon
 
 #### CSS Customization
 
-The plugin includes default styling with hover and pressed states, but you can completely customize the appearance using CSS classes. Add custom styles to your `Custom CSS`:
-
-**Basic Button Styling:**
-```css
-/* Main container for all buttons */
-.reply-buttons-container {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
-}
-
-/* All buttons share this base class */
-.reply-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid currentColor;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-family: inherit;
-  color: inherit;
-  transition: background-color 0.2s, color 0.2s, transform 0.1s;
-}
-
-/* Hover state */
-.reply-button:hover {
-  background-color: currentColor;
-  color: #fff;
-  opacity: 0.9;
-}
-
-/* Pressed/Active state */
-.reply-button:active {
-  transform: scale(0.95);
-}
-
-/* Individual button styling */
-.reply-button-mail {
-  border-color: #0066cc;
-  color: #0066cc;
-}
-
-.reply-button-mastodon {
-  border-color: #6364ff;
-  color: #6364ff;
-}
-```
-
-**Adding Icons via CSS:**
-
-Icons can be added flexibly using CSS - supporting Unicode, emoji, icon fonts, or SVG:
-
-```css
-/* Option 1: Unicode/Emoji Icons (simplest) */
-.reply-button-mail::before {
-  content: "✉️ ";
-}
-
-.reply-button-mastodon::before {
-  content: "🐘 ";
-}
-
-/* Option 2: Icon-only buttons (hide text) */
-.reply-button {
-  font-size: 0; /* Hide text */
-}
-
-.reply-button::before {
-  font-size: 1.2rem; /* Show icon */
-}
-
-/* Option 3: SVG as background-image */
-.reply-button-mail {
-  padding-left: 2.5rem;
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230066cc"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>');
-  background-repeat: no-repeat;
-  background-position: 0.5rem center;
-  background-size: 1.2rem;
-}
-
-/* Option 4: Font Awesome or similar icon fonts */
-.reply-button-mail::before {
-  font-family: "Font Awesome 6 Free";
-  content: "\f0e0"; /* envelope icon */
-  margin-right: 0.5rem;
-}
-
-.reply-button-mastodon::before {
-  font-family: "Font Awesome 6 Brands";
-  content: "\f4f6"; /* mastodon icon */
-  margin-right: 0.5rem;
-}
-
-/* Option 5: Custom positioning and styling */
-.reply-button::before {
-  display: inline-block;
-  margin-right: 0.5rem;
-  font-size: 1.1em;
-  vertical-align: middle;
-}
-
-/* Option 6: Icon-only with accessible label */
-.reply-button {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  font-size: 0;
-  border-radius: 50%;
-}
-
-.reply-button::before {
-  font-size: 1.2rem;
-  line-height: 2.5rem;
-}
-```
+The plugin includes default styling, but you can customize the appearance using CSS classes. Add custom styles to your `Custom CSS`.
 
 **Available CSS classes:**
-- `.reply-interaction-wrapper` – Wrapper containing both upvote button and reply buttons
-- `.reply-buttons-container` – Container holding the reply buttons
-- `.reply-button` – Base class for all reply buttons
-- `.reply-button-mail` – Mail/Email button
+- `.reply-interaction-wrapper` – Wrapper containing upvote/like and reply buttons
+- `.reply-buttons-container` – Container holding all buttons
+- `.reply-button` – Base class for all buttons
+- `.reply-button-like` – Like button (when `data-like` is used)
+- `.reply-button-like.liked` – Like button in "liked" state
+- `.reply-button-mail` – Mail button
 - `.reply-button-mastodon` – Mastodon button
-- `.reply-button:hover` – Hover state
-- `.reply-button:active` – Pressed state
-- `.reply-button:focus-visible` – Keyboard focus state
 
-**Data attributes:**
-- `data-lang` – Language attribute on container (e.g., `data-lang="de"`)
-
-**Example: Styling upvote and reply buttons together**
-```css
-/* Change the layout of upvote + reply buttons */
-.reply-interaction-wrapper {
-  display: flex;
-  justify-content: space-between; /* Upvote on left, buttons on right */
-  align-items: center;
-  gap: 2rem;
-}
-
-/* Or center everything */
-.reply-interaction-wrapper {
-  justify-content: center;
-}
-```
+For a real-world implementation with custom icons and styling, see [my personal website](https://fischr.org/).
 
 ---
 
