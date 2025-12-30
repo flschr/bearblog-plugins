@@ -242,23 +242,38 @@
     // Inject default styles
     injectDefaultStyles();
 
-    // Find the upvote container
-    const upvoteContainer = document.querySelector('.upvote-container, .upvote');
-    if (!upvoteContainer) {
-      console.warn('Reply by: Could not find upvote container');
-      return;
-    }
-
-    // Create a wrapper that contains both upvote and reply buttons
-    const wrapper = document.createElement('div');
-    wrapper.className = 'reply-interaction-wrapper';
-
-    // Move upvote into wrapper
-    upvoteContainer.parentNode.insertBefore(wrapper, upvoteContainer);
-    wrapper.appendChild(upvoteContainer);
-
-    // Add reply buttons to wrapper
+    // Create reply buttons
     const buttonsContainer = createButtons();
-    wrapper.appendChild(buttonsContainer);
+
+    // Find the upvote container (various selectors for Bear Blog)
+    const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+
+    if (upvoteContainer) {
+      // Create a wrapper that contains both upvote and reply buttons
+      const wrapper = document.createElement('div');
+      wrapper.className = 'reply-interaction-wrapper';
+
+      // Move upvote into wrapper
+      upvoteContainer.parentNode.insertBefore(wrapper, upvoteContainer);
+      wrapper.appendChild(upvoteContainer);
+
+      // Add reply buttons to wrapper
+      wrapper.appendChild(buttonsContainer);
+    } else {
+      // No upvote container - append buttons after article content
+      const content = document.querySelector('.blog-content, article, .post-content, main');
+      if (content) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'reply-interaction-wrapper';
+        wrapper.appendChild(buttonsContainer);
+        content.appendChild(wrapper);
+      } else {
+        // Last resort: append to body
+        const wrapper = document.createElement('div');
+        wrapper.className = 'reply-interaction-wrapper';
+        wrapper.appendChild(buttonsContainer);
+        document.body.appendChild(wrapper);
+      }
+    }
   });
 })();
