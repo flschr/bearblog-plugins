@@ -175,18 +175,6 @@ Replaces the native Bear Blog upvote button with a styled like button that match
         defer></script>
 ```
 
-#### Translations
-
-**German** (`data-lang="de"`):
-- Gefällt mir / Gefällt mir (like button)
-- Per Mail antworten
-- Auf Mastodon antworten
-
-**English** (`data-lang="en"`):
-- Like this post / Liked (like button)
-- Reply by Mail
-- Reply on Mastodon
-
 #### CSS Customization
 
 The plugin includes default styling, but you can customize the appearance using CSS classes. Add custom styles to your `Custom CSS`.
