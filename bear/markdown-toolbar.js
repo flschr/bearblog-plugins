@@ -3105,8 +3105,10 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        // Set readonly BEFORE clipboard access to prevent iOS paste menu
-        activeTextarea.readOnly = true;
+        // iOS fix: blur and wait before clipboard access
+        // The delay allows iOS to complete its paste menu behavior
+        activeTextarea.blur();
+        await new Promise(r => setTimeout(r, 150));
 
         // Try to get URL from clipboard (with validation)
         let url = '';
@@ -3119,9 +3121,9 @@
             // Clipboard access denied or empty - this is expected behavior, no warning needed
         }
 
-        // Restore readonly and focus
-        activeTextarea.readOnly = false;
-        focusTextarea(activeTextarea);
+        // Restore focus and selection
+        activeTextarea.focus();
+        activeTextarea.setSelectionRange(start, end);
 
         const linkText = selected || 'Link Text';
         const newText = `[${linkText}](${url})`;
@@ -3232,6 +3234,12 @@
 
     // Handle smart image button with clipboard detection
     async function handleSmartImageUpload() {
+        const activeTextarea = getActiveTextarea();
+
+        // Save cursor position before blur
+        const savedStart = activeTextarea ? activeTextarea.selectionStart : 0;
+        const savedEnd = activeTextarea ? activeTextarea.selectionEnd : 0;
+
         // Sync cursor position from fullscreen textarea to main textarea BEFORE upload
         // This is critical because Bear Blog's native upload reads $textarea.selectionStart
         // and without this sync, images would be inserted at position 0 instead of cursor
@@ -3240,6 +3248,11 @@
             $textarea.selectionStart = fsTextarea.selectionStart;
             $textarea.selectionEnd = fsTextarea.selectionEnd;
         }
+
+        // iOS fix: blur and wait before clipboard access
+        // The delay allows iOS to complete its paste menu behavior
+        if (activeTextarea) activeTextarea.blur();
+        await new Promise(r => setTimeout(r, 150));
 
         try {
             const clipboardText = await navigator.clipboard.readText();
@@ -3250,6 +3263,13 @@
         } catch (e) {
             // Clipboard access denied or empty - just proceed with upload
         }
+
+        // Restore focus and cursor position before triggering upload
+        if (activeTextarea) {
+            activeTextarea.focus();
+            activeTextarea.setSelectionRange(savedStart, savedEnd);
+        }
+
         // No image URL in clipboard, trigger normal upload
         // Note: "upload-image" is just an <a> link, the actual file input has id="file"
         document.getElementById('file')?.click();
