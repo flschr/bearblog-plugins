@@ -4,11 +4,14 @@
   const mastodonHandle = scriptTag?.dataset.mastodon;
   const lang = scriptTag?.dataset.lang || 'en';
 
+  const showLikeButton = scriptTag?.dataset.like !== undefined;
+
   // Translations
   const translations = {
     de: {
       mail: 'Per Mail antworten',
       mastodon: 'Auf Mastodon antworten',
+      like: 'Gefällt mir',
       modalTitle: 'Deine Mastodon-Instanz',
       modalPlaceholder: 'z.B. mastodon.social',
       modalCancel: 'Abbrechen',
@@ -17,6 +20,7 @@
     en: {
       mail: 'Reply by mail',
       mastodon: 'Reply on Mastodon',
+      like: 'Like this post',
       modalTitle: 'Your Mastodon instance',
       modalPlaceholder: 'e.g., mastodon.social',
       modalCancel: 'Cancel',
@@ -138,10 +142,24 @@
     window.open(shareUrl, '_blank');
   }
 
-  function createButtons() {
+  function createButtons(upvoteButton) {
     const container = document.createElement('div');
     container.className = 'reply-buttons-container';
     container.setAttribute('data-lang', lang);
+
+    // Like button (if configured and upvote exists)
+    if (showLikeButton && upvoteButton) {
+      const likeButton = document.createElement('button');
+      likeButton.className = 'reply-button reply-button-like';
+      likeButton.type = 'button';
+      likeButton.textContent = t.like;
+      likeButton.setAttribute('aria-label', t.like);
+      likeButton.addEventListener('click', function() {
+        upvoteButton.click();
+      });
+
+      container.appendChild(likeButton);
+    }
 
     // Mail button
     const mailButton = document.createElement('button');
@@ -225,6 +243,10 @@
         outline-offset: 2px;
       }
 
+      .reply-button-like {
+        /* Custom styles for like button can be added */
+      }
+
       .reply-button-mail {
         /* Custom styles for mail button can be added */
       }
@@ -242,11 +264,14 @@
     // Inject default styles
     injectDefaultStyles();
 
-    // Create reply buttons
-    const buttonsContainer = createButtons();
-
     // Find the upvote container (various selectors for Bear Blog)
     const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+
+    // Find the actual clickable upvote button inside the container
+    const upvoteButton = upvoteContainer?.querySelector('button, [type="submit"], a') || upvoteContainer;
+
+    // Create reply buttons (pass upvote button for like functionality)
+    const buttonsContainer = createButtons(upvoteButton);
 
     if (upvoteContainer) {
       // Create a wrapper that contains both upvote and reply buttons
@@ -256,6 +281,11 @@
       // Move upvote into wrapper
       upvoteContainer.parentNode.insertBefore(wrapper, upvoteContainer);
       wrapper.appendChild(upvoteContainer);
+
+      // Hide native upvote if like button is shown
+      if (showLikeButton) {
+        upvoteContainer.style.display = 'none';
+      }
 
       // Add reply buttons to wrapper
       wrapper.appendChild(buttonsContainer);
