@@ -1080,6 +1080,9 @@
         // Event Delegation: Single click handler for all toolbar buttons
         $toolbar.addEventListener('click', handleToolbarClick);
 
+        // Prevent context menu on mobile devices
+        $toolbar.addEventListener('contextmenu', (e) => e.preventDefault());
+
         renderToolbarButtons();
 
         wrapper.insertBefore($toolbar, $textarea);
@@ -2685,6 +2688,9 @@
         settingsBtn.addEventListener('click', () => handleAction('settings'));
         header.appendChild(settingsBtn);
 
+        // Prevent context menu on mobile devices
+        header.addEventListener('contextmenu', (e) => e.preventDefault());
+
         overlay.appendChild(header);
 
         // Append textarea to overlay
@@ -2946,6 +2952,9 @@
         `;
         exitBtn.addEventListener('click', closeInlinePreview);
         header.appendChild(exitBtn);
+
+        // Prevent context menu on mobile devices
+        header.addEventListener('contextmenu', (e) => e.preventDefault());
 
         overlay.appendChild(header);
 
