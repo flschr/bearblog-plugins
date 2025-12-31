@@ -1,5 +1,8 @@
 /**
- * Social Reactions Plugin for Bear Blog - Modal & Plural Edition
+ * Social Reactions Plugin for Bear Blog - Deep Count Edition
+ * - Fixes Mastodon reply counts (counts full thread depth)
+ * - Handles Singular/Plural
+ * - Integrated Mastodon Modal
  */
 (function() {
   'use strict';
@@ -22,11 +25,11 @@
     reactions: customConv[2] || 'reactions, join in',
     unmapped: customConv[3] || 'Share & Discuss',
     joinConvSingular: customConv[4] || 'comment, join the conversation',
-    mail: scriptTag?.dataset.mail || 'Reply by mail',
     modalTitle: 'Your Mastodon instance',
     modalPlaceholder: 'e.g. mastodon.social',
     modalCancel: 'Cancel',
-    modalOpen: 'Open'
+    modalOpen: 'Open',
+    mail: scriptTag?.dataset.mail || 'Reply by mail'
   };
 
   const icons = {
@@ -43,19 +46,17 @@
   function isDarkMode() { const bg = getComputedStyle(document.body).backgroundColor; const rgb = bg.match(/\d+/g); return rgb ? (rgb[0]*299 + rgb[1]*587 + rgb[2]*114)/1000 < 128 : false; }
 
   async function findSocialUrls() {
-    const bskyMeta = document.querySelector('meta[name="bsky-post"]');
-    const mastoMeta = document.querySelector('meta[name="mastodon-post"]');
-    let bskyUrl = bskyMeta?.content || null;
-    let mastoUrl = mastoMeta?.content || null;
+    let bUrl = document.querySelector('meta[name="bsky-post"]')?.content || null;
+    let mUrl = document.querySelector('meta[name="mastodon-post"]')?.content || null;
     try {
       const res = await fetch(mappingsUrl);
       const mappings = await res.json();
-      const currentUrl = normalizeUrl(window.location.href);
-      for (const [url, data] of Object.entries(mappings)) {
-        if (normalizeUrl(url) === currentUrl) { bskyUrl = bskyUrl || data.bluesky; mastoUrl = mastoUrl || data.mastodon; break; }
+      const current = normalizeUrl(window.location.href);
+      for (const [u, d] of Object.entries(mappings)) {
+        if (normalizeUrl(u) === current) { bUrl = bUrl || d.bluesky; mUrl = mUrl || d.mastodon; break; }
       }
     } catch (e) {}
-    return { bluesky: bskyUrl, mastodon: mastoUrl };
+    return { bluesky: bUrl, mastodon: mUrl };
   }
 
   async function fetchEngagement(url, platform) {
@@ -68,18 +69,25 @@
         const { thread } = await res.json();
         return { likes: thread.post.likeCount||0, total: (thread.post.likeCount||0) + (thread.post.repostCount||0) + (thread.post.replyCount||0), replies: thread.post.replyCount||0 };
       } else {
-        const urlObj = new URL(url);
-        const id = urlObj.pathname.split('/').pop();
-        const res = await fetch(`${urlObj.origin}/api/v1/statuses/${id}`);
-        const data = await res.json();
-        return { likes: data.favourites_count||0, total: (data.favourites_count||0) + (data.reblogs_count||0) + (data.replies_count||0), replies: data.replies_count||0 };
+        const u = new URL(url);
+        const id = u.pathname.split('/').pop();
+        // Parallel fetch for status and context
+        const [sRes, cRes] = await Promise.all([
+          fetch(`${u.origin}/api/v1/statuses/${id}`),
+          fetch(`${u.origin}/api/v1/statuses/${id}/context`)
+        ]);
+        const sData = await sRes.json();
+        const cData = await cRes.json();
+        // Deep count using context descendants
+        const rCount = cData.descendants ? cData.descendants.length : (sData.replies_count || 0);
+        return { likes: sData.favourites_count||0, total: (sData.favourites_count||0) + (sData.reblogs_count||0) + rCount, replies: rCount };
       }
     } catch (e) { return null; }
   }
 
   async function fetchBearBlog() {
-    const form = document.querySelector('#upvote-form');
-    const uid = form?.querySelector('input[name="uid"]')?.value || form?.action.match(/\/upvote\/([^\/]+)/)?.[1];
+    const f = document.querySelector('#upvote-form');
+    const uid = f?.querySelector('input[name="uid"]')?.value || f?.action.match(/\/upvote\/([^\/]+)/)?.[1];
     if (!uid) return null;
     try {
       const res = await fetch(`/upvote-info/${uid}/`);
@@ -89,14 +97,14 @@
   }
 
   function createModal() {
-    const dark = isDarkMode();
     if (modal) return;
+    const dark = isDarkMode();
     modal = document.createElement('div');
     modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;font-family:inherit;';
     modal.innerHTML = `
       <div style="background:${dark ? '#1e1e1e' : '#fff'}; padding:1.5rem; border-radius:12px; max-width:320px; width:90%; color:${dark ? '#ebdbb2' : '#333'}; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
         <label style="display:block; margin-bottom:0.7rem; font-weight:bold;">${ui.modalTitle}</label>
-        <input type="text" id="masto-instance" placeholder="${ui.modalPlaceholder}" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid ${dark ? '#444' : '#ccc'}; border-radius:6px; background:${dark ? '#2a2a2a' : '#fff'}; color:inherit;">
+        <input type="text" id="masto-instance" placeholder="${ui.modalPlaceholder}" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid ${dark ? '#444' : '#ccc'}; border-radius:6px; background:${dark ? '#2a2a2a' : '#fff'}; color:inherit; box-sizing:border-box;">
         <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
           <button id="masto-cancel" style="padding:0.5rem 1rem; background:none; border:none; cursor:pointer; color:inherit;">${ui.modalCancel}</button>
           <button id="masto-submit" style="padding:0.5rem 1rem; background:#6364ff; color:#fff; border:none; border-radius:6px; cursor:pointer;">${ui.modalOpen}</button>
@@ -110,10 +118,10 @@
       let inst = modalInput.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
       if (!inst) return; localStorage.setItem('mastodon_instance', inst);
       modal.style.display = 'none';
-      const url = storedMastoUrl 
+      const u = storedMastoUrl 
         ? `https://${inst}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}`
         : `https://${inst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`;
-      window.open(url, '_blank');
+      window.open(u, '_blank');
     };
   }
 
@@ -158,8 +166,8 @@
     btnContainer.className = 'social-reactions-buttons';
 
     const buildInner = (icon, count, text) => {
-      const countPart = count > 0 ? `<span class="sr-count">${count}</span>` : '';
-      return `<span class="sr-icon">${icon}</span>${countPart}<span class="sr-text">${text}</span>`;
+      const cPart = count > 0 ? `<span class="sr-count">${count}</span>` : '';
+      return `<span class="sr-icon">${icon}</span>${cPart}<span class="sr-text">${text}</span>`;
     };
 
     const upBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
@@ -167,14 +175,14 @@
       const total = (bsky?.likes||0) + (masto?.likes||0) + (bb?.count||0);
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button';
-      const updateState = (voted, count) => {
-        btn.classList.toggle('liked', voted); btn.disabled = voted;
-        btn.innerHTML = buildInner(voted ? icons.heart : icons.heartOutline, count, voted ? ui.liked : ui.like);
+      const upd = (v, c) => {
+        btn.classList.toggle('liked', v); btn.disabled = v;
+        btn.innerHTML = buildInner(v ? icons.heart : icons.heartOutline, c, v ? ui.liked : ui.like);
       };
-      updateState(bb?.isUpvoted || upBtn.disabled, total);
+      upd(bb?.isUpvoted || upBtn.disabled, total);
       btn.onclick = () => {
         upBtn.click(); btn.innerHTML = buildInner(icons.heart, '', ui.thankYou); btn.classList.add('liked'); btn.disabled = true;
-        setTimeout(() => updateState(true, total+1), 3000);
+        setTimeout(() => upd(true, total+1), 3000);
       };
       btnContainer.appendChild(btn);
       document.querySelector('#upvote-form').style.display = 'none';
@@ -201,7 +209,7 @@
       btnContainer.appendChild(btn);
     }
 
-    if (mastodonHandle && activeServices.includes('mastodon')) {
+    if (activeServices.includes('mastodon')) {
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button social-reactions-button-mastodon';
       btn.innerHTML = buildInner(icons.mastodon, getCount(masto, urls.mastodon), getTxt(masto, urls.mastodon));
