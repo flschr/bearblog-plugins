@@ -5,11 +5,13 @@
  * No React dependency - pure vanilla JavaScript!
  *
  * Usage:
- * 1. Add meta tags to your blog post:
+ * 1. Add meta tags to your blog post (optional if using mappings.json):
  *    <meta name="bsky-post" content="https://bsky.app/profile/you.bsky.social/post/abc123">
  *    <meta name="mastodon-post" content="https://mastodon.social/@you/123456789">
  *
- * 2. Include the script in your footer:
+ * 2. Or use automatic lookup via mappings.json from bearblog-automation
+ *
+ * 3. Include the script in your footer:
  *    <script src="https://flschr.github.io/bearblog-plugins/social-comments.js" defer></script>
  *    <div id="social-comments"></div>
  *
@@ -20,6 +22,7 @@
  *   data-mastodon-only             - Only show Mastodon comments
  *   data-no-styles                 - Disable built-in styles
  *   data-theme="dark"              - Force dark/light theme (default: auto-detect)
+ *   data-mappings-url="..."        - Custom mappings.json URL
  *
  * License: WTFPL v2
  */
@@ -33,6 +36,12 @@
   const mastodonOnly = scriptTag?.dataset.mastodonOnly !== undefined;
   const noStyles = scriptTag?.dataset.noStyles !== undefined;
   const forcedTheme = scriptTag?.dataset.theme;
+  const mappingsUrl = scriptTag?.dataset.mappingsUrl ||
+    'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
+
+  // Cache for social media mappings
+  let socialMappingsCache = null;
+  let socialMappingsPromise = null;
 
   // Translations
   const translations = {
@@ -67,6 +76,91 @@
   };
 
   const t = translations[lang] || translations.en;
+
+  // ─── Social Mappings ─────────────────────────────────────────────────────────
+
+  async function fetchSocialMappings() {
+    // Return cached data if available
+    if (socialMappingsCache) {
+      return socialMappingsCache;
+    }
+
+    // Return existing promise if already fetching
+    if (socialMappingsPromise) {
+      return socialMappingsPromise;
+    }
+
+    socialMappingsPromise = fetch(mappingsUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        socialMappingsCache = data;
+        return data;
+      })
+      .catch(error => {
+        console.warn('Failed to fetch social mappings:', error);
+        return {};
+      })
+      .finally(() => {
+        socialMappingsPromise = null;
+      });
+
+    return socialMappingsPromise;
+  }
+
+  function normalizeUrl(url) {
+    // Remove query string and hash, normalize trailing slash
+    return url.replace(/[?#].*$/, '').replace(/\/$/, '');
+  }
+
+  async function findSocialUrls() {
+    // 1. Check for meta tags first (highest priority)
+    const blueskyMeta = document.querySelector('meta[name="bsky-post"]');
+    const mastodonMeta = document.querySelector('meta[name="mastodon-post"]');
+
+    let blueskyUrl = blueskyMeta?.content || null;
+    let mastodonUrl = mastodonMeta?.content || null;
+
+    // If both are found via meta tags, return immediately
+    if (blueskyUrl && mastodonUrl) {
+      return { bluesky: blueskyUrl, mastodon: mastodonUrl };
+    }
+
+    // 2. Check mappings.json for missing URLs
+    try {
+      const mappings = await fetchSocialMappings();
+      const currentUrl = normalizeUrl(window.location.href);
+
+      // Try to find mapping for current URL
+      let mapping = null;
+
+      // Try exact match (normalized)
+      for (const [articleUrl, data] of Object.entries(mappings)) {
+        if (normalizeUrl(articleUrl) === currentUrl) {
+          mapping = data;
+          break;
+        }
+      }
+
+      if (mapping) {
+        // Fill in missing URLs from mapping
+        if (!blueskyUrl && mapping.bluesky) {
+          blueskyUrl = mapping.bluesky;
+        }
+        if (!mastodonUrl && mapping.mastodon) {
+          mastodonUrl = mapping.mastodon;
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking social mappings:', e);
+    }
+
+    return { bluesky: blueskyUrl, mastodon: mastodonUrl };
+  }
 
   // ─── Utility Functions ───────────────────────────────────────────────────────
 
@@ -746,25 +840,21 @@
       return;
     }
 
-    // Get post URLs from meta tags
-    const blueskyMeta = document.querySelector('meta[name="bsky-post"]');
-    const mastodonMeta = document.querySelector('meta[name="mastodon-post"]');
+    // Inject styles early
+    createStyles();
+    container.classList.add('social-comments');
 
-    const blueskyUrl = blueskyMeta?.content;
-    const mastodonUrl = mastodonMeta?.content;
+    // Show loading state while fetching URLs
+    container.innerHTML = `<div class="social-comments-loading">${t.loading}</div>`;
 
-    // Check if any URL is provided
+    // Get post URLs from meta tags or mappings.json
+    const { bluesky: blueskyUrl, mastodon: mastodonUrl } = await findSocialUrls();
+
+    // Check if any URL is found
     if (!blueskyUrl && !mastodonUrl) {
       container.innerHTML = `<div class="social-comments-empty">${t.disabled}</div>`;
       return;
     }
-
-    // Inject styles
-    createStyles();
-    container.classList.add('social-comments');
-
-    // Show loading state
-    container.innerHTML = `<div class="social-comments-loading">${t.loading}</div>`;
 
     // Fetch comments from both platforms
     const promises = [];

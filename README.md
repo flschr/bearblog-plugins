@@ -175,12 +175,6 @@ When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` 
     <div id="social-comments"></div>
     ```
 
-    Then, for each blog post that should have comments, add meta tags near the top:
-    ```html
-    <meta name="bsky-post" content="https://bsky.app/profile/you.bsky.social/post/abc123">
-    <meta name="mastodon-post" content="https://mastodon.social/@you/123456789">
-    ```
-
 #### Options
 
 | Attribute | Description |
@@ -191,14 +185,46 @@ When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` 
 | `data-mastodon-only` | Only show Mastodon comments |
 | `data-no-styles` | Disable built-in styles (use your own CSS) |
 | `data-theme` | Force `dark` or `light` theme (default: auto-detect) |
+| `data-mappings-url` | Custom URL for mappings.json (default: bearblog-automation repo) |
+
+#### Finding Post URLs
+
+The plugin looks for Bluesky/Mastodon post URLs in two ways (in order of priority):
+
+**Method 1: Meta Tags (per-post override)**
+
+Add meta tags to individual blog posts:
+```html
+<meta name="bsky-post" content="https://bsky.app/profile/you.bsky.social/post/abc123">
+<meta name="mastodon-post" content="https://mastodon.social/@you/123456789">
+```
+
+**Method 2: Automatic via mappings.json (Recommended)**
+
+If you use [bearblog-automation](https://github.com/flschr/bearblog-automation), the plugin automatically fetches `mappings.json` and looks up the current article URL. No per-post configuration needed!
+
+Expected mappings.json structure:
+```json
+{
+  "https://yourblog.com/article-slug/": {
+    "bluesky": "https://bsky.app/profile/you.bsky.social/post/abc123",
+    "mastodon": "https://mastodon.social/@you/123456789"
+  }
+}
+```
+
+To use a custom mappings URL:
+```html
+<script src="..." data-mappings-url="https://your-domain.com/mappings.json" defer></script>
+```
 
 #### How It Works
 
-1. **Meta Tags**: Each blog post needs meta tags with the URLs to your Bluesky/Mastodon posts that announce the article
-2. **API Fetching**: The plugin fetches replies using the public APIs (no authentication needed)
-3. **Rendering**: Comments are rendered with avatars, handles, timestamps, and engagement counts
+1. **URL Lookup**: Checks meta tags first, then falls back to mappings.json
+2. **API Fetching**: Fetches replies using public Bluesky/Mastodon APIs (no auth needed)
+3. **Rendering**: Comments show avatars, handles, timestamps, and engagement counts
 4. **Nested Replies**: Supports threaded conversations up to 3 levels deep
-5. **Join Links**: Provides "Reply on Bluesky/Mastodon" buttons so readers can join the conversation
+5. **Join Links**: Provides "Reply on Bluesky/Mastodon" buttons for readers
 
 #### CSS Classes
 
