@@ -256,14 +256,16 @@
     // Find the Mastodon URL for this article
     const mastodonUrl = await findMastodonUrl();
 
-    // If a Mastodon URL is found, use the authorize_interaction endpoint to reply to the original toot
+    const url = window.location.href;
+    const title = document.title;
+    const cleanTitle = stripBlogName(title);
+
+    // If a Mastodon URL is found, open compose with link to the original toot
     if (mastodonUrl) {
-      shareUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(mastodonUrl)}`;
+      const text = `${mastodonHandle} Re: ${cleanTitle}\n\n${mastodonUrl}`;
+      shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
     } else {
-      // Fallback: create a new toot mentioning the author
-      const url = window.location.href;
-      const title = document.title;
-      const cleanTitle = stripBlogName(title);
+      // Fallback: create a new toot mentioning the author with the blog URL
       const text = `${mastodonHandle} Re: ${cleanTitle} ${url}`;
       shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
     }
