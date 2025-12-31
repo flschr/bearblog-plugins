@@ -57,7 +57,8 @@
       showMore: 'Show more replies',
       likes: 'likes',
       reposts: 'reposts',
-      replies: 'replies'
+      replies: 'replies',
+      likePost: 'Click to like this post'
     },
     de: {
       comments: 'Kommentare',
@@ -71,7 +72,8 @@
       showMore: 'Weitere Antworten anzeigen',
       likes: 'Likes',
       reposts: 'Reposts',
-      replies: 'Antworten'
+      replies: 'Antworten',
+      likePost: 'Klicken um diesen Beitrag zu liken'
     }
   };
 
@@ -164,6 +166,37 @@
     }
 
     return { bluesky: blueskyUrl, mastodon: mastodonUrl };
+  }
+
+  // ─── BearBlog Upvote Integration ──────────────────────────────────────────────
+
+  function getBearBlogUpvote() {
+    // Find the upvote form/button (various selectors for Bear Blog)
+    const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+    if (!upvoteContainer) return null;
+
+    // Find the actual clickable button
+    const upvoteButton = upvoteContainer.querySelector('button, [type="submit"], a') || upvoteContainer;
+
+    // Try to extract the count from the button text or nearby elements
+    let count = 0;
+    const buttonText = upvoteButton?.textContent || '';
+    const countMatch = buttonText.match(/(\d+)/);
+    if (countMatch) {
+      count = parseInt(countMatch[1], 10);
+    }
+
+    // Check if already upvoted
+    const isUpvoted = upvoteButton?.classList.contains('upvoted') ||
+                      upvoteButton?.disabled ||
+                      upvoteButton?.hasAttribute('disabled');
+
+    return {
+      count,
+      isUpvoted,
+      button: upvoteButton,
+      container: upvoteContainer
+    };
   }
 
   // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -585,6 +618,34 @@
         gap: 0.25rem;
       }
 
+      .social-comments-stat-item.liked {
+        color: ${dark ? '#fb7185' : '#e11d48'};
+      }
+
+      .social-comments-like-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .social-comments-like-btn:hover:not(:disabled) {
+        color: ${dark ? '#fb7185' : '#e11d48'};
+        transform: scale(1.05);
+      }
+
+      .social-comments-like-btn:disabled,
+      .social-comments-like-btn.liked {
+        color: ${dark ? '#fb7185' : '#e11d48'};
+        cursor: default;
+      }
+
       .social-comments-loading,
       .social-comments-empty,
       .social-comments-error {
@@ -852,38 +913,76 @@
     header.appendChild(joinLinks);
     container.appendChild(header);
 
-    // Stats summary (engagement from original posts)
-    const hasStats = stats.bluesky || stats.mastodon;
+    // Stats summary (engagement from original posts + BearBlog upvotes)
+    const bearBlogUpvote = getBearBlogUpvote();
+
+    // Combine stats from all platforms
+    let totalLikes = 0;
+    let totalReposts = 0;
+
+    if (stats.bluesky) {
+      totalLikes += stats.bluesky.likes;
+      totalReposts += stats.bluesky.reposts;
+    }
+    if (stats.mastodon) {
+      totalLikes += stats.mastodon.likes;
+      totalReposts += stats.mastodon.reposts;
+    }
+    if (bearBlogUpvote) {
+      totalLikes += bearBlogUpvote.count;
+    }
+
+    const hasStats = totalLikes > 0 || totalReposts > 0;
     if (hasStats) {
       const statsDiv = document.createElement('div');
       statsDiv.className = 'social-comments-stats';
 
-      const statItems = [];
+      // Likes (clickable if BearBlog upvote available)
+      if (totalLikes > 0 || bearBlogUpvote) {
+        const likesSpan = document.createElement('span');
+        likesSpan.className = 'social-comments-stat-item';
 
-      // Combine stats from both platforms
-      let totalLikes = 0;
-      let totalReposts = 0;
+        if (bearBlogUpvote && !bearBlogUpvote.isUpvoted) {
+          // Make it a clickable button
+          const likeBtn = document.createElement('button');
+          likeBtn.className = 'social-comments-like-btn';
+          likeBtn.innerHTML = `❤️ ${totalLikes > 0 ? totalLikes + ' ' : ''}${t.likes}`;
+          likeBtn.title = t.likePost;
+          likeBtn.addEventListener('click', () => {
+            bearBlogUpvote.button.click();
+            // Update UI optimistically
+            likeBtn.disabled = true;
+            likeBtn.classList.add('liked');
+            const newCount = totalLikes + 1;
+            likeBtn.innerHTML = `❤️ ${newCount} ${t.likes}`;
+          });
+          likesSpan.appendChild(likeBtn);
+        } else {
+          // Already liked or no upvote available - just show the count
+          likesSpan.innerHTML = `❤️ ${totalLikes} ${t.likes}`;
+          if (bearBlogUpvote?.isUpvoted) {
+            likesSpan.classList.add('liked');
+          }
+        }
 
-      if (stats.bluesky) {
-        totalLikes += stats.bluesky.likes;
-        totalReposts += stats.bluesky.reposts;
-      }
-      if (stats.mastodon) {
-        totalLikes += stats.mastodon.likes;
-        totalReposts += stats.mastodon.reposts;
+        statsDiv.appendChild(likesSpan);
       }
 
-      if (totalLikes > 0) {
-        statItems.push(`<span class="social-comments-stat-item">❤️ ${totalLikes} ${t.likes}</span>`);
-      }
+      // Reposts
       if (totalReposts > 0) {
-        statItems.push(`<span class="social-comments-stat-item">🔁 ${totalReposts} ${t.reposts}</span>`);
+        if (statsDiv.children.length > 0) {
+          const separator = document.createElement('span');
+          separator.className = 'social-comments-stat-separator';
+          separator.textContent = ' · ';
+          statsDiv.appendChild(separator);
+        }
+        const repostsSpan = document.createElement('span');
+        repostsSpan.className = 'social-comments-stat-item';
+        repostsSpan.innerHTML = `🔁 ${totalReposts} ${t.reposts}`;
+        statsDiv.appendChild(repostsSpan);
       }
 
-      if (statItems.length > 0) {
-        statsDiv.innerHTML = statItems.join(' · ');
-        container.appendChild(statsDiv);
-      }
+      container.appendChild(statsDiv);
     }
 
     // Comments list
