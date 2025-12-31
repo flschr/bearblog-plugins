@@ -118,6 +118,28 @@
     return null;
   }
 
+  // Extract status ID and author from Mastodon URL
+  // URL format: https://instance/@user/statusId or https://instance/@user@domain/statusId
+  function parseMastodonUrl(url) {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      const pathParts = parsed.pathname.split('/').filter(Boolean);
+      // Expected: ['@user', 'statusId'] or ['@user@domain', 'statusId']
+      if (pathParts.length >= 2 && pathParts[0].startsWith('@')) {
+        const author = pathParts[0]; // e.g., '@flschr' or '@flschr@mastodon.social'
+        const statusId = pathParts[pathParts.length - 1]; // numeric ID
+        // Validate that statusId looks like a number
+        if (/^\d+$/.test(statusId)) {
+          return { author, statusId, instance: parsed.host };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse Mastodon URL:', e);
+    }
+    return null;
+  }
+
   // Translations
   const translations = {
     de: {
