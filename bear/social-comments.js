@@ -757,8 +757,8 @@
       .social-comment-replies {
         list-style: none;
         margin: 0;
-        padding: 0 0 0 2.5rem;
-        border-left: 2px solid ${dark ? '#3c3836' : '#e5e5e5'};
+        padding: 0 0 0 1rem;
+        border-left: 3px solid ${dark ? '#504945' : '#d5d5d5'};
         margin-left: 1.25rem;
         margin-top: 0.5rem;
       }
@@ -770,6 +770,37 @@
       .social-comment-replies .social-comment-avatar {
         width: 32px;
         height: 32px;
+      }
+
+      .social-comment-replies.collapsed {
+        display: none;
+      }
+
+      .social-comment-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.65rem;
+        margin-top: 0.5rem;
+        background: ${dark ? '#282828' : '#f7f7f7'};
+        border: 1px solid ${dark ? '#3c3836' : '#e5e5e5'};
+        border-radius: 4px;
+        color: ${dark ? '#83a598' : '#1565c0'};
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .social-comment-toggle:hover {
+        background: ${dark ? '#3c3836' : '#ebebeb'};
+      }
+
+      .social-comment-toggle-icon {
+        transition: transform 0.2s ease;
+      }
+
+      .social-comment-toggle.expanded .social-comment-toggle-icon {
+        transform: rotate(90deg);
       }
 
       .social-comments-more {
@@ -840,38 +871,62 @@
       </div>
     `;
 
-    // Add nested replies (up to maxDepth)
+    // Add nested replies (up to maxDepth) with toggle button
     if (comment.replies && comment.replies.length > 0 && comment.depth < maxDepth) {
+      const replyCount = countAllComments(comment.replies);
+      const toggleId = `replies-${comment.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+      // Create toggle button
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'social-comment-toggle';
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.setAttribute('aria-controls', toggleId);
+      toggleBtn.innerHTML = `<span class="social-comment-toggle-icon">▶</span> ${replyCount} ${replyCount === 1 ? (lang === 'de' ? 'Antwort' : 'reply') : (lang === 'de' ? 'Antworten' : 'replies')}`;
+
+      // Create replies container (initially collapsed)
       const repliesList = document.createElement('ul');
-      repliesList.className = 'social-comment-replies';
+      repliesList.id = toggleId;
+      repliesList.className = 'social-comment-replies collapsed';
 
       for (const reply of comment.replies) {
         repliesList.appendChild(renderComment(reply, maxDepth));
       }
 
+      // Toggle functionality
+      toggleBtn.addEventListener('click', () => {
+        const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+        toggleBtn.setAttribute('aria-expanded', !isExpanded);
+        toggleBtn.classList.toggle('expanded');
+        repliesList.classList.toggle('collapsed');
+      });
+
+      li.appendChild(toggleBtn);
       li.appendChild(repliesList);
     }
 
     return li;
   }
 
-  function renderEngagementStats(blueskyEngagement, mastodonEngagement) {
-    // Combine engagement from both platforms
-    const total = {
-      likes: (blueskyEngagement?.likes || 0) + (mastodonEngagement?.likes || 0),
-      reposts: (blueskyEngagement?.reposts || 0) + (mastodonEngagement?.reposts || 0),
-      replies: (blueskyEngagement?.replies || 0) + (mastodonEngagement?.replies || 0)
-    };
+  function countAllComments(comments) {
+    let count = 0;
+    for (const comment of comments) {
+      count++;
+      if (comment.replies && comment.replies.length > 0) {
+        count += countAllComments(comment.replies);
+      }
+    }
+    return count;
+  }
 
+  function renderEngagementStats(totalEngagement) {
     // Only show if there's any engagement
-    if (total.likes === 0 && total.reposts === 0 && total.replies === 0) {
+    if (totalEngagement.likes === 0 && totalEngagement.reposts === 0 && totalEngagement.replies === 0) {
       return '';
     }
 
     const stats = [];
-    if (total.likes > 0) stats.push(`<span class="social-engagement-stat">❤️ ${total.likes} ${t.likes}</span>`);
-    if (total.reposts > 0) stats.push(`<span class="social-engagement-stat">🔁 ${total.reposts} ${t.reposts}</span>`);
-    if (total.replies > 0) stats.push(`<span class="social-engagement-stat">💬 ${total.replies} ${t.replies}</span>`);
+    if (totalEngagement.likes > 0) stats.push(`<span class="social-engagement-stat">❤️ ${totalEngagement.likes} ${t.likes}</span>`);
+    if (totalEngagement.reposts > 0) stats.push(`<span class="social-engagement-stat">🔁 ${totalEngagement.reposts} ${t.reposts}</span>`);
 
     return `<div class="social-engagement">${stats.join('<span class="social-engagement-separator">·</span>')}</div>`;
   }
@@ -898,11 +953,12 @@
 
     const title = document.createElement('h3');
     title.className = 'social-comments-title';
-    title.textContent = t.comments;
+    const commentCount = countAllComments(comments);
+    title.textContent = commentCount > 0 ? `${t.comments} (${commentCount})` : t.comments;
     headerLeft.appendChild(title);
 
-    // Add engagement stats below title
-    const engagementHtml = renderEngagementStats(blueskyEngagement, mastodonEngagement);
+    // Add engagement stats below title (using combined totals including BearBlog)
+    const engagementHtml = renderEngagementStats(totalEngagement);
     if (engagementHtml) {
       headerLeft.insertAdjacentHTML('beforeend', engagementHtml);
     }
