@@ -8,28 +8,20 @@
   const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
   // Cache for social media mappings (article URL -> {mastodon, bluesky})
+  // Only cached in-memory for the current page session
   let socialMappingsCache = null;
   let socialMappingsPromise = null;
 
   // Fetch social mappings from GitHub
   async function fetchSocialMappings() {
+    // Return cached data if already loaded this session
+    if (socialMappingsCache) {
+      return socialMappingsCache;
+    }
+
     // Return cached promise if already fetching
     if (socialMappingsPromise) {
       return socialMappingsPromise;
-    }
-
-    // Check localStorage cache (valid for 1 hour)
-    const cached = localStorage.getItem('social_mappings');
-    const cacheTime = localStorage.getItem('social_mappings_time');
-    const oneHour = 60 * 60 * 1000;
-
-    if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < oneHour) {
-      try {
-        socialMappingsCache = JSON.parse(cached);
-        return socialMappingsCache;
-      } catch (e) {
-        console.warn('Failed to parse cached social mappings:', e);
-      }
     }
 
     // Fetch from GitHub (mappings.json contains {article_url: {mastodon: "...", bluesky: "..."}})
@@ -45,13 +37,6 @@
       })
       .then(data => {
         socialMappingsCache = data;
-        // Cache in localStorage
-        try {
-          localStorage.setItem('social_mappings', JSON.stringify(data));
-          localStorage.setItem('social_mappings_time', Date.now().toString());
-        } catch (e) {
-          console.warn('Failed to cache social mappings:', e);
-        }
         return data;
       })
       .catch(error => {

@@ -89,13 +89,6 @@ To test the integration:
 
 ## Troubleshooting
 
-### Cache Issues
-Clear the cache by running this in the browser console:
-```javascript
-localStorage.removeItem('mastodon_mappings');
-localStorage.removeItem('mastodon_mappings_time');
-```
-
 ### URL Matching
 The plugin tries multiple URL variations:
 - Exact match
