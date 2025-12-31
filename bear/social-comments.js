@@ -188,17 +188,30 @@
     const atUri = `at://${did}/app.bsky.feed.post/${parsed.postId}`;
 
     try {
+      // Fetch thread with depth to count all replies in the conversation
       const response = await fetch(
-        `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(atUri)}&depth=0`
+        `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(atUri)}&depth=10`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const post = data.thread?.post;
-      return post ? {
+      if (!post) return null;
+
+      // Count all replies recursively in the thread
+      function countAllReplies(thread) {
+        if (!thread?.replies || !Array.isArray(thread.replies)) return 0;
+        let count = thread.replies.length;
+        for (const reply of thread.replies) {
+          count += countAllReplies(reply);
+        }
+        return count;
+      }
+
+      return {
         likes: post.likeCount || 0,
         reposts: post.repostCount || 0,
-        replies: post.replyCount || 0
-      } : null;
+        replies: countAllReplies(data.thread)
+      };
     } catch (e) {
       console.warn('Failed to fetch Bluesky engagement:', e);
       return null;
@@ -224,13 +237,27 @@
     if (!parsed) return null;
 
     try {
-      const response = await fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      // Fetch status and context in parallel
+      const [statusResponse, contextResponse] = await Promise.all([
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}`),
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}/context`)
+      ]);
+
+      if (!statusResponse.ok) throw new Error(`HTTP ${statusResponse.status}`);
+      const statusData = await statusResponse.json();
+
+      // Count all replies from context (descendants = all replies in the thread)
+      let totalReplies = statusData.replies_count || 0;
+      if (contextResponse.ok) {
+        const contextData = await contextResponse.json();
+        // descendants contains ALL replies in the conversation thread
+        totalReplies = contextData.descendants?.length || totalReplies;
+      }
+
       return {
-        likes: data.favourites_count || 0,
-        reposts: data.reblogs_count || 0,
-        replies: data.replies_count || 0
+        likes: statusData.favourites_count || 0,
+        reposts: statusData.reblogs_count || 0,
+        replies: totalReplies
       };
     } catch (e) {
       console.warn('Failed to fetch Mastodon engagement:', e);
