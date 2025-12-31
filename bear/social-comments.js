@@ -1,10 +1,8 @@
 /**
- * Social Reactions Plugin for Bear Blog - Final Version
- * Features:
- * - Heartbeat animation & default cursor on liked button
- * - Combined global like count
- * - Dynamic labels: Start/Join conversation (mapped) vs. Share & Discuss (unmapped)
- * - Service filtering via data-services
+ * Social Reactions Plugin for Bear Blog - Polished Edition
+ * - Unified layout: [Icon] [Count] [Text]
+ * - Heartbeat animation on liked
+ * - Dynamic labels & Fallbacks
  */
 (function() {
   'use strict';
@@ -14,7 +12,6 @@
   const mastodonHandle = scriptTag?.dataset.mastodon;
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
 
-  // Configurable UI Texts via data-attributes
   const customLike = scriptTag?.dataset.like?.split('|') || [];
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
   const activeServices = scriptTag?.dataset.services ? scriptTag.dataset.services.split(',').map(s => s.trim()) : ['bluesky', 'mastodon', 'mail'];
@@ -26,7 +23,7 @@
     startConv: customConv[0] || 'Start the conversation',
     joinConv: customConv[1] || 'Join the conversation',
     reactions: customConv[2] || 'reactions',
-    unmapped: customConv[3] || 'Share & Discuss', // Fallback wenn kein Link existiert
+    unmapped: customConv[3] || 'Share & Discuss',
     mail: scriptTag?.dataset.mail || 'Send a private note'
   };
 
@@ -76,13 +73,13 @@
         const { did } = await didRes.json();
         const res = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(`at://${did}/app.bsky.feed.post/${match[2]}`)}&depth=0`);
         const { thread } = await res.json();
-        return { likes: thread.post.likeCount||0, reposts: thread.post.repostCount||0, replies: thread.post.replyCount||0 };
+        return { likes: thread.post.likeCount||0, total: (thread.post.likeCount||0) + (thread.post.repostCount||0) + (thread.post.replyCount||0), replies: thread.post.replyCount||0 };
       } else {
         const urlObj = new URL(url);
         const id = urlObj.pathname.split('/').pop();
         const res = await fetch(`${urlObj.origin}/api/v1/statuses/${id}`);
         const data = await res.json();
-        return { likes: data.favourites_count||0, reposts: data.reblogs_count||0, replies: data.replies_count||0 };
+        return { likes: data.favourites_count||0, total: (data.favourites_count||0) + (data.reblogs_count||0) + (data.replies_count||0), replies: data.replies_count||0 };
       }
     } catch (e) { return null; }
   }
@@ -107,31 +104,25 @@
       .social-reactions-wrapper { margin: 1.5rem 0; }
       .social-reactions-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
       .social-reactions-button {
-        display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.9rem;
+        display: inline-flex; align-items: center; padding: 0.5rem 0.9rem;
         font-size: 0.9rem; font-family: inherit; font-weight: 500;
         border: 1px solid ${dark ? '#504945' : '#ddd'}; border-radius: 8px;
         background: ${dark ? '#282828' : '#fafafa'}; color: ${dark ? '#ebdbb2' : '#333'};
-        cursor: pointer; transition: all 0.2s ease;
+        cursor: pointer; transition: all 0.2s ease; line-height: 1;
       }
       .social-reactions-button:hover:not(:disabled) { 
         background: ${dark ? '#3c3836' : '#f0f0f0'}; border-color: ${dark ? '#665c54' : '#bbb'};
       }
       .social-reactions-button.liked {
         background: ${dark ? 'rgba(251, 73, 52, 0.1)' : '#fff0f0'};
-        border-color: #fb4934; color: #fb4934;
-        cursor: default;
+        border-color: #fb4934; color: #fb4934; cursor: default;
       }
-      .social-reactions-button.liked:hover svg {
-        animation: heartBeat 0.8s infinite;
-      }
+      .social-reactions-button .sr-icon { display: flex; align-items: center; margin-right: 0.5rem; }
+      .social-reactions-button .sr-count { font-variant-numeric: tabular-nums; font-weight: 700; margin-right: 0.5rem; }
+      .social-reactions-button.liked:hover .sr-icon svg { animation: heartBeat 0.8s infinite; }
       @keyframes heartBeat {
-        0% { transform: scale(1); }
-        14% { transform: scale(1.3); }
-        28% { transform: scale(1); }
-        42% { transform: scale(1.3); }
-        70% { transform: scale(1); }
+        0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); }
       }
-      .social-reactions-button svg { flex-shrink: 0; }
       .social-reactions-button-bluesky:hover { color: #0085ff; }
       .social-reactions-button-mastodon:hover { color: #563acc; }
     `;
@@ -151,38 +142,37 @@
     const btnContainer = document.createElement('div');
     btnContainer.className = 'social-reactions-buttons';
 
+    // Helper: Build standardized button content
+    const buildInner = (icon, count, text) => {
+      const countPart = count > 0 ? `<span class="sr-count">${count}</span>` : '';
+      return `<span class="sr-icon">${icon}</span>${countPart}<span class="sr-text">${text}</span>`;
+    };
+
     // 1. LIKE BUTTON
     const upBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
     if (scriptTag?.dataset.like !== undefined && upBtn) {
       const total = (bsky?.likes||0) + (masto?.likes||0) + (bb?.count||0);
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button';
-      const updateState = (voted, count) => {
+      const update = (voted, count) => {
         btn.classList.toggle('liked', voted); btn.disabled = voted;
-        btn.innerHTML = voted ? `${icons.heart} ${count} ${ui.liked}` : `${icons.heartOutline} ${count} ${ui.like}`;
+        btn.innerHTML = buildInner(voted ? icons.heart : icons.heartOutline, count, voted ? ui.liked : ui.like);
       };
-      updateState(bb?.isUpvoted || upBtn.disabled, total);
+      update(bb?.isUpvoted || upBtn.disabled, total);
       btn.onclick = () => {
-        upBtn.click(); btn.innerHTML = `${icons.heart} ${ui.thankYou}`; btn.classList.add('liked'); btn.disabled = true;
-        setTimeout(() => updateState(true, total+1), 3000);
+        upBtn.click(); btn.innerHTML = buildInner(icons.heart, '', ui.thankYou); btn.classList.add('liked'); btn.disabled = true;
+        setTimeout(() => update(true, total+1), 3000);
       };
       btnContainer.appendChild(btn);
       document.querySelector('#upvote-form').style.display = 'none';
     }
 
-    // Social Text Helper (updated for unmapped state)
-    const getTxt = (eng, url, fallback) => {
-      if (!url) return ui.unmapped;
-      if (!eng) return fallback;
-      const t = (eng.likes||0) + (eng.reposts||0) + (eng.replies||0);
-      if (t === 0) return ui.startConv;
-      return eng.replies > 0 ? `${ui.joinConv} (${t})` : `${t} ${ui.reactions}`;
-    };
-
+    // 2. BLUESKY
     if (activeServices.includes('bluesky')) {
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button social-reactions-button-bluesky';
-      btn.innerHTML = `${icons.bluesky} ${getTxt(bsky, urls.bluesky, 'Bluesky')}`;
+      const label = !urls.bluesky ? ui.unmapped : (bsky?.total > 0 ? (bsky.replies > 0 ? ui.joinConv : `${bsky.total} ${ui.reactions}`) : ui.startConv);
+      btn.innerHTML = buildInner(icons.bluesky, (urls.bluesky && bsky?.total > 0) ? bsky.total : 0, urls.bluesky ? label : ui.unmapped);
       btn.onclick = () => {
         if (urls.bluesky) window.open(urls.bluesky, '_blank');
         else window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent('Re: ' + document.title + ' ' + window.location.href)}`, '_blank');
@@ -190,10 +180,12 @@
       btnContainer.appendChild(btn);
     }
 
+    // 3. MASTODON
     if (mastodonHandle && activeServices.includes('mastodon')) {
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button social-reactions-button-mastodon';
-      btn.innerHTML = `${icons.mastodon} ${getTxt(masto, urls.mastodon, 'Mastodon')}`;
+      const label = !urls.mastodon ? ui.unmapped : (masto?.total > 0 ? (masto.replies > 0 ? ui.joinConv : `${masto.total} ${ui.reactions}`) : ui.startConv);
+      btn.innerHTML = buildInner(icons.mastodon, (urls.mastodon && masto?.total > 0) ? masto.total : 0, urls.mastodon ? label : ui.unmapped);
       btn.onclick = () => {
         const inst = localStorage.getItem('mastodon_instance') || prompt('Mastodon Instance:');
         if (!inst) return;
@@ -204,10 +196,11 @@
       btnContainer.appendChild(btn);
     }
 
+    // 4. MAIL
     if (activeServices.includes('mail')) {
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button';
-      btn.innerHTML = `${icons.mail} ${ui.mail}`;
+      btn.innerHTML = buildInner(icons.mail, 0, ui.mail);
       btn.onclick = () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
       btnContainer.appendChild(btn);
     }
