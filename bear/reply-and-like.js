@@ -256,9 +256,9 @@
     // Find the Mastodon URL for this article
     const mastodonUrl = await findMastodonUrl();
 
-    // If a Mastodon URL is found, use the interact endpoint to reply to the original toot
+    // If a Mastodon URL is found, use the authorize_interaction endpoint to reply to the original toot
     if (mastodonUrl) {
-      shareUrl = `https://${instance}/interact?type=reply&uri=${encodeURIComponent(mastodonUrl)}`;
+      shareUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(mastodonUrl)}`;
     } else {
       // Fallback: create a new toot mentioning the author
       const url = window.location.href;
