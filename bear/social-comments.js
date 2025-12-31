@@ -175,22 +175,32 @@
   let storedMastodonEngagement = null;
 
   function getBearBlogUpvote() {
-    // Find the upvote form/button (various selectors for Bear Blog)
-    const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+    // Find the upvote form (BearBlog uses #upvote-form)
+    const upvoteContainer = document.querySelector('#upvote-form, .upvote-container, .upvote');
     if (!upvoteContainer) return null;
 
-    // Find the actual clickable button
-    const upvoteButton = upvoteContainer.querySelector('button, [type="submit"], a') || upvoteContainer;
+    // Find the actual clickable button (BearBlog uses .upvote-button class)
+    const upvoteButton = upvoteContainer.querySelector('.upvote-button, button, [type="submit"]') || upvoteContainer;
 
-    // Try to extract the count from the button text or nearby elements
+    // BearBlog stores count in a separate .upvote-count element
     let count = 0;
-    const buttonText = upvoteButton?.textContent || '';
-    const countMatch = buttonText.match(/(\d+)/);
-    if (countMatch) {
-      count = parseInt(countMatch[1], 10);
+    const countElement = upvoteContainer.querySelector('.upvote-count');
+    if (countElement) {
+      const countText = countElement.textContent.trim();
+      const countMatch = countText.match(/(\d+)/);
+      if (countMatch) {
+        count = parseInt(countMatch[1], 10);
+      }
+    } else {
+      // Fallback: try button text
+      const buttonText = upvoteButton?.textContent || '';
+      const countMatch = buttonText.match(/(\d+)/);
+      if (countMatch) {
+        count = parseInt(countMatch[1], 10);
+      }
     }
 
-    // Check if already upvoted
+    // Check if already upvoted (BearBlog adds 'upvoted' class to button)
     const isUpvoted = upvoteButton?.classList.contains('upvoted') ||
                       upvoteButton?.disabled ||
                       upvoteButton?.hasAttribute('disabled');
