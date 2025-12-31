@@ -247,11 +247,11 @@
     const parsed = parseBlueskyUrl(url);
     if (!parsed) {
       console.warn('Invalid Bluesky URL:', url);
-      return [];
+      return { comments: [], stats: null };
     }
 
     const did = await resolveBlueskyDid(parsed.handle);
-    if (!did) return [];
+    if (!did) return { comments: [], stats: null };
 
     const atUri = `at://${did}/app.bsky.feed.post/${parsed.postId}`;
 
@@ -265,10 +265,20 @@
       }
 
       const data = await response.json();
-      return extractBlueskyReplies(data.thread, url);
+      const comments = extractBlueskyReplies(data.thread, url);
+
+      // Extract stats from the original post
+      const rootPost = data.thread?.post;
+      const stats = rootPost ? {
+        likes: rootPost.likeCount || 0,
+        reposts: rootPost.repostCount || 0,
+        replies: rootPost.replyCount || 0
+      } : null;
+
+      return { comments, stats };
     } catch (e) {
       console.error('Failed to fetch Bluesky comments:', e);
-      return [];
+      return { comments: [], stats: null };
     }
   }
 
@@ -392,23 +402,38 @@
     const parsed = parseMastodonUrl(url);
     if (!parsed) {
       console.warn('Invalid Mastodon URL:', url);
-      return [];
+      return { comments: [], stats: null };
     }
 
     try {
-      const response = await fetch(
-        `${parsed.instance}/api/v1/statuses/${parsed.statusId}/context`
-      );
+      // Fetch both the original status and context in parallel
+      const [statusResponse, contextResponse] = await Promise.all([
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}`),
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}/context`)
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (!contextResponse.ok) {
+        throw new Error(`HTTP ${contextResponse.status}`);
       }
 
-      const data = await response.json();
-      return buildMastodonTree(data.descendants, parsed.statusId, url);
+      const contextData = await contextResponse.json();
+      const comments = buildMastodonTree(contextData.descendants, parsed.statusId, url);
+
+      // Extract stats from the original status
+      let stats = null;
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        stats = {
+          likes: statusData.favourites_count || 0,
+          reposts: statusData.reblogs_count || 0,
+          replies: statusData.replies_count || 0
+        };
+      }
+
+      return { comments, stats };
     } catch (e) {
       console.error('Failed to fetch Mastodon comments:', e);
-      return [];
+      return { comments: [], stats: null };
     }
   }
 
@@ -542,6 +567,22 @@
       .social-comments-join-mastodon:hover {
         background: ${dark ? '#7b1fa2' : '#e1bee7'};
         color: ${dark ? '#fff' : '#4a148c'};
+      }
+
+      .social-comments-stats {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: ${dark ? '#a89984' : '#666'};
+        border-bottom: 1px solid ${dark ? '#3c3836' : '#e5e5e5'};
+      }
+
+      .social-comments-stat-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
       }
 
       .social-comments-loading,
@@ -772,7 +813,7 @@
     return li;
   }
 
-  function renderComments(container, comments, blueskyUrl, mastodonUrl) {
+  function renderComments(container, comments, blueskyUrl, mastodonUrl, stats = {}) {
     container.innerHTML = '';
 
     // Header
@@ -810,6 +851,40 @@
 
     header.appendChild(joinLinks);
     container.appendChild(header);
+
+    // Stats summary (engagement from original posts)
+    const hasStats = stats.bluesky || stats.mastodon;
+    if (hasStats) {
+      const statsDiv = document.createElement('div');
+      statsDiv.className = 'social-comments-stats';
+
+      const statItems = [];
+
+      // Combine stats from both platforms
+      let totalLikes = 0;
+      let totalReposts = 0;
+
+      if (stats.bluesky) {
+        totalLikes += stats.bluesky.likes;
+        totalReposts += stats.bluesky.reposts;
+      }
+      if (stats.mastodon) {
+        totalLikes += stats.mastodon.likes;
+        totalReposts += stats.mastodon.reposts;
+      }
+
+      if (totalLikes > 0) {
+        statItems.push(`<span class="social-comments-stat-item">❤️ ${totalLikes} ${t.likes}</span>`);
+      }
+      if (totalReposts > 0) {
+        statItems.push(`<span class="social-comments-stat-item">🔁 ${totalReposts} ${t.reposts}</span>`);
+      }
+
+      if (statItems.length > 0) {
+        statsDiv.innerHTML = statItems.join(' · ');
+        container.appendChild(statsDiv);
+      }
+    }
 
     // Comments list
     if (comments.length === 0) {
@@ -867,32 +942,38 @@
       promises.push(
         fetchBlueskyComments(blueskyUrl).catch(e => {
           console.error('Bluesky comments error:', e);
-          return [];
+          return { comments: [], stats: null };
         })
       );
     } else {
-      promises.push(Promise.resolve([]));
+      promises.push(Promise.resolve({ comments: [], stats: null }));
     }
 
     if (mastodonUrl && !blueskyOnly) {
       promises.push(
         fetchMastodonComments(mastodonUrl).catch(e => {
           console.error('Mastodon comments error:', e);
-          return [];
+          return { comments: [], stats: null };
         })
       );
     } else {
-      promises.push(Promise.resolve([]));
+      promises.push(Promise.resolve({ comments: [], stats: null }));
     }
 
     try {
-      const [blueskyComments, mastodonComments] = await Promise.all(promises);
+      const [blueskyResult, mastodonResult] = await Promise.all(promises);
 
       // Merge and sort all comments by date (newest first)
-      const allComments = [...blueskyComments, ...mastodonComments];
+      const allComments = [...blueskyResult.comments, ...mastodonResult.comments];
       allComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      renderComments(container, allComments, blueskyUrl, mastodonUrl);
+      // Collect stats from both platforms
+      const stats = {
+        bluesky: blueskyResult.stats,
+        mastodon: mastodonResult.stats
+      };
+
+      renderComments(container, allComments, blueskyUrl, mastodonUrl, stats);
     } catch (e) {
       console.error('Failed to load comments:', e);
       container.innerHTML = `<div class="social-comments-error">${t.failed}</div>`;
