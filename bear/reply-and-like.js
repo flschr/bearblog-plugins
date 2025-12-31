@@ -7,36 +7,36 @@
   const showLikeButton = scriptTag?.dataset.like !== undefined;
   const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
-  // Cache for Mastodon mappings
-  let mastodonMappingsCache = null;
-  let mastodonMappingsPromise = null;
+  // Cache for social media mappings (article URL -> {mastodon, bluesky})
+  let socialMappingsCache = null;
+  let socialMappingsPromise = null;
 
-  // Fetch Mastodon mappings from GitHub
-  async function fetchMastodonMappings() {
+  // Fetch social mappings from GitHub
+  async function fetchSocialMappings() {
     // Return cached promise if already fetching
-    if (mastodonMappingsPromise) {
-      return mastodonMappingsPromise;
+    if (socialMappingsPromise) {
+      return socialMappingsPromise;
     }
 
     // Check localStorage cache (valid for 1 hour)
-    const cached = localStorage.getItem('mastodon_mappings');
-    const cacheTime = localStorage.getItem('mastodon_mappings_time');
+    const cached = localStorage.getItem('social_mappings');
+    const cacheTime = localStorage.getItem('social_mappings_time');
     const oneHour = 60 * 60 * 1000;
 
     if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < oneHour) {
       try {
-        mastodonMappingsCache = JSON.parse(cached);
-        return mastodonMappingsCache;
+        socialMappingsCache = JSON.parse(cached);
+        return socialMappingsCache;
       } catch (e) {
-        console.warn('Failed to parse cached Mastodon mappings:', e);
+        console.warn('Failed to parse cached social mappings:', e);
       }
     }
 
-    // Fetch from GitHub
-    const mappingsUrl = scriptTag?.dataset.mastodonMappingsUrl ||
-                       'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mastodon-mappings.json';
+    // Fetch from GitHub (mappings.json contains {article_url: {mastodon: "...", bluesky: "..."}})
+    const mappingsUrl = scriptTag?.dataset.mappingsUrl ||
+                       'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
 
-    mastodonMappingsPromise = fetch(mappingsUrl)
+    socialMappingsPromise = fetch(mappingsUrl)
       .then(response => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -44,25 +44,25 @@
         return response.json();
       })
       .then(data => {
-        mastodonMappingsCache = data;
+        socialMappingsCache = data;
         // Cache in localStorage
         try {
-          localStorage.setItem('mastodon_mappings', JSON.stringify(data));
-          localStorage.setItem('mastodon_mappings_time', Date.now().toString());
+          localStorage.setItem('social_mappings', JSON.stringify(data));
+          localStorage.setItem('social_mappings_time', Date.now().toString());
         } catch (e) {
-          console.warn('Failed to cache Mastodon mappings:', e);
+          console.warn('Failed to cache social mappings:', e);
         }
         return data;
       })
       .catch(error => {
-        console.warn('Failed to fetch Mastodon mappings:', error);
+        console.warn('Failed to fetch social mappings:', error);
         return {};
       })
       .finally(() => {
-        mastodonMappingsPromise = null;
+        socialMappingsPromise = null;
       });
 
-    return mastodonMappingsPromise;
+    return socialMappingsPromise;
   }
 
   // Function to find the Mastodon URL for this article
@@ -89,28 +89,29 @@
     }
 
     // 4. Check mappings from bearblog-automation repository
+    // Format: {article_url: {mastodon: "...", bluesky: "..."}}
     try {
-      const mappings = await fetchMastodonMappings();
+      const mappings = await fetchSocialMappings();
       const currentUrl = window.location.href.replace(/\?.*$/, '').replace(/#.*$/, '');
 
       // Try exact match first
-      if (mappings[currentUrl]) {
-        return mappings[currentUrl];
+      if (mappings[currentUrl]?.mastodon) {
+        return mappings[currentUrl].mastodon;
       }
 
       // Try without trailing slash
       const urlWithoutSlash = currentUrl.replace(/\/$/, '');
-      if (mappings[urlWithoutSlash]) {
-        return mappings[urlWithoutSlash];
+      if (mappings[urlWithoutSlash]?.mastodon) {
+        return mappings[urlWithoutSlash].mastodon;
       }
 
       // Try with trailing slash
       const urlWithSlash = urlWithoutSlash + '/';
-      if (mappings[urlWithSlash]) {
-        return mappings[urlWithSlash];
+      if (mappings[urlWithSlash]?.mastodon) {
+        return mappings[urlWithSlash].mastodon;
       }
     } catch (e) {
-      console.warn('Error checking Mastodon mappings:', e);
+      console.warn('Error checking social mappings:', e);
     }
 
     // No Mastodon URL found
