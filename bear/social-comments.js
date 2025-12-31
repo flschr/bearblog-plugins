@@ -113,8 +113,12 @@
   }
 
   function normalizeUrl(url) {
-    // Remove query string and hash, normalize trailing slash
-    return url.replace(/[?#].*$/, '').replace(/\/$/, '');
+    // Remove query string and hash, normalize trailing slash, http/https, and www
+    return url
+      .replace(/[?#].*$/, '')      // Remove query string and hash
+      .replace(/\/$/, '')          // Remove trailing slash
+      .replace(/^https?:\/\//, '') // Remove protocol
+      .replace(/^www\./, '');      // Remove www prefix
   }
 
   async function findSocialUrls() {
