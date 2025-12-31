@@ -98,6 +98,7 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
     <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
             data-email="your@email.com"
             data-mastodon="@yourhandle@instance.social"
+            data-mastodon-url="https://mastodon.social/@yourhandle/123456789"
             data-like
             data-lang="de"
             defer></script>
@@ -109,6 +110,7 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 |-----------|----------|-------------|
 | `data-email` | Yes | Your email address for the reply button |
 | `data-mastodon` | No | Your Mastodon handle (e.g., `@user@instance.social`) |
+| `data-mastodon-url` | No | URL to the Mastodon toot where you shared this article. When set, replies will be threaded under the original toot instead of creating a new mention. |
 | `data-like` | No | Show styled like button instead of native upvote |
 | `data-lang` | No | Language: `de` or `en` (default) |
 

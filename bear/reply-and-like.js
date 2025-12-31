@@ -2,6 +2,7 @@
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
   const mastodonHandle = scriptTag?.dataset.mastodon;
+  const mastodonUrl = scriptTag?.dataset.mastodonUrl;
   const lang = scriptTag?.dataset.lang || 'en';
 
   const showLikeButton = scriptTag?.dataset.like !== undefined;
@@ -140,11 +141,19 @@
     localStorage.setItem('mastodon_instance', instance);
     closeModal();
 
-    const url = window.location.href;
-    const title = document.title;
-    const cleanTitle = stripBlogName(title);
-    const text = `${mastodonHandle} Re: ${cleanTitle} ${url}`;
-    const shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
+    let shareUrl;
+
+    // If a Mastodon URL is configured, use the interact endpoint to reply to the original toot
+    if (mastodonUrl) {
+      shareUrl = `https://${instance}/interact?type=reply&uri=${encodeURIComponent(mastodonUrl)}`;
+    } else {
+      // Fallback: create a new toot mentioning the author
+      const url = window.location.href;
+      const title = document.title;
+      const cleanTitle = stripBlogName(title);
+      const text = `${mastodonHandle} Re: ${cleanTitle} ${url}`;
+      shareUrl = `https://${instance}/share?text=${encodeURIComponent(text)}`;
+    }
 
     window.open(shareUrl, '_blank');
   }
