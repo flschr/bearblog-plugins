@@ -590,30 +590,6 @@
         color: ${dark ? '#665c54' : '#ccc'};
       }
 
-      .social-engagement-like-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        background: none;
-        border: none;
-        padding: 0;
-        font: inherit;
-        color: inherit;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-
-      .social-engagement-like-btn:hover:not(:disabled) {
-        color: ${dark ? '#fb7185' : '#e11d48'};
-        transform: scale(1.05);
-      }
-
-      .social-engagement-like-btn:disabled,
-      .social-engagement-like-btn.liked {
-        color: ${dark ? '#fb7185' : '#e11d48'};
-        cursor: default;
-      }
-
       .social-comments-join {
         display: flex;
         gap: 0.5rem;
@@ -879,6 +855,27 @@
     return li;
   }
 
+  function renderEngagementStats(blueskyEngagement, mastodonEngagement) {
+    // Combine engagement from both platforms
+    const total = {
+      likes: (blueskyEngagement?.likes || 0) + (mastodonEngagement?.likes || 0),
+      reposts: (blueskyEngagement?.reposts || 0) + (mastodonEngagement?.reposts || 0),
+      replies: (blueskyEngagement?.replies || 0) + (mastodonEngagement?.replies || 0)
+    };
+
+    // Only show if there's any engagement
+    if (total.likes === 0 && total.reposts === 0 && total.replies === 0) {
+      return '';
+    }
+
+    const stats = [];
+    if (total.likes > 0) stats.push(`<span class="social-engagement-stat">❤️ ${total.likes} ${t.likes}</span>`);
+    if (total.reposts > 0) stats.push(`<span class="social-engagement-stat">🔁 ${total.reposts} ${t.reposts}</span>`);
+    if (total.replies > 0) stats.push(`<span class="social-engagement-stat">💬 ${total.replies} ${t.replies}</span>`);
+
+    return `<div class="social-engagement">${stats.join('<span class="social-engagement-separator">·</span>')}</div>`;
+  }
+
   function renderComments(container, comments, blueskyUrl, mastodonUrl, blueskyEngagement, mastodonEngagement) {
     container.innerHTML = '';
 
@@ -904,68 +901,10 @@
     title.textContent = t.comments;
     headerLeft.appendChild(title);
 
-    // Add engagement stats below title (with clickable like if BearBlog upvote available)
-    const hasEngagement = totalEngagement.likes > 0 || totalEngagement.reposts > 0 || totalEngagement.replies > 0 || bearBlogUpvote;
-    if (hasEngagement) {
-      const engagementDiv = document.createElement('div');
-      engagementDiv.className = 'social-engagement';
-
-      // Likes (clickable if BearBlog upvote available and not yet upvoted)
-      if (totalEngagement.likes > 0 || bearBlogUpvote) {
-        if (bearBlogUpvote && !bearBlogUpvote.isUpvoted) {
-          const likeBtn = document.createElement('button');
-          likeBtn.className = 'social-engagement-like-btn';
-          likeBtn.innerHTML = `❤️ ${totalEngagement.likes > 0 ? totalEngagement.likes + ' ' : ''}${t.likes}`;
-          likeBtn.title = t.likePost;
-          likeBtn.addEventListener('click', () => {
-            bearBlogUpvote.button.click();
-            // Update UI optimistically
-            likeBtn.disabled = true;
-            likeBtn.classList.add('liked');
-            const newCount = totalEngagement.likes + 1;
-            likeBtn.innerHTML = `❤️ ${newCount} ${t.likes}`;
-          });
-          engagementDiv.appendChild(likeBtn);
-        } else {
-          const likesSpan = document.createElement('span');
-          likesSpan.className = 'social-engagement-stat';
-          if (bearBlogUpvote?.isUpvoted) {
-            likesSpan.style.color = 'var(--liked-color, #e11d48)';
-          }
-          likesSpan.innerHTML = `❤️ ${totalEngagement.likes} ${t.likes}`;
-          engagementDiv.appendChild(likesSpan);
-        }
-      }
-
-      // Reposts
-      if (totalEngagement.reposts > 0) {
-        if (engagementDiv.children.length > 0) {
-          const sep = document.createElement('span');
-          sep.className = 'social-engagement-separator';
-          sep.textContent = '·';
-          engagementDiv.appendChild(sep);
-        }
-        const repostsSpan = document.createElement('span');
-        repostsSpan.className = 'social-engagement-stat';
-        repostsSpan.innerHTML = `🔁 ${totalEngagement.reposts} ${t.reposts}`;
-        engagementDiv.appendChild(repostsSpan);
-      }
-
-      // Replies
-      if (totalEngagement.replies > 0) {
-        if (engagementDiv.children.length > 0) {
-          const sep = document.createElement('span');
-          sep.className = 'social-engagement-separator';
-          sep.textContent = '·';
-          engagementDiv.appendChild(sep);
-        }
-        const repliesSpan = document.createElement('span');
-        repliesSpan.className = 'social-engagement-stat';
-        repliesSpan.innerHTML = `💬 ${totalEngagement.replies} ${t.replies}`;
-        engagementDiv.appendChild(repliesSpan);
-      }
-
-      headerLeft.appendChild(engagementDiv);
+    // Add engagement stats below title
+    const engagementHtml = renderEngagementStats(blueskyEngagement, mastodonEngagement);
+    if (engagementHtml) {
+      headerLeft.insertAdjacentHTML('beforeend', engagementHtml);
     }
 
     header.appendChild(headerLeft);
