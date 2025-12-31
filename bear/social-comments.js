@@ -174,6 +174,32 @@
   let storedBlueskyEngagement = null;
   let storedMastodonEngagement = null;
 
+  // Cache for BearBlog upvote data fetched from API
+  let bearBlogUpvoteCache = null;
+
+  async function fetchBearBlogUpvoteData() {
+    // Find the uid from the hidden input in the upvote form
+    const uidInput = document.querySelector('#upvote-form input[name="uid"]');
+    if (!uidInput) return null;
+
+    const uid = uidInput.value;
+    if (!uid) return null;
+
+    try {
+      const response = await fetch(`/upvote-info/${uid}/`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      bearBlogUpvoteCache = {
+        count: data.upvote_count || 0,
+        isUpvoted: data.upvoted || false
+      };
+      return bearBlogUpvoteCache;
+    } catch (e) {
+      console.warn('Failed to fetch BearBlog upvote data:', e);
+      return null;
+    }
+  }
+
   function getBearBlogUpvote() {
     // Find the upvote form (BearBlog uses #upvote-form)
     const upvoteContainer = document.querySelector('#upvote-form, .upvote-container, .upvote');
@@ -182,28 +208,27 @@
     // Find the actual clickable button (BearBlog uses .upvote-button class)
     const upvoteButton = upvoteContainer.querySelector('.upvote-button, button, [type="submit"]') || upvoteContainer;
 
-    // BearBlog stores count in a separate .upvote-count element
-    let count = 0;
-    const countElement = upvoteContainer.querySelector('.upvote-count');
-    if (countElement) {
-      const countText = countElement.textContent.trim();
-      const countMatch = countText.match(/(\d+)/);
-      if (countMatch) {
-        count = parseInt(countMatch[1], 10);
-      }
-    } else {
-      // Fallback: try button text
-      const buttonText = upvoteButton?.textContent || '';
-      const countMatch = buttonText.match(/(\d+)/);
-      if (countMatch) {
-        count = parseInt(countMatch[1], 10);
-      }
-    }
+    // Use cached API data if available (more reliable than DOM which loads async)
+    let count = bearBlogUpvoteCache?.count || 0;
+    let isUpvoted = bearBlogUpvoteCache?.isUpvoted || false;
 
-    // Check if already upvoted (BearBlog adds 'upvoted' class to button)
-    const isUpvoted = upvoteButton?.classList.contains('upvoted') ||
-                      upvoteButton?.disabled ||
-                      upvoteButton?.hasAttribute('disabled');
+    // Fallback: try to read from DOM (in case API fetch failed)
+    if (!bearBlogUpvoteCache) {
+      const countElement = upvoteContainer.querySelector('.upvote-count');
+      if (countElement) {
+        const countText = countElement.textContent.trim();
+        const countMatch = countText.match(/(\d+)/);
+        if (countMatch) {
+          count = parseInt(countMatch[1], 10);
+        }
+      }
+
+      // Check button state
+      isUpvoted = upvoteButton?.classList.contains('upvoted') ||
+                  upvoteButton?.disabled ||
+                  upvoteButton?.hasAttribute('disabled') ||
+                  upvoteButton?.style.color === 'salmon';
+    }
 
     return {
       count,
@@ -1182,8 +1207,13 @@
     // Show loading state while fetching URLs
     container.innerHTML = `<div class="social-comments-loading">${t.loading}</div>`;
 
-    // Get post URLs from meta tags or mappings.json
-    const { bluesky: blueskyUrl, mastodon: mastodonUrl } = await findSocialUrls();
+    // Fetch BearBlog upvote data and social URLs in parallel
+    const [_, socialUrls] = await Promise.all([
+      fetchBearBlogUpvoteData(),
+      findSocialUrls()
+    ]);
+
+    const { bluesky: blueskyUrl, mastodon: mastodonUrl } = socialUrls;
 
     // Check if any URL is found
     const bearBlogUpvote = getBearBlogUpvote();
