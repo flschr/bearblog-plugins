@@ -92,13 +92,12 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 
 ### Reply and Like
 
-*   **Description**: Adds reply buttons (Mail/Mastodon) and an optional styled like button that replaces Bear Blog's native upvote. Supports German/English. See it in action [on my personal website](https://fischr.org/).
+*   **Description**: Adds reply buttons (Mail/Mastodon) and an optional styled like button that replaces Bear Blog's native upvote. Mastodon replies can be automatically threaded under the original toot where you shared the article. Supports German/English. See it in action [on my personal website](https://fischr.org/).
 *   **Installation**: Add to `Custom footer content`:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
             data-email="your@email.com"
             data-mastodon="@yourhandle@instance.social"
-            data-mastodon-url="https://mastodon.social/@yourhandle/123456789"
             data-like
             data-lang="de"
             defer></script>
@@ -110,11 +109,34 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 |-----------|----------|-------------|
 | `data-email` | Yes | Your email address for the reply button |
 | `data-mastodon` | No | Your Mastodon handle (e.g., `@user@instance.social`) |
-| `data-mastodon-url` | No | URL to the Mastodon toot where you shared this article. When set, replies will be threaded under the original toot instead of creating a new mention. |
 | `data-like` | No | Show styled like button instead of native upvote |
 | `data-lang` | No | Language: `de` or `en` (default) |
 
 To customize the like button text use: `data-like="Like|Liked!"` (= text before|after click).
+
+#### Mastodon Reply Threading
+
+To enable readers to reply directly to the Mastodon toot where you shared an article (instead of creating a new mention), you can specify the toot URL using **one of three methods** (checked in this order):
+
+**Method 1: HTML Comment (Recommended)**
+Add this comment anywhere in your article content:
+```html
+<!-- mastodon: https://mastodon.social/@yourhandle/123456789 -->
+```
+
+**Method 2: Link Element**
+Add this in your article's HTML (if Bear Blog allows custom HTML):
+```html
+<link rel="mastodon-reply" href="https://mastodon.social/@yourhandle/123456789">
+```
+
+**Method 3: Script Attribute (Manual Override)**
+Set it directly on the script tag (useful for testing or single-use cases):
+```html
+<script src="..." data-mastodon-url="https://mastodon.social/@yourhandle/123456789" ...></script>
+```
+
+When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` endpoint to create a proper threaded reply. Without it, the button falls back to creating a new toot with a mention.
 
 #### CSS Classes
 

@@ -2,11 +2,37 @@
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
   const mastodonHandle = scriptTag?.dataset.mastodon;
-  const mastodonUrl = scriptTag?.dataset.mastodonUrl;
   const lang = scriptTag?.dataset.lang || 'en';
 
   const showLikeButton = scriptTag?.dataset.like !== undefined;
   const likeTexts = scriptTag?.dataset.like?.split('|') || [];
+
+  // Function to find the Mastodon URL for this article
+  function findMastodonUrl() {
+    // 1. Check for manual override via data attribute
+    if (scriptTag?.dataset.mastodonUrl) {
+      return scriptTag.dataset.mastodonUrl;
+    }
+
+    // 2. Check for HTML comment: <!-- mastodon: URL -->
+    const articleContent = document.querySelector('.blog-content, article, .post-content, main');
+    if (articleContent) {
+      const htmlContent = articleContent.innerHTML;
+      const commentMatch = htmlContent.match(/<!--\s*mastodon:\s*([^\s]+)\s*-->/i);
+      if (commentMatch && commentMatch[1]) {
+        return commentMatch[1].trim();
+      }
+    }
+
+    // 3. Check for link element: <link rel="mastodon-reply" href="URL">
+    const linkElement = document.querySelector('link[rel="mastodon-reply"], link[rel="mastodon"]');
+    if (linkElement && linkElement.href) {
+      return linkElement.href;
+    }
+
+    // No Mastodon URL found
+    return null;
+  }
 
   // Translations
   const translations = {
@@ -143,7 +169,10 @@
 
     let shareUrl;
 
-    // If a Mastodon URL is configured, use the interact endpoint to reply to the original toot
+    // Find the Mastodon URL for this article
+    const mastodonUrl = findMastodonUrl();
+
+    // If a Mastodon URL is found, use the interact endpoint to reply to the original toot
     if (mastodonUrl) {
       shareUrl = `https://${instance}/interact?type=reply&uri=${encodeURIComponent(mastodonUrl)}`;
     } else {
