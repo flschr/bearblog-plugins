@@ -170,26 +170,65 @@
 
   // ─── BearBlog Upvote Integration ──────────────────────────────────────────────
 
+  // Store social engagement values globally so they persist across updates
+  let storedBlueskyEngagement = null;
+  let storedMastodonEngagement = null;
+
+  // Cache for BearBlog upvote data fetched from API
+  let bearBlogUpvoteCache = null;
+
+  async function fetchBearBlogUpvoteData() {
+    // Find the uid from the hidden input in the upvote form
+    const uidInput = document.querySelector('#upvote-form input[name="uid"]');
+    if (!uidInput) return null;
+
+    const uid = uidInput.value;
+    if (!uid) return null;
+
+    try {
+      const response = await fetch(`/upvote-info/${uid}/`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      bearBlogUpvoteCache = {
+        count: data.upvote_count || 0,
+        isUpvoted: data.upvoted || false
+      };
+      return bearBlogUpvoteCache;
+    } catch (e) {
+      console.warn('Failed to fetch BearBlog upvote data:', e);
+      return null;
+    }
+  }
+
   function getBearBlogUpvote() {
-    // Find the upvote form/button (various selectors for Bear Blog)
-    const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+    // Find the upvote form (BearBlog uses #upvote-form)
+    const upvoteContainer = document.querySelector('#upvote-form, .upvote-container, .upvote');
     if (!upvoteContainer) return null;
 
-    // Find the actual clickable button
-    const upvoteButton = upvoteContainer.querySelector('button, [type="submit"], a') || upvoteContainer;
+    // Find the actual clickable button (BearBlog uses .upvote-button class)
+    const upvoteButton = upvoteContainer.querySelector('.upvote-button, button, [type="submit"]') || upvoteContainer;
 
-    // Try to extract the count from the button text or nearby elements
-    let count = 0;
-    const buttonText = upvoteButton?.textContent || '';
-    const countMatch = buttonText.match(/(\d+)/);
-    if (countMatch) {
-      count = parseInt(countMatch[1], 10);
+    // Use cached API data if available (more reliable than DOM which loads async)
+    let count = bearBlogUpvoteCache?.count || 0;
+    let isUpvoted = bearBlogUpvoteCache?.isUpvoted || false;
+
+    // Fallback: try to read from DOM (in case API fetch failed)
+    if (!bearBlogUpvoteCache) {
+      const countElement = upvoteContainer.querySelector('.upvote-count');
+      if (countElement) {
+        const countText = countElement.textContent.trim();
+        const countMatch = countText.match(/(\d+)/);
+        if (countMatch) {
+          count = parseInt(countMatch[1], 10);
+        }
+      }
+
+      // Check button state
+      isUpvoted = upvoteButton?.classList.contains('upvoted') ||
+                  upvoteButton?.disabled ||
+                  upvoteButton?.hasAttribute('disabled') ||
+                  upvoteButton?.style.color === 'salmon';
     }
-
-    // Check if already upvoted
-    const isUpvoted = upvoteButton?.classList.contains('upvoted') ||
-                      upvoteButton?.disabled ||
-                      upvoteButton?.hasAttribute('disabled');
 
     return {
       count,
@@ -197,6 +236,68 @@
       button: upvoteButton,
       container: upvoteContainer
     };
+  }
+
+  function updateEngagementDisplay() {
+    const engagementEl = document.querySelector('.social-engagement');
+    if (!engagementEl) return;
+
+    const bearBlogUpvote = getBearBlogUpvote();
+
+    // Calculate total engagement using stored social values + current BearBlog count
+    const totalEngagement = {
+      likes: (storedBlueskyEngagement?.likes || 0) + (storedMastodonEngagement?.likes || 0) + (bearBlogUpvote?.count || 0),
+      reposts: (storedBlueskyEngagement?.reposts || 0) + (storedMastodonEngagement?.reposts || 0),
+      replies: (storedBlueskyEngagement?.replies || 0) + (storedMastodonEngagement?.replies || 0)
+    };
+
+    // Update the like button
+    const likeBtn = engagementEl.querySelector('.social-like-button');
+    if (likeBtn) {
+      const likeCount = likeBtn.querySelector('.social-like-count');
+      if (likeCount) {
+        likeCount.textContent = `${totalEngagement.likes} ${t.likes}`;
+      }
+
+      // Update button state
+      const isLiked = bearBlogUpvote?.isUpvoted;
+      likeBtn.classList.toggle('liked', isLiked);
+      likeBtn.disabled = isLiked;
+      likeBtn.title = isLiked ? '' : t.likePost;
+    }
+
+    // Update reposts display
+    const repostsEl = engagementEl.querySelector('.social-engagement-reposts');
+    if (repostsEl && totalEngagement.reposts > 0) {
+      repostsEl.innerHTML = `🔁 ${totalEngagement.reposts} ${t.reposts}`;
+    }
+  }
+
+  function setupBearBlogObserver() {
+    const bearBlogUpvote = getBearBlogUpvote();
+    if (!bearBlogUpvote?.button) return;
+
+    // Watch for changes to the BearBlog upvote button
+    const observer = new MutationObserver(() => {
+      // Small delay to let BearBlog finish updating
+      setTimeout(updateEngagementDisplay, 100);
+    });
+
+    // Observe both the button and container for changes
+    observer.observe(bearBlogUpvote.button, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
+
+    if (bearBlogUpvote.container && bearBlogUpvote.container !== bearBlogUpvote.button) {
+      observer.observe(bearBlogUpvote.container, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
   }
 
   // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -591,6 +692,41 @@
         color: ${dark ? '#665c54' : '#ccc'};
       }
 
+      .social-like-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        color: ${dark ? '#a89984' : '#666'};
+        background: transparent;
+        border: 1px solid ${dark ? '#504945' : '#ddd'};
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .social-like-button:hover:not(:disabled) {
+        background: ${dark ? '#3c3836' : '#f5f5f5'};
+        border-color: ${dark ? '#665c54' : '#ccc'};
+        color: ${dark ? '#fb4934' : '#e53935'};
+      }
+
+      .social-like-button:disabled {
+        cursor: default;
+      }
+
+      .social-like-button.liked {
+        color: ${dark ? '#fb4934' : '#e53935'};
+        border-color: ${dark ? '#cc241d' : '#ffcdd2'};
+        background: ${dark ? 'rgba(251, 73, 52, 0.1)' : '#ffebee'};
+      }
+
+      .social-like-count {
+        font-weight: 500;
+      }
+
       .social-comments-join {
         display: flex;
         gap: 0.5rem;
@@ -919,21 +1055,30 @@
     return count;
   }
 
-  function renderEngagementStats(totalEngagement) {
-    // Only show if there's any engagement
-    if (totalEngagement.likes === 0 && totalEngagement.reposts === 0 && totalEngagement.replies === 0) {
-      return '';
-    }
-
+  function renderEngagementStats(totalEngagement, bearBlogUpvote) {
     const stats = [];
-    if (totalEngagement.likes > 0) stats.push(`<span class="social-engagement-stat">❤️ ${totalEngagement.likes} ${t.likes}</span>`);
-    if (totalEngagement.reposts > 0) stats.push(`<span class="social-engagement-stat">🔁 ${totalEngagement.reposts} ${t.reposts}</span>`);
+
+    // Like button - always show (even with 0 likes) so users can like
+    const isLiked = bearBlogUpvote?.isUpvoted;
+    const likeClass = isLiked ? 'social-like-button liked' : 'social-like-button';
+    const likeTitle = isLiked ? '' : t.likePost;
+    const likeDisabled = isLiked ? 'disabled' : '';
+    stats.push(`<button class="${likeClass}" title="${likeTitle}" ${likeDisabled}>❤️ <span class="social-like-count">${totalEngagement.likes} ${t.likes}</span></button>`);
+
+    // Reposts - only show if > 0
+    if (totalEngagement.reposts > 0) {
+      stats.push(`<span class="social-engagement-stat social-engagement-reposts">🔁 ${totalEngagement.reposts} ${t.reposts}</span>`);
+    }
 
     return `<div class="social-engagement">${stats.join('<span class="social-engagement-separator">·</span>')}</div>`;
   }
 
   function renderComments(container, comments, blueskyUrl, mastodonUrl, blueskyEngagement, mastodonEngagement) {
     container.innerHTML = '';
+
+    // Store engagement values globally for later updates
+    storedBlueskyEngagement = blueskyEngagement;
+    storedMastodonEngagement = mastodonEngagement;
 
     // Get BearBlog upvote info
     const bearBlogUpvote = getBearBlogUpvote();
@@ -959,12 +1104,41 @@
     headerLeft.appendChild(title);
 
     // Add engagement stats below title (using combined totals including BearBlog)
-    const engagementHtml = renderEngagementStats(totalEngagement);
+    const engagementHtml = renderEngagementStats(totalEngagement, bearBlogUpvote);
     if (engagementHtml) {
       headerLeft.insertAdjacentHTML('beforeend', engagementHtml);
+
+      // Attach click handler to like button
+      const likeBtn = headerLeft.querySelector('.social-like-button');
+      if (likeBtn && bearBlogUpvote?.button) {
+        likeBtn.addEventListener('click', function() {
+          // Trigger the native BearBlog upvote
+          bearBlogUpvote.button.click();
+
+          // Optimistic UI update - show liked state immediately
+          likeBtn.classList.add('liked');
+          likeBtn.disabled = true;
+          likeBtn.title = '';
+
+          // Update the count optimistically (+1)
+          const countEl = likeBtn.querySelector('.social-like-count');
+          if (countEl) {
+            const currentTotal = totalEngagement.likes;
+            countEl.textContent = `${currentTotal + 1} ${t.likes}`;
+          }
+        });
+      }
     }
 
     header.appendChild(headerLeft);
+
+    // Set up observer to watch for BearBlog button changes
+    setupBearBlogObserver();
+
+    // Hide native BearBlog upvote button since we have our own
+    if (bearBlogUpvote?.container) {
+      bearBlogUpvote.container.style.display = 'none';
+    }
 
     // Join conversation links
     const joinLinks = document.createElement('div');
@@ -1033,12 +1207,23 @@
     // Show loading state while fetching URLs
     container.innerHTML = `<div class="social-comments-loading">${t.loading}</div>`;
 
-    // Get post URLs from meta tags or mappings.json
-    const { bluesky: blueskyUrl, mastodon: mastodonUrl } = await findSocialUrls();
+    // Fetch BearBlog upvote data and social URLs in parallel
+    const [_, socialUrls] = await Promise.all([
+      fetchBearBlogUpvoteData(),
+      findSocialUrls()
+    ]);
+
+    const { bluesky: blueskyUrl, mastodon: mastodonUrl } = socialUrls;
 
     // Check if any URL is found
+    const bearBlogUpvote = getBearBlogUpvote();
     if (!blueskyUrl && !mastodonUrl) {
-      container.innerHTML = `<div class="social-comments-empty">${t.disabled}</div>`;
+      // Even without social URLs, show the like button if BearBlog upvote exists
+      if (bearBlogUpvote?.button) {
+        renderComments(container, [], null, null, null, null);
+      } else {
+        container.innerHTML = `<div class="social-comments-empty">${t.disabled}</div>`;
+      }
       return;
     }
 
