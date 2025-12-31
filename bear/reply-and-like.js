@@ -7,8 +7,66 @@
   const showLikeButton = scriptTag?.dataset.like !== undefined;
   const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
+  // Cache for Mastodon mappings
+  let mastodonMappingsCache = null;
+  let mastodonMappingsPromise = null;
+
+  // Fetch Mastodon mappings from GitHub
+  async function fetchMastodonMappings() {
+    // Return cached promise if already fetching
+    if (mastodonMappingsPromise) {
+      return mastodonMappingsPromise;
+    }
+
+    // Check localStorage cache (valid for 1 hour)
+    const cached = localStorage.getItem('mastodon_mappings');
+    const cacheTime = localStorage.getItem('mastodon_mappings_time');
+    const oneHour = 60 * 60 * 1000;
+
+    if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < oneHour) {
+      try {
+        mastodonMappingsCache = JSON.parse(cached);
+        return mastodonMappingsCache;
+      } catch (e) {
+        console.warn('Failed to parse cached Mastodon mappings:', e);
+      }
+    }
+
+    // Fetch from GitHub
+    const mappingsUrl = scriptTag?.dataset.mastodonMappingsUrl ||
+                       'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mastodon-mappings.json';
+
+    mastodonMappingsPromise = fetch(mappingsUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        mastodonMappingsCache = data;
+        // Cache in localStorage
+        try {
+          localStorage.setItem('mastodon_mappings', JSON.stringify(data));
+          localStorage.setItem('mastodon_mappings_time', Date.now().toString());
+        } catch (e) {
+          console.warn('Failed to cache Mastodon mappings:', e);
+        }
+        return data;
+      })
+      .catch(error => {
+        console.warn('Failed to fetch Mastodon mappings:', error);
+        return {};
+      })
+      .finally(() => {
+        mastodonMappingsPromise = null;
+      });
+
+    return mastodonMappingsPromise;
+  }
+
   // Function to find the Mastodon URL for this article
-  function findMastodonUrl() {
+  async function findMastodonUrl() {
     // 1. Check for manual override via data attribute
     if (scriptTag?.dataset.mastodonUrl) {
       return scriptTag.dataset.mastodonUrl;
@@ -28,6 +86,31 @@
     const linkElement = document.querySelector('link[rel="mastodon-reply"], link[rel="mastodon"]');
     if (linkElement && linkElement.href) {
       return linkElement.href;
+    }
+
+    // 4. Check mappings from bearblog-automation repository
+    try {
+      const mappings = await fetchMastodonMappings();
+      const currentUrl = window.location.href.replace(/\?.*$/, '').replace(/#.*$/, '');
+
+      // Try exact match first
+      if (mappings[currentUrl]) {
+        return mappings[currentUrl];
+      }
+
+      // Try without trailing slash
+      const urlWithoutSlash = currentUrl.replace(/\/$/, '');
+      if (mappings[urlWithoutSlash]) {
+        return mappings[urlWithoutSlash];
+      }
+
+      // Try with trailing slash
+      const urlWithSlash = urlWithoutSlash + '/';
+      if (mappings[urlWithSlash]) {
+        return mappings[urlWithSlash];
+      }
+    } catch (e) {
+      console.warn('Error checking Mastodon mappings:', e);
     }
 
     // No Mastodon URL found
@@ -159,7 +242,7 @@
     if (modal) modal.style.display = 'none';
   }
 
-  function handleModalSubmit() {
+  async function handleModalSubmit() {
     let instance = modalInput.value.trim();
     if (!instance) return;
 
@@ -170,7 +253,7 @@
     let shareUrl;
 
     // Find the Mastodon URL for this article
-    const mastodonUrl = findMastodonUrl();
+    const mastodonUrl = await findMastodonUrl();
 
     // If a Mastodon URL is found, use the interact endpoint to reply to the original toot
     if (mastodonUrl) {

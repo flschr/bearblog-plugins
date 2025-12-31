@@ -116,22 +116,35 @@ To customize the like button text use: `data-like="Like|Liked!"` (= text before|
 
 #### Mastodon Reply Threading
 
-To enable readers to reply directly to the Mastodon toot where you shared an article (instead of creating a new mention), you can specify the toot URL using **one of three methods** (checked in this order):
+To enable readers to reply directly to the Mastodon toot where you shared an article (instead of creating a new mention), the plugin automatically checks multiple sources for the toot URL (in this order):
 
-**Method 1: HTML Comment (Recommended)**
+**Method 1: Automated via bearblog-automation (Recommended)**
+If you use the [bearblog-automation](https://github.com/flschr/bearblog-automation) social bot, it can automatically maintain a mapping file. The plugin will fetch this file from GitHub and automatically find the correct toot URL for each article.
+
+The social bot should create/update a `mastodon-mappings.json` file in the automation repository with this structure:
+```json
+{
+  "https://fischr.org/article-slug/": "https://mastodon.social/@fischr/123456789",
+  "https://fischr.org/another-article/": "https://mastodon.social/@fischr/987654321"
+}
+```
+
+The mappings are cached in localStorage for 1 hour to minimize HTTP requests. To use a different mappings URL, add `data-mastodon-mappings-url="https://your-url/mappings.json"` to the script tag.
+
+**Method 2: HTML Comment**
 Add this comment anywhere in your article content:
 ```html
 <!-- mastodon: https://mastodon.social/@yourhandle/123456789 -->
 ```
 
-**Method 2: Link Element**
-Add this in your article's HTML (if Bear Blog allows custom HTML):
+**Method 3: Link Element**
+Add this in your article's HTML:
 ```html
 <link rel="mastodon-reply" href="https://mastodon.social/@yourhandle/123456789">
 ```
 
-**Method 3: Script Attribute (Manual Override)**
-Set it directly on the script tag (useful for testing or single-use cases):
+**Method 4: Script Attribute (Manual Override)**
+Set it directly on the script tag (useful for testing):
 ```html
 <script src="..." data-mastodon-url="https://mastodon.social/@yourhandle/123456789" ...></script>
 ```
