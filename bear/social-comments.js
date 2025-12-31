@@ -243,11 +243,11 @@
     const parsed = parseBlueskyUrl(url);
     if (!parsed) {
       console.warn('Invalid Bluesky URL:', url);
-      return [];
+      return { comments: [], engagement: null };
     }
 
     const did = await resolveBlueskyDid(parsed.handle);
-    if (!did) return [];
+    if (!did) return { comments: [], engagement: null };
 
     const atUri = `at://${did}/app.bsky.feed.post/${parsed.postId}`;
 
@@ -261,10 +261,20 @@
       }
 
       const data = await response.json();
-      return extractBlueskyReplies(data.thread, url);
+      const comments = extractBlueskyReplies(data.thread, url);
+
+      // Extract engagement metrics from root post
+      const rootPost = data.thread?.post;
+      const engagement = rootPost ? {
+        likes: rootPost.likeCount || 0,
+        reposts: rootPost.repostCount || 0,
+        replies: rootPost.replyCount || 0
+      } : null;
+
+      return { comments, engagement };
     } catch (e) {
       console.error('Failed to fetch Bluesky comments:', e);
-      return [];
+      return { comments: [], engagement: null };
     }
   }
 
@@ -388,23 +398,38 @@
     const parsed = parseMastodonUrl(url);
     if (!parsed) {
       console.warn('Invalid Mastodon URL:', url);
-      return [];
+      return { comments: [], engagement: null };
     }
 
     try {
-      const response = await fetch(
-        `${parsed.instance}/api/v1/statuses/${parsed.statusId}/context`
-      );
+      // Fetch both the original status and context in parallel
+      const [statusResponse, contextResponse] = await Promise.all([
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}`),
+        fetch(`${parsed.instance}/api/v1/statuses/${parsed.statusId}/context`)
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (!contextResponse.ok) {
+        throw new Error(`HTTP ${contextResponse.status}`);
       }
 
-      const data = await response.json();
-      return buildMastodonTree(data.descendants, parsed.statusId, url);
+      const contextData = await contextResponse.json();
+      const comments = buildMastodonTree(contextData.descendants, parsed.statusId, url);
+
+      // Extract engagement metrics from original post
+      let engagement = null;
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        engagement = {
+          likes: statusData.favourites_count || 0,
+          reposts: statusData.reblogs_count || 0,
+          replies: statusData.replies_count || 0
+        };
+      }
+
+      return { comments, engagement };
     } catch (e) {
       console.error('Failed to fetch Mastodon comments:', e);
-      return [];
+      return { comments: [], engagement: null };
     }
   }
 
@@ -489,11 +514,18 @@
 
       .social-comments-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         margin-bottom: 1rem;
         padding-bottom: 0.75rem;
         border-bottom: 1px solid ${dark ? '#3c3836' : '#e5e5e5'};
+        gap: 1rem;
+      }
+
+      .social-comments-header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
       }
 
       .social-comments-title {
@@ -501,6 +533,24 @@
         font-weight: 600;
         margin: 0;
         color: ${dark ? '#ebdbb2' : '#1a1a1a'};
+      }
+
+      .social-engagement {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: ${dark ? '#a89984' : '#666'};
+      }
+
+      .social-engagement-stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .social-engagement-separator {
+        color: ${dark ? '#665c54' : '#ccc'};
       }
 
       .social-comments-join {
@@ -768,17 +818,49 @@
     return li;
   }
 
-  function renderComments(container, comments, blueskyUrl, mastodonUrl) {
+  function renderEngagementStats(blueskyEngagement, mastodonEngagement) {
+    // Combine engagement from both platforms
+    const total = {
+      likes: (blueskyEngagement?.likes || 0) + (mastodonEngagement?.likes || 0),
+      reposts: (blueskyEngagement?.reposts || 0) + (mastodonEngagement?.reposts || 0),
+      replies: (blueskyEngagement?.replies || 0) + (mastodonEngagement?.replies || 0)
+    };
+
+    // Only show if there's any engagement
+    if (total.likes === 0 && total.reposts === 0 && total.replies === 0) {
+      return '';
+    }
+
+    const stats = [];
+    if (total.likes > 0) stats.push(`<span class="social-engagement-stat">❤️ ${total.likes} ${t.likes}</span>`);
+    if (total.reposts > 0) stats.push(`<span class="social-engagement-stat">🔁 ${total.reposts} ${t.reposts}</span>`);
+    if (total.replies > 0) stats.push(`<span class="social-engagement-stat">💬 ${total.replies} ${t.replies}</span>`);
+
+    return `<div class="social-engagement">${stats.join('<span class="social-engagement-separator">·</span>')}</div>`;
+  }
+
+  function renderComments(container, comments, blueskyUrl, mastodonUrl, blueskyEngagement, mastodonEngagement) {
     container.innerHTML = '';
 
     // Header
     const header = document.createElement('div');
     header.className = 'social-comments-header';
 
+    const headerLeft = document.createElement('div');
+    headerLeft.className = 'social-comments-header-left';
+
     const title = document.createElement('h3');
     title.className = 'social-comments-title';
     title.textContent = t.comments;
-    header.appendChild(title);
+    headerLeft.appendChild(title);
+
+    // Add engagement stats below title
+    const engagementHtml = renderEngagementStats(blueskyEngagement, mastodonEngagement);
+    if (engagementHtml) {
+      headerLeft.insertAdjacentHTML('beforeend', engagementHtml);
+    }
+
+    header.appendChild(headerLeft);
 
     // Join conversation links
     const joinLinks = document.createElement('div');
@@ -863,32 +945,39 @@
       promises.push(
         fetchBlueskyComments(blueskyUrl).catch(e => {
           console.error('Bluesky comments error:', e);
-          return [];
+          return { comments: [], engagement: null };
         })
       );
     } else {
-      promises.push(Promise.resolve([]));
+      promises.push(Promise.resolve({ comments: [], engagement: null }));
     }
 
     if (mastodonUrl && !blueskyOnly) {
       promises.push(
         fetchMastodonComments(mastodonUrl).catch(e => {
           console.error('Mastodon comments error:', e);
-          return [];
+          return { comments: [], engagement: null };
         })
       );
     } else {
-      promises.push(Promise.resolve([]));
+      promises.push(Promise.resolve({ comments: [], engagement: null }));
     }
 
     try {
-      const [blueskyComments, mastodonComments] = await Promise.all(promises);
+      const [blueskyResult, mastodonResult] = await Promise.all(promises);
 
       // Merge and sort all comments by date (newest first)
-      const allComments = [...blueskyComments, ...mastodonComments];
+      const allComments = [...blueskyResult.comments, ...mastodonResult.comments];
       allComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      renderComments(container, allComments, blueskyUrl, mastodonUrl);
+      renderComments(
+        container,
+        allComments,
+        blueskyUrl,
+        mastodonUrl,
+        blueskyResult.engagement,
+        mastodonResult.engagement
+      );
     } catch (e) {
       console.error('Failed to load comments:', e);
       container.innerHTML = `<div class="social-comments-error">${t.failed}</div>`;
