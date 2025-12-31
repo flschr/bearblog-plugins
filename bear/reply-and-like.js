@@ -118,28 +118,6 @@
     return null;
   }
 
-  // Extract status ID and author from Mastodon URL
-  // URL format: https://instance/@user/statusId or https://instance/@user@domain/statusId
-  function parseMastodonUrl(url) {
-    if (!url) return null;
-    try {
-      const parsed = new URL(url);
-      const pathParts = parsed.pathname.split('/').filter(Boolean);
-      // Expected: ['@user', 'statusId'] or ['@user@domain', 'statusId']
-      if (pathParts.length >= 2 && pathParts[0].startsWith('@')) {
-        const author = pathParts[0]; // e.g., '@flschr' or '@flschr@mastodon.social'
-        const statusId = pathParts[pathParts.length - 1]; // numeric ID
-        // Validate that statusId looks like a number
-        if (/^\d+$/.test(statusId)) {
-          return { author, statusId, instance: parsed.host };
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse Mastodon URL:', e);
-    }
-    return null;
-  }
-
   // Translations
   const translations = {
     de: {
@@ -278,10 +256,10 @@
     // Find the Mastodon URL for this article
     const mastodonUrl = await findMastodonUrl();
 
-    // If a Mastodon URL is found, use authorize_interaction with type=reply to open reply modal directly
-    // This allows the user to reply in-thread (their reply will be part of the conversation)
+    // If a Mastodon URL is found, use authorize_interaction to show the post on user's instance
+    // The user can then click reply to respond in-thread
     if (mastodonUrl) {
-      shareUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(mastodonUrl)}&type=reply`;
+      shareUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(mastodonUrl)}`;
     } else {
       // Fallback: create a new toot mentioning the author with the blog URL
       const url = window.location.href;
