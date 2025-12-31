@@ -92,7 +92,7 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 
 ### Reply and Like
 
-*   **Description**: Adds reply buttons (Mail/Mastodon) and an optional styled like button that replaces Bear Blog's native upvote. Supports German/English. See it in action [on my personal website](https://fischr.org/).
+*   **Description**: Adds reply buttons (Mail/Mastodon) and an optional styled like button that replaces Bear Blog's native upvote. Mastodon replies can be automatically threaded under the original toot where you shared the article. Supports German/English. See it in action [on my personal website](https://fischr.org/).
 *   **Installation**: Add to `Custom footer content`:
     ```html
     <script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
@@ -113,6 +113,43 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 | `data-lang` | No | Language: `de` or `en` (default) |
 
 To customize the like button text use: `data-like="Like|Liked!"` (= text before|after click).
+
+#### Mastodon Reply Threading
+
+To enable readers to reply directly to the Mastodon toot where you shared an article (instead of creating a new mention), the plugin automatically checks multiple sources for the toot URL (in this order):
+
+**Method 1: Automated via bearblog-automation (Recommended)**
+If you use the [bearblog-automation](https://github.com/flschr/bearblog-automation) social bot, it can automatically maintain a mapping file. The plugin will fetch this file from GitHub and automatically find the correct toot URL for each article.
+
+The social bot should create/update a `mastodon-mappings.json` file in the automation repository with this structure:
+```json
+{
+  "https://fischr.org/article-slug/": "https://mastodon.social/@fischr/123456789",
+  "https://fischr.org/another-article/": "https://mastodon.social/@fischr/987654321"
+}
+```
+
+The mappings are cached in localStorage for 1 hour to minimize HTTP requests. To use a different mappings URL, add `data-mastodon-mappings-url="https://your-url/mappings.json"` to the script tag.
+
+**Method 2: HTML Comment**
+Add this comment anywhere in your article content:
+```html
+<!-- mastodon: https://mastodon.social/@yourhandle/123456789 -->
+```
+
+**Method 3: Link Element**
+Add this in your article's HTML:
+```html
+<link rel="mastodon-reply" href="https://mastodon.social/@yourhandle/123456789">
+```
+
+**Method 4: Script Attribute (Manual Override)**
+Set it directly on the script tag (useful for testing):
+```html
+<script src="..." data-mastodon-url="https://mastodon.social/@yourhandle/123456789" ...></script>
+```
+
+When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` endpoint to create a proper threaded reply. Without it, the button falls back to creating a new toot with a mention.
 
 #### CSS Classes
 
