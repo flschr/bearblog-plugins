@@ -57,7 +57,8 @@
       showMore: 'Show more replies',
       likes: 'likes',
       reposts: 'reposts',
-      replies: 'replies'
+      replies: 'replies',
+      likePost: 'Click to like this post'
     },
     de: {
       comments: 'Kommentare',
@@ -71,7 +72,8 @@
       showMore: 'Weitere Antworten anzeigen',
       likes: 'Likes',
       reposts: 'Reposts',
-      replies: 'Antworten'
+      replies: 'Antworten',
+      likePost: 'Klicken um diesen Beitrag zu liken'
     }
   };
 
@@ -113,8 +115,12 @@
   }
 
   function normalizeUrl(url) {
-    // Remove query string and hash, normalize trailing slash
-    return url.replace(/[?#].*$/, '').replace(/\/$/, '');
+    // Remove query string and hash, normalize trailing slash, http/https, and www
+    return url
+      .replace(/[?#].*$/, '')      // Remove query string and hash
+      .replace(/\/$/, '')          // Remove trailing slash
+      .replace(/^https?:\/\//, '') // Remove protocol
+      .replace(/^www\./, '');      // Remove www prefix
   }
 
   async function findSocialUrls() {
@@ -160,6 +166,37 @@
     }
 
     return { bluesky: blueskyUrl, mastodon: mastodonUrl };
+  }
+
+  // ─── BearBlog Upvote Integration ──────────────────────────────────────────────
+
+  function getBearBlogUpvote() {
+    // Find the upvote form/button (various selectors for Bear Blog)
+    const upvoteContainer = document.querySelector('#upvote-form, .upvote-button, .upvote-container, .upvote');
+    if (!upvoteContainer) return null;
+
+    // Find the actual clickable button
+    const upvoteButton = upvoteContainer.querySelector('button, [type="submit"], a') || upvoteContainer;
+
+    // Try to extract the count from the button text or nearby elements
+    let count = 0;
+    const buttonText = upvoteButton?.textContent || '';
+    const countMatch = buttonText.match(/(\d+)/);
+    if (countMatch) {
+      count = parseInt(countMatch[1], 10);
+    }
+
+    // Check if already upvoted
+    const isUpvoted = upvoteButton?.classList.contains('upvoted') ||
+                      upvoteButton?.disabled ||
+                      upvoteButton?.hasAttribute('disabled');
+
+    return {
+      count,
+      isUpvoted,
+      button: upvoteButton,
+      container: upvoteContainer
+    };
   }
 
   // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -841,6 +878,16 @@
 
   function renderComments(container, comments, blueskyUrl, mastodonUrl, blueskyEngagement, mastodonEngagement) {
     container.innerHTML = '';
+
+    // Get BearBlog upvote info
+    const bearBlogUpvote = getBearBlogUpvote();
+
+    // Combine engagement from all platforms (Bluesky + Mastodon + BearBlog)
+    const totalEngagement = {
+      likes: (blueskyEngagement?.likes || 0) + (mastodonEngagement?.likes || 0) + (bearBlogUpvote?.count || 0),
+      reposts: (blueskyEngagement?.reposts || 0) + (mastodonEngagement?.reposts || 0),
+      replies: (blueskyEngagement?.replies || 0) + (mastodonEngagement?.replies || 0)
+    };
 
     // Header
     const header = document.createElement('div');
