@@ -1,9 +1,18 @@
 /**
- * Social Reactions Plugin for Bear Blog - Lightweight Custom Version
- * All texts are managed via data-attributes:
- * data-like="Like|Thanks!|Liked"
- * data-conv="Start talk|Join talk|reactions"
- * data-mail="Email me"
+ * Social Reactions Plugin for Bear Blog
+ * * Features:
+ * - Combined global like count
+ * - Dynamic button labels (Start vs. Join conversation)
+ * - Service filtering (show buttons while counting all)
+ * - Fallback intents for Bsky/Masto if no mapping exists
+ * * Usage:
+ * <script src="..." 
+ * data-email="you@email.com"
+ * data-services="mastodon,bluesky,mail"
+ * data-like="Like this post|Thank you!|You liked this"
+ * data-conv="Start the conversation|Join the conversation|reactions"
+ * data-mail="Send a private note"
+ * defer></script>
  */
 (function() {
   'use strict';
@@ -13,9 +22,10 @@
   const mastodonHandle = scriptTag?.dataset.mastodon;
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
 
-  // Extraktion mit Fallbacks
+  // Configurable UI Texts via data-attributes
   const customLike = scriptTag?.dataset.like?.split('|') || [];
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
+  const activeServices = scriptTag?.dataset.services ? scriptTag.dataset.services.split(',').map(s => s.trim()) : ['bluesky', 'mastodon', 'mail'];
   
   const ui = {
     like: customLike[0] || 'Like',
@@ -31,13 +41,19 @@
     heart: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
     heartOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
     mail: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
-    mastodon: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 0 0 .023-.043v-1.809a.052.052 0 0 0-.02-.041.053.053 0 0 0-.046-.01 20.282 20.282 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 0 1-.319-1.433.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.668 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12v6.406z"/></svg>',
+    mastodon: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 0 0 .023-.043v-1.809a.052.052 0 0 0-.02-.041.053.053 0 0 0-.046-.01 20.282 20.282 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593-5.593 0 0 1-.319-1.433.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.668 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12v6.406z"/></svg>',
     bluesky: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>'
   };
 
-  // --- Core Functions (Lightweight) ---
+  // --- Core Utility Functions ---
   function normalizeUrl(url) {
     return url.replace(/[?#].*$/, '').replace(/\/$/, '').replace(/^https?:\/\//, '').replace(/^www\./, '');
+  }
+
+  function isDarkMode() {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    const rgb = bg.match(/\d+/g);
+    return rgb ? (rgb[0]*299 + rgb[1]*587 + rgb[2]*114)/1000 < 128 : false;
   }
 
   async function findSocialUrls() {
@@ -93,10 +109,11 @@
     } catch (e) { return null; }
   }
 
-  // --- UI & Rendering ---
   function injectStyles() {
-    const dark = (getComputedStyle(document.body).backgroundColor.match(/\d+/g) || [255,255,255]).reduce((a,b)=>a+parseInt(b),0)/3 < 128;
+    const dark = isDarkMode();
+    if (document.getElementById('social-reactions-styles')) return;
     const style = document.createElement('style');
+    style.id = 'social-reactions-styles';
     style.textContent = `
       .social-reactions-wrapper { margin: 1.5rem 0; }
       .social-reactions-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
@@ -107,14 +124,21 @@
         background: ${dark ? '#282828' : '#fafafa'}; color: ${dark ? '#ebdbb2' : '#333'};
         cursor: pointer; transition: all 0.2s ease;
       }
-      .social-reactions-button:hover:not(:disabled) { background: ${dark ? '#3c3836' : '#f0f0f0'}; }
-      .social-reactions-button.liked { background: ${dark ? 'rgba(251, 73, 52, 0.1)' : '#fff0f0'}; border-color: #fb4934; color: #fb4934; }
+      .social-reactions-button:hover:not(:disabled) { 
+        background: ${dark ? '#3c3836' : '#f0f0f0'}; border-color: ${dark ? '#665c54' : '#bbb'};
+      }
+      .social-reactions-button.liked {
+        background: ${dark ? 'rgba(251, 73, 52, 0.1)' : '#fff0f0'};
+        border-color: #fb4934; color: #fb4934;
+      }
+      .social-reactions-button svg { flex-shrink: 0; }
       .social-reactions-button-bluesky:hover { color: #0085ff; }
       .social-reactions-button-mastodon:hover { color: #563acc; }
     `;
     document.head.appendChild(style);
   }
 
+  // --- Main Initializer ---
   async function init() {
     if (!document.body.classList.contains('post') || !email) return;
     injectStyles();
@@ -128,64 +152,91 @@
     const btnContainer = document.createElement('div');
     btnContainer.className = 'social-reactions-buttons';
 
-    // 1. Like
+    // 1. LIKE BUTTON (Always visible, counts all)
     const upBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
     if (scriptTag?.dataset.like !== undefined && upBtn) {
       const total = (bsky?.likes||0) + (masto?.likes||0) + (bb?.count||0);
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button';
-      const update = (voted, count) => {
-        btn.classList.toggle('liked', voted); btn.disabled = voted;
+      
+      const updateState = (voted, count) => {
+        btn.classList.toggle('liked', voted);
+        btn.disabled = voted;
         btn.innerHTML = voted ? `${icons.heart} ${count} ${ui.liked}` : `${icons.heartOutline} ${count} ${ui.like}`;
       };
-      update(bb?.isUpvoted || upBtn.disabled, total);
+
+      updateState(bb?.isUpvoted || upBtn.disabled, total);
+
       btn.onclick = () => {
-        upBtn.click(); btn.innerHTML = `${icons.heart} ${ui.thankYou}`; btn.classList.add('liked'); btn.disabled = true;
-        setTimeout(() => update(true, total+1), 3000);
+        upBtn.click();
+        btn.innerHTML = `${icons.heart} ${ui.thankYou}`;
+        btn.classList.add('liked'); btn.disabled = true;
+        setTimeout(() => updateState(true, total+1), 3000);
       };
       btnContainer.appendChild(btn);
       document.querySelector('#upvote-form').style.display = 'none';
     }
 
-    // Social Helper
-    const getTxt = (eng, lbl) => {
-      if (!eng) return lbl;
-      const t = (eng.likes||0) + (eng.reposts||0) + (eng.replies||0);
-      return t === 0 ? ui.startConv : (eng.replies > 0 ? `${ui.joinConv} (${t})` : `${t} ${ui.reactions}`);
+    // Social Text Logic Helper
+    const getBtnText = (eng, fallback) => {
+      if (!eng) return fallback;
+      const total = (eng.likes||0) + (eng.reposts||0) + (eng.replies||0);
+      if (total === 0) return ui.startConv;
+      return eng.replies > 0 ? `${ui.joinConv} (${total})` : `${total} ${ui.reactions}`;
     };
 
-    if (urls.bluesky) {
+    // 2. BLUESKY BUTTON (Only if in data-services)
+    if (activeServices.includes('bluesky')) {
       const btn = document.createElement('button');
       btn.className = 'social-reactions-button social-reactions-button-bluesky';
-      btn.innerHTML = `${icons.bluesky} ${getTxt(bsky, 'Bluesky')}`;
-      btn.onclick = () => window.open(urls.bluesky, '_blank');
-      btnContainer.appendChild(btn);
-    }
-
-    if (mastodonHandle) {
-      const btn = document.createElement('button');
-      btn.className = 'social-reactions-button social-reactions-button-mastodon';
-      btn.innerHTML = `${icons.mastodon} ${getTxt(masto, 'Mastodon')}`;
+      btn.innerHTML = `${icons.bluesky} ${getBtnText(bsky, 'Bluesky')}`;
       btn.onclick = () => {
-        const inst = localStorage.getItem('mastodon_instance') || prompt('Mastodon Instance (e.g. mastodon.social):');
-        if (!inst) return; localStorage.setItem('mastodon_instance', inst);
-        window.open(urls.mastodon ? `https://${inst}/authorize_interaction?uri=${encodeURIComponent(urls.mastodon)}` : `https://${inst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`, '_blank');
+        if (urls.bluesky) {
+          window.open(urls.bluesky, '_blank');
+        } else {
+          const text = `Re: ${document.title} ${window.location.href}`;
+          window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`, '_blank');
+        }
       };
       btnContainer.appendChild(btn);
     }
 
-    // Mail
-    const mBtn = document.createElement('button');
-    mBtn.className = 'social-reactions-button';
-    mBtn.innerHTML = `${icons.mail} ${ui.mail}`;
-    mBtn.onclick = () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
-    btnContainer.appendChild(mBtn);
+    // 3. MASTODON BUTTON (Only if in data-services)
+    if (mastodonHandle && activeServices.includes('mastodon')) {
+      const btn = document.createElement('button');
+      btn.className = 'social-reactions-button social-reactions-button-mastodon';
+      btn.innerHTML = `${icons.mastodon} ${getBtnText(masto, 'Mastodon')}`;
+      btn.onclick = () => {
+        const inst = localStorage.getItem('mastodon_instance') || prompt('Mastodon Instance (e.g. mastodon.social):');
+        if (!inst) return;
+        localStorage.setItem('mastodon_instance', inst.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+        const cleanInst = localStorage.getItem('mastodon_instance');
+        const url = urls.mastodon 
+          ? `https://${cleanInst}/authorize_interaction?uri=${encodeURIComponent(urls.mastodon)}`
+          : `https://${cleanInst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`;
+        window.open(url, '_blank');
+      };
+      btnContainer.appendChild(btn);
+    }
 
-    const wrap = document.createElement('div'); wrap.className = 'social-reactions-wrapper';
+    // 4. MAIL BUTTON (Only if in data-services)
+    if (activeServices.includes('mail')) {
+      const btn = document.createElement('button');
+      btn.className = 'social-reactions-button';
+      btn.innerHTML = `${icons.mail} ${ui.mail}`;
+      btn.onclick = () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
+      btnContainer.appendChild(btn);
+    }
+
+    // Wrap and Insert
+    const wrap = document.createElement('div');
+    wrap.className = 'social-reactions-wrapper';
     wrap.appendChild(btnContainer);
+    
     const target = document.querySelector('#upvote-form') || document.querySelector('.blog-content');
     if (target) target.parentNode.insertBefore(wrap, target);
   }
 
-  init();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
