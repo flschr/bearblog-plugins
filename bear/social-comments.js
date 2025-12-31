@@ -1,8 +1,6 @@
 /**
- * Social Reactions Plugin for Bear Blog - Deep Count Edition
- * - Fixes Mastodon reply counts (counts full thread depth)
- * - Handles Singular/Plural
- * - Integrated Mastodon Modal
+ * Social Reactions Plugin for Bear Blog - Logic Only Edition
+ * CSS must be provided in the blog stylesheet.
  */
 (function() {
   'use strict';
@@ -71,14 +69,12 @@
       } else {
         const u = new URL(url);
         const id = u.pathname.split('/').pop();
-        // Parallel fetch for status and context
         const [sRes, cRes] = await Promise.all([
           fetch(`${u.origin}/api/v1/statuses/${id}`),
           fetch(`${u.origin}/api/v1/statuses/${id}/context`)
         ]);
         const sData = await sRes.json();
         const cData = await cRes.json();
-        // Deep count using context descendants
         const rCount = cData.descendants ? cData.descendants.length : (sData.replies_count || 0);
         return { likes: sData.favourites_count||0, total: (sData.favourites_count||0) + (sData.reblogs_count||0) + rCount, replies: rCount };
       }
@@ -100,9 +96,10 @@
     if (modal) return;
     const dark = isDarkMode();
     modal = document.createElement('div');
+    modal.className = 'sr-modal-overlay';
     modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;font-family:inherit;';
     modal.innerHTML = `
-      <div style="background:${dark ? '#1e1e1e' : '#fff'}; padding:1.5rem; border-radius:12px; max-width:320px; width:90%; color:${dark ? '#ebdbb2' : '#333'}; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+      <div class="sr-modal-content" style="background:${dark ? '#1e1e1e' : '#fff'}; padding:1.5rem; border-radius:12px; max-width:320px; width:90%; color:${dark ? '#ebdbb2' : '#333'}; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
         <label style="display:block; margin-bottom:0.7rem; font-weight:bold;">${ui.modalTitle}</label>
         <input type="text" id="masto-instance" placeholder="${ui.modalPlaceholder}" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid ${dark ? '#444' : '#ccc'}; border-radius:6px; background:${dark ? '#2a2a2a' : '#fff'}; color:inherit; box-sizing:border-box;">
         <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
@@ -118,43 +115,13 @@
       let inst = modalInput.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
       if (!inst) return; localStorage.setItem('mastodon_instance', inst);
       modal.style.display = 'none';
-      const u = storedMastoUrl 
-        ? `https://${inst}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}`
-        : `https://${inst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`;
+      const u = storedMastoUrl ? `https://${inst}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}` : `https://${inst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`;
       window.open(u, '_blank');
     };
   }
 
-  function injectStyles() {
-    const dark = isDarkMode();
-    if (document.getElementById('social-reactions-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'social-reactions-styles';
-    style.textContent = `
-      .social-reactions-wrapper { margin: 1.5rem 0; }
-      .social-reactions-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-      .social-reactions-button {
-        display: inline-flex; align-items: center; padding: 0.5rem 0.9rem;
-        font-size: 0.9rem; font-family: inherit; font-weight: 500;
-        border: 1px solid ${dark ? '#504945' : '#ddd'}; border-radius: 8px;
-        background: ${dark ? '#282828' : '#fafafa'}; color: ${dark ? '#ebdbb2' : '#333'};
-        cursor: pointer; transition: all 0.2s ease; line-height: 1; white-space: nowrap;
-      }
-      .social-reactions-button:hover:not(:disabled) { background: ${dark ? '#3c3836' : '#f0f0f0'}; border-color: ${dark ? '#665c54' : '#bbb'}; }
-      .social-reactions-button.liked { background: ${dark ? 'rgba(251, 73, 52, 0.1)' : '#fff0f0'}; border-color: #fb4934; color: #fb4934; cursor: default; }
-      .social-reactions-button .sr-icon { display: flex; align-items: center; margin-right: 0.5rem; }
-      .social-reactions-button .sr-count { font-variant-numeric: tabular-nums; font-weight: 700; margin-right: 0.25rem; }
-      .social-reactions-button.liked:hover .sr-icon svg { animation: heartBeat 0.8s infinite; }
-      @keyframes heartBeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
-      .social-reactions-button-bluesky:hover { color: #0085ff; }
-      .social-reactions-button-mastodon:hover { color: #563acc; }
-    `;
-    document.head.appendChild(style);
-  }
-
   async function init() {
     if (!document.body.classList.contains('post') || !email) return;
-    injectStyles();
 
     const [urls, bb] = await Promise.all([findSocialUrls(), fetchBearBlog()]);
     const [bsky, masto] = await Promise.all([
@@ -174,7 +141,7 @@
     if (scriptTag?.dataset.like !== undefined && upBtn) {
       const total = (bsky?.likes||0) + (masto?.likes||0) + (bb?.count||0);
       const btn = document.createElement('button');
-      btn.className = 'social-reactions-button';
+      btn.className = 'social-reactions-button sr-button-like';
       const upd = (v, c) => {
         btn.classList.toggle('liked', v); btn.disabled = v;
         btn.innerHTML = buildInner(v ? icons.heart : icons.heartOutline, c, v ? ui.liked : ui.like);
@@ -200,18 +167,15 @@
 
     if (activeServices.includes('bluesky')) {
       const btn = document.createElement('button');
-      btn.className = 'social-reactions-button social-reactions-button-bluesky';
+      btn.className = 'social-reactions-button sr-button-bluesky';
       btn.innerHTML = buildInner(icons.bluesky, getCount(bsky, urls.bluesky), getTxt(bsky, urls.bluesky));
-      btn.onclick = () => {
-        if (urls.bluesky) window.open(urls.bluesky, '_blank');
-        else window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent('Re: ' + document.title + ' ' + window.location.href)}`, '_blank');
-      };
+      btn.onclick = () => { if (urls.bluesky) window.open(urls.bluesky, '_blank'); else window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent('Re: ' + document.title + ' ' + window.location.href)}`, '_blank'); };
       btnContainer.appendChild(btn);
     }
 
     if (activeServices.includes('mastodon')) {
       const btn = document.createElement('button');
-      btn.className = 'social-reactions-button social-reactions-button-mastodon';
+      btn.className = 'social-reactions-button sr-button-mastodon';
       btn.innerHTML = buildInner(icons.mastodon, getCount(masto, urls.mastodon), getTxt(masto, urls.mastodon));
       btn.onclick = () => {
         storedMastoUrl = urls.mastodon;
@@ -225,7 +189,7 @@
 
     if (activeServices.includes('mail')) {
       const btn = document.createElement('button');
-      btn.className = 'social-reactions-button';
+      btn.className = 'social-reactions-button sr-button-mail';
       btn.innerHTML = buildInner(icons.mail, 0, ui.mail);
       btn.onclick = () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
       btnContainer.appendChild(btn);
