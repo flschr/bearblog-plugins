@@ -179,15 +179,55 @@
 
   async function fetchBearBlogUpvoteData() {
     // Find the uid from the hidden input in the upvote form
-    const uidInput = document.querySelector('#upvote-form input[name="uid"]');
-    if (!uidInput) return null;
+    // BearBlog uses different input names, try multiple selectors
+    const uidInput = document.querySelector('#upvote-form input[name="uid"]') ||
+                     document.querySelector('#upvote-form input[type="hidden"]') ||
+                     document.querySelector('form[action*="upvote"] input[type="hidden"]');
 
-    const uid = uidInput.value;
-    if (!uid) return null;
+    let uid = uidInput?.value;
+
+    // If no uid found via input, try to extract from form action or page URL
+    if (!uid) {
+      const upvoteForm = document.querySelector('#upvote-form, form[action*="upvote"]');
+      if (upvoteForm?.action) {
+        const actionMatch = upvoteForm.action.match(/\/upvote\/([^\/]+)/);
+        if (actionMatch) uid = actionMatch[1];
+      }
+    }
+
+    // Also try to get uid from the page's canonical URL or slug
+    if (!uid) {
+      const canonicalLink = document.querySelector('link[rel="canonical"]');
+      const pageUrl = canonicalLink?.href || window.location.href;
+      const slugMatch = pageUrl.match(/\/([^\/]+)\/?$/);
+      if (slugMatch && slugMatch[1] && !slugMatch[1].includes('.')) {
+        uid = slugMatch[1];
+      }
+    }
+
+    // If still no uid, try to find it from the BearBlog upvote script data
+    if (!uid) {
+      const scripts = document.querySelectorAll('script');
+      for (const script of scripts) {
+        const match = script.textContent?.match(/['"]uid['"]\s*:\s*['"]([^'"]+)['"]/);
+        if (match) {
+          uid = match[1];
+          break;
+        }
+      }
+    }
+
+    if (!uid) {
+      console.warn('BearBlog upvote: Could not find uid');
+      return null;
+    }
 
     try {
       const response = await fetch(`/upvote-info/${uid}/`);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.warn('BearBlog upvote API returned:', response.status);
+        return null;
+      }
       const data = await response.json();
       bearBlogUpvoteCache = {
         count: data.upvote_count || 0,
@@ -1110,10 +1150,27 @@
 
       // Attach click handler to like button
       const likeBtn = headerLeft.querySelector('.social-like-button');
-      if (likeBtn && bearBlogUpvote?.button) {
-        likeBtn.addEventListener('click', function() {
-          // Trigger the native BearBlog upvote
-          bearBlogUpvote.button.click();
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async function() {
+          // If native BearBlog button exists, click it
+          if (bearBlogUpvote?.button) {
+            bearBlogUpvote.button.click();
+          } else {
+            // Otherwise, submit upvote directly via BearBlog API
+            try {
+              const upvoteForm = document.querySelector('#upvote-form');
+              if (upvoteForm) {
+                // Submit the form
+                const formData = new FormData(upvoteForm);
+                await fetch(upvoteForm.action || '/upvote/', {
+                  method: 'POST',
+                  body: formData
+                });
+              }
+            } catch (e) {
+              console.warn('Failed to submit upvote:', e);
+            }
+          }
 
           // Optimistic UI update - show liked state immediately
           likeBtn.classList.add('liked');
@@ -1136,9 +1193,11 @@
     setupBearBlogObserver();
 
     // Hide native BearBlog upvote button since we have our own
-    if (bearBlogUpvote?.container) {
-      bearBlogUpvote.container.style.display = 'none';
-    }
+    // Search for multiple possible selectors to ensure we find it
+    const nativeUpvoteElements = document.querySelectorAll('#upvote-form, .upvote-container, .upvote, form[action*="upvote"]');
+    nativeUpvoteElements.forEach(el => {
+      el.style.display = 'none';
+    });
 
     // Join conversation links
     const joinLinks = document.createElement('div');
