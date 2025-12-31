@@ -302,13 +302,6 @@
 
       // Extract engagement metrics from root post
       const rootPost = data.thread?.post;
-      if (rootPost) {
-        console.log('Bluesky API response:', {
-          likeCount: rootPost.likeCount,
-          repostCount: rootPost.repostCount,
-          replyCount: rootPost.replyCount
-        });
-      }
       const engagement = rootPost ? {
         likes: rootPost.likeCount || 0,
         reposts: rootPost.repostCount || 0,
@@ -460,21 +453,15 @@
       const comments = buildMastodonTree(contextData.descendants, parsed.statusId, url);
 
       // Extract engagement metrics from original post
+      // Note: Mastodon's reblogs_count may be incomplete due to federation delays
       let engagement = null;
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        console.log('Mastodon API response:', {
-          favourites_count: statusData.favourites_count,
-          reblogs_count: statusData.reblogs_count,
-          replies_count: statusData.replies_count
-        });
         engagement = {
           likes: statusData.favourites_count || 0,
           reposts: statusData.reblogs_count || 0,
           replies: statusData.replies_count || 0
         };
-      } else {
-        console.warn('Failed to fetch Mastodon status for engagement:', statusResponse.status);
       }
 
       return { comments, engagement };
