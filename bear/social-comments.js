@@ -33,27 +33,42 @@
   const showLikeButton = scriptTag?.dataset.like !== undefined;
   const likeTexts = scriptTag?.dataset.like?.split('|') || [];
 
+  // SVG Icons (inline for no external dependencies)
+  const icons = {
+    heart: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+    heartOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+    repost: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>',
+    comment: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 6h-2V4c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h2v4l4-4h8c1.1 0 2-.9 2-2v-2h2c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-4 6H3V4h14v8zm4-2h-2V8h-2V6h4v4z"/></svg>',
+    mail: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
+    mastodon: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 0 0 .023-.043v-1.809a.052.052 0 0 0-.02-.041.053.053 0 0 0-.046-.01 20.282 20.282 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 0 1-.319-1.433.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.668 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12v6.406z"/></svg>',
+    bluesky: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>'
+  };
+
   // Translations
   const translations = {
     de: {
-      mail: 'Per Mail antworten',
-      mastodon: 'Auf Mastodon antworten',
-      bluesky: 'Auf Bluesky antworten',
+      mail: 'Mail',
+      mastodon: 'Mastodon',
+      bluesky: 'Bluesky',
       like: 'Gefällt mir',
       liked: 'Gefällt mir',
-      reactions: 'Reaktionen',
+      likes: 'likes',
+      reposts: 'reposts',
+      replies: 'replies',
       modalTitle: 'Deine Mastodon-Instanz',
       modalPlaceholder: 'z.B. mastodon.social',
       modalCancel: 'Abbrechen',
       modalOpen: 'Öffnen'
     },
     en: {
-      mail: 'Reply by Mail',
-      mastodon: 'Reply on Mastodon',
-      bluesky: 'Reply on Bluesky',
+      mail: 'Mail',
+      mastodon: 'Mastodon',
+      bluesky: 'Bluesky',
       like: 'Like this post',
       liked: 'Liked',
-      reactions: 'reactions',
+      likes: 'likes',
+      reposts: 'reposts',
+      replies: 'replies',
       modalTitle: 'Your Mastodon instance',
       modalPlaceholder: 'e.g., mastodon.social',
       modalCancel: 'Cancel',
@@ -383,25 +398,34 @@
       .social-reactions-stats {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        flex-wrap: wrap;
+        gap: 1rem;
         margin-bottom: 0.75rem;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         color: ${dark ? '#a89984' : '#666'};
       }
 
       .social-reactions-count {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 0.35rem;
         font-weight: 500;
       }
 
-      .social-reactions-platforms {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.8rem;
-        opacity: 0.7;
+      .social-reactions-count svg {
+        vertical-align: middle;
+      }
+
+      .social-reactions-likes svg {
+        color: ${dark ? '#fb4934' : '#e25555'};
+      }
+
+      .social-reactions-reposts svg {
+        color: ${dark ? '#8ec07c' : '#2e9e47'};
+      }
+
+      .social-reactions-replies svg {
+        color: ${dark ? '#83a598' : '#1976d2'};
       }
 
       .social-reactions-buttons {
@@ -436,6 +460,10 @@
         opacity: 0.7;
       }
 
+      .social-reactions-button svg {
+        flex-shrink: 0;
+      }
+
       .social-reactions-button.liked {
         background: ${dark ? 'rgba(251, 73, 52, 0.15)' : '#fff0f0'};
         border-color: ${dark ? '#fb4934' : '#ffcdd2'};
@@ -451,11 +479,11 @@
       }
 
       .social-reactions-button-mastodon:hover {
-        color: ${dark ? '#b39ddb' : '#6a1b9a'};
+        color: ${dark ? '#b39ddb' : '#563acc'};
       }
 
       .social-reactions-button-bluesky:hover {
-        color: ${dark ? '#64b5f6' : '#1565c0'};
+        color: ${dark ? '#64b5f6' : '#0085ff'};
       }
     `;
     document.head.appendChild(style);
@@ -494,6 +522,8 @@
                        (bearBlogData?.count || 0);
     const totalReposts = (blueskyEngagement?.reposts || 0) +
                          (mastodonEngagement?.reposts || 0);
+    const totalReplies = (blueskyEngagement?.replies || 0) +
+                         (mastodonEngagement?.replies || 0);
 
     // Find where to insert
     const upvoteContainer = document.querySelector('#upvote-form, .upvote-container, .upvote');
@@ -508,23 +538,27 @@
       const stats = document.createElement('div');
       stats.className = 'social-reactions-stats';
 
-      const count = document.createElement('span');
-      count.className = 'social-reactions-count';
-      count.innerHTML = `❤️ <span class="social-reactions-total">${totalLikes}</span> ${t.reactions}`;
-      if (totalReposts > 0) {
-        count.innerHTML += ` · 🔁 ${totalReposts}`;
-      }
-      stats.appendChild(count);
+      // Likes
+      const likesSpan = document.createElement('span');
+      likesSpan.className = 'social-reactions-count social-reactions-likes';
+      likesSpan.innerHTML = `${icons.heart} <span class="social-reactions-total">${totalLikes}</span> ${t.likes}`;
+      stats.appendChild(likesSpan);
 
-      // Platform indicators
-      const platforms = document.createElement('span');
-      platforms.className = 'social-reactions-platforms';
-      const icons = [];
-      if (blueskyEngagement) icons.push('🦋');
-      if (mastodonEngagement) icons.push('🐘');
-      if (bearBlogData) icons.push('🐻');
-      platforms.textContent = icons.join(' ');
-      stats.appendChild(platforms);
+      // Reposts
+      if (totalReposts > 0) {
+        const repostsSpan = document.createElement('span');
+        repostsSpan.className = 'social-reactions-count social-reactions-reposts';
+        repostsSpan.innerHTML = `${icons.repost} ${totalReposts} ${t.reposts}`;
+        stats.appendChild(repostsSpan);
+      }
+
+      // Replies
+      if (totalReplies > 0) {
+        const repliesSpan = document.createElement('span');
+        repliesSpan.className = 'social-reactions-count social-reactions-replies';
+        repliesSpan.innerHTML = `${icons.comment} ${totalReplies} ${t.replies}`;
+        stats.appendChild(repliesSpan);
+      }
 
       wrapper.appendChild(stats);
     }
@@ -545,10 +579,10 @@
 
       if (isLiked) {
         likeBtn.classList.add('liked');
-        likeBtn.textContent = `❤️ ${t.liked}`;
+        likeBtn.innerHTML = `${icons.heart} ${t.liked}`;
         likeBtn.disabled = true;
       } else {
-        likeBtn.textContent = `🤍 ${t.like}`;
+        likeBtn.innerHTML = `${icons.heartOutline} ${t.like}`;
       }
 
       likeBtn.addEventListener('click', async function() {
@@ -556,7 +590,7 @@
 
         // Optimistic update
         likeBtn.classList.add('liked');
-        likeBtn.textContent = `❤️ ${t.liked}`;
+        likeBtn.innerHTML = `${icons.heart} ${t.liked}`;
         likeBtn.disabled = true;
 
         // Update total count
@@ -573,7 +607,7 @@
     const mailBtn = document.createElement('button');
     mailBtn.className = 'social-reactions-button social-reactions-button-mail';
     mailBtn.type = 'button';
-    mailBtn.textContent = `✉️ ${t.mail}`;
+    mailBtn.innerHTML = `${icons.mail} ${t.mail}`;
     mailBtn.addEventListener('click', () => {
       const title = stripBlogName(document.title);
       window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(title)}`;
@@ -585,7 +619,7 @@
       const mastoBtn = document.createElement('button');
       mastoBtn.className = 'social-reactions-button social-reactions-button-mastodon';
       mastoBtn.type = 'button';
-      mastoBtn.textContent = `🐘 ${t.mastodon}`;
+      mastoBtn.innerHTML = `${icons.mastodon} ${t.mastodon}`;
       mastoBtn.addEventListener('click', e => {
         e.preventDefault();
         openModal();
@@ -598,7 +632,7 @@
       const bskyBtn = document.createElement('button');
       bskyBtn.className = 'social-reactions-button social-reactions-button-bluesky';
       bskyBtn.type = 'button';
-      bskyBtn.textContent = `🦋 ${t.bluesky}`;
+      bskyBtn.innerHTML = `${icons.bluesky} ${t.bluesky}`;
       bskyBtn.addEventListener('click', () => {
         window.open(blueskyUrl, '_blank');
       });
