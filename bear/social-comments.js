@@ -461,6 +461,8 @@
           reposts: statusData.reblogs_count || 0,
           replies: statusData.replies_count || 0
         };
+      } else {
+        console.warn('Failed to fetch Mastodon status for engagement:', statusResponse.status);
       }
 
       return { comments, engagement };
