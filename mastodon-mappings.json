@@ -1,7 +1,0 @@
-{
-  "_comment": "This file maps article URLs to their corresponding Mastodon toot URLs",
-  "_usage": "Automatically populated by the social_bot in bearblog-automation",
-  "_example": {
-    "https://fischr.org/example-article/": "https://mastodon.social/@fischr/123456789012345"
-  }
-}
