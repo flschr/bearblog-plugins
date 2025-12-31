@@ -280,11 +280,11 @@
     const parsed = parseBlueskyUrl(url);
     if (!parsed) {
       console.warn('Invalid Bluesky URL:', url);
-      return { comments: [], stats: null };
+      return { comments: [], engagement: null };
     }
 
     const did = await resolveBlueskyDid(parsed.handle);
-    if (!did) return { comments: [], stats: null };
+    if (!did) return { comments: [], engagement: null };
 
     const atUri = `at://${did}/app.bsky.feed.post/${parsed.postId}`;
 
@@ -300,18 +300,18 @@
       const data = await response.json();
       const comments = extractBlueskyReplies(data.thread, url);
 
-      // Extract stats from the original post
+      // Extract engagement metrics from root post
       const rootPost = data.thread?.post;
-      const stats = rootPost ? {
+      const engagement = rootPost ? {
         likes: rootPost.likeCount || 0,
         reposts: rootPost.repostCount || 0,
         replies: rootPost.replyCount || 0
       } : null;
 
-      return { comments, stats };
+      return { comments, engagement };
     } catch (e) {
       console.error('Failed to fetch Bluesky comments:', e);
-      return { comments: [], stats: null };
+      return { comments: [], engagement: null };
     }
   }
 
@@ -435,7 +435,7 @@
     const parsed = parseMastodonUrl(url);
     if (!parsed) {
       console.warn('Invalid Mastodon URL:', url);
-      return { comments: [], stats: null };
+      return { comments: [], engagement: null };
     }
 
     try {
@@ -452,21 +452,21 @@
       const contextData = await contextResponse.json();
       const comments = buildMastodonTree(contextData.descendants, parsed.statusId, url);
 
-      // Extract stats from the original status
-      let stats = null;
+      // Extract engagement metrics from original post
+      let engagement = null;
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        stats = {
+        engagement = {
           likes: statusData.favourites_count || 0,
           reposts: statusData.reblogs_count || 0,
           replies: statusData.replies_count || 0
         };
       }
 
-      return { comments, stats };
+      return { comments, engagement };
     } catch (e) {
       console.error('Failed to fetch Mastodon comments:', e);
-      return { comments: [], stats: null };
+      return { comments: [], engagement: null };
     }
   }
 
@@ -551,11 +551,18 @@
 
       .social-comments-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         margin-bottom: 1rem;
         padding-bottom: 0.75rem;
         border-bottom: 1px solid ${dark ? '#3c3836' : '#e5e5e5'};
+        gap: 1rem;
+      }
+
+      .social-comments-header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
       }
 
       .social-comments-title {
@@ -563,6 +570,48 @@
         font-weight: 600;
         margin: 0;
         color: ${dark ? '#ebdbb2' : '#1a1a1a'};
+      }
+
+      .social-engagement {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: ${dark ? '#a89984' : '#666'};
+      }
+
+      .social-engagement-stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .social-engagement-separator {
+        color: ${dark ? '#665c54' : '#ccc'};
+      }
+
+      .social-engagement-like-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .social-engagement-like-btn:hover:not(:disabled) {
+        color: ${dark ? '#fb7185' : '#e11d48'};
+        transform: scale(1.05);
+      }
+
+      .social-engagement-like-btn:disabled,
+      .social-engagement-like-btn.liked {
+        color: ${dark ? '#fb7185' : '#e11d48'};
+        cursor: default;
       }
 
       .social-comments-join {
@@ -600,50 +649,6 @@
       .social-comments-join-mastodon:hover {
         background: ${dark ? '#7b1fa2' : '#e1bee7'};
         color: ${dark ? '#fff' : '#4a148c'};
-      }
-
-      .social-comments-stats {
-        display: flex;
-        gap: 0.75rem;
-        padding: 0.75rem 0;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-        color: ${dark ? '#a89984' : '#666'};
-        border-bottom: 1px solid ${dark ? '#3c3836' : '#e5e5e5'};
-      }
-
-      .social-comments-stat-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-
-      .social-comments-stat-item.liked {
-        color: ${dark ? '#fb7185' : '#e11d48'};
-      }
-
-      .social-comments-like-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        background: none;
-        border: none;
-        padding: 0;
-        font: inherit;
-        color: inherit;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-
-      .social-comments-like-btn:hover:not(:disabled) {
-        color: ${dark ? '#fb7185' : '#e11d48'};
-        transform: scale(1.05);
-      }
-
-      .social-comments-like-btn:disabled,
-      .social-comments-like-btn.liked {
-        color: ${dark ? '#fb7185' : '#e11d48'};
-        cursor: default;
       }
 
       .social-comments-loading,
@@ -874,17 +879,96 @@
     return li;
   }
 
-  function renderComments(container, comments, blueskyUrl, mastodonUrl, stats = {}) {
+  function renderComments(container, comments, blueskyUrl, mastodonUrl, blueskyEngagement, mastodonEngagement) {
     container.innerHTML = '';
+
+    // Get BearBlog upvote info
+    const bearBlogUpvote = getBearBlogUpvote();
+
+    // Combine engagement from all platforms (Bluesky + Mastodon + BearBlog)
+    const totalEngagement = {
+      likes: (blueskyEngagement?.likes || 0) + (mastodonEngagement?.likes || 0) + (bearBlogUpvote?.count || 0),
+      reposts: (blueskyEngagement?.reposts || 0) + (mastodonEngagement?.reposts || 0),
+      replies: (blueskyEngagement?.replies || 0) + (mastodonEngagement?.replies || 0)
+    };
 
     // Header
     const header = document.createElement('div');
     header.className = 'social-comments-header';
 
+    const headerLeft = document.createElement('div');
+    headerLeft.className = 'social-comments-header-left';
+
     const title = document.createElement('h3');
     title.className = 'social-comments-title';
     title.textContent = t.comments;
-    header.appendChild(title);
+    headerLeft.appendChild(title);
+
+    // Add engagement stats below title (with clickable like if BearBlog upvote available)
+    const hasEngagement = totalEngagement.likes > 0 || totalEngagement.reposts > 0 || totalEngagement.replies > 0 || bearBlogUpvote;
+    if (hasEngagement) {
+      const engagementDiv = document.createElement('div');
+      engagementDiv.className = 'social-engagement';
+
+      // Likes (clickable if BearBlog upvote available and not yet upvoted)
+      if (totalEngagement.likes > 0 || bearBlogUpvote) {
+        if (bearBlogUpvote && !bearBlogUpvote.isUpvoted) {
+          const likeBtn = document.createElement('button');
+          likeBtn.className = 'social-engagement-like-btn';
+          likeBtn.innerHTML = `❤️ ${totalEngagement.likes > 0 ? totalEngagement.likes + ' ' : ''}${t.likes}`;
+          likeBtn.title = t.likePost;
+          likeBtn.addEventListener('click', () => {
+            bearBlogUpvote.button.click();
+            // Update UI optimistically
+            likeBtn.disabled = true;
+            likeBtn.classList.add('liked');
+            const newCount = totalEngagement.likes + 1;
+            likeBtn.innerHTML = `❤️ ${newCount} ${t.likes}`;
+          });
+          engagementDiv.appendChild(likeBtn);
+        } else {
+          const likesSpan = document.createElement('span');
+          likesSpan.className = 'social-engagement-stat';
+          if (bearBlogUpvote?.isUpvoted) {
+            likesSpan.style.color = 'var(--liked-color, #e11d48)';
+          }
+          likesSpan.innerHTML = `❤️ ${totalEngagement.likes} ${t.likes}`;
+          engagementDiv.appendChild(likesSpan);
+        }
+      }
+
+      // Reposts
+      if (totalEngagement.reposts > 0) {
+        if (engagementDiv.children.length > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'social-engagement-separator';
+          sep.textContent = '·';
+          engagementDiv.appendChild(sep);
+        }
+        const repostsSpan = document.createElement('span');
+        repostsSpan.className = 'social-engagement-stat';
+        repostsSpan.innerHTML = `🔁 ${totalEngagement.reposts} ${t.reposts}`;
+        engagementDiv.appendChild(repostsSpan);
+      }
+
+      // Replies
+      if (totalEngagement.replies > 0) {
+        if (engagementDiv.children.length > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'social-engagement-separator';
+          sep.textContent = '·';
+          engagementDiv.appendChild(sep);
+        }
+        const repliesSpan = document.createElement('span');
+        repliesSpan.className = 'social-engagement-stat';
+        repliesSpan.innerHTML = `💬 ${totalEngagement.replies} ${t.replies}`;
+        engagementDiv.appendChild(repliesSpan);
+      }
+
+      headerLeft.appendChild(engagementDiv);
+    }
+
+    header.appendChild(headerLeft);
 
     // Join conversation links
     const joinLinks = document.createElement('div');
@@ -912,78 +996,6 @@
 
     header.appendChild(joinLinks);
     container.appendChild(header);
-
-    // Stats summary (engagement from original posts + BearBlog upvotes)
-    const bearBlogUpvote = getBearBlogUpvote();
-
-    // Combine stats from all platforms
-    let totalLikes = 0;
-    let totalReposts = 0;
-
-    if (stats.bluesky) {
-      totalLikes += stats.bluesky.likes;
-      totalReposts += stats.bluesky.reposts;
-    }
-    if (stats.mastodon) {
-      totalLikes += stats.mastodon.likes;
-      totalReposts += stats.mastodon.reposts;
-    }
-    if (bearBlogUpvote) {
-      totalLikes += bearBlogUpvote.count;
-    }
-
-    const hasStats = totalLikes > 0 || totalReposts > 0;
-    if (hasStats) {
-      const statsDiv = document.createElement('div');
-      statsDiv.className = 'social-comments-stats';
-
-      // Likes (clickable if BearBlog upvote available)
-      if (totalLikes > 0 || bearBlogUpvote) {
-        const likesSpan = document.createElement('span');
-        likesSpan.className = 'social-comments-stat-item';
-
-        if (bearBlogUpvote && !bearBlogUpvote.isUpvoted) {
-          // Make it a clickable button
-          const likeBtn = document.createElement('button');
-          likeBtn.className = 'social-comments-like-btn';
-          likeBtn.innerHTML = `❤️ ${totalLikes > 0 ? totalLikes + ' ' : ''}${t.likes}`;
-          likeBtn.title = t.likePost;
-          likeBtn.addEventListener('click', () => {
-            bearBlogUpvote.button.click();
-            // Update UI optimistically
-            likeBtn.disabled = true;
-            likeBtn.classList.add('liked');
-            const newCount = totalLikes + 1;
-            likeBtn.innerHTML = `❤️ ${newCount} ${t.likes}`;
-          });
-          likesSpan.appendChild(likeBtn);
-        } else {
-          // Already liked or no upvote available - just show the count
-          likesSpan.innerHTML = `❤️ ${totalLikes} ${t.likes}`;
-          if (bearBlogUpvote?.isUpvoted) {
-            likesSpan.classList.add('liked');
-          }
-        }
-
-        statsDiv.appendChild(likesSpan);
-      }
-
-      // Reposts
-      if (totalReposts > 0) {
-        if (statsDiv.children.length > 0) {
-          const separator = document.createElement('span');
-          separator.className = 'social-comments-stat-separator';
-          separator.textContent = ' · ';
-          statsDiv.appendChild(separator);
-        }
-        const repostsSpan = document.createElement('span');
-        repostsSpan.className = 'social-comments-stat-item';
-        repostsSpan.innerHTML = `🔁 ${totalReposts} ${t.reposts}`;
-        statsDiv.appendChild(repostsSpan);
-      }
-
-      container.appendChild(statsDiv);
-    }
 
     // Comments list
     if (comments.length === 0) {
@@ -1041,22 +1053,22 @@
       promises.push(
         fetchBlueskyComments(blueskyUrl).catch(e => {
           console.error('Bluesky comments error:', e);
-          return { comments: [], stats: null };
+          return { comments: [], engagement: null };
         })
       );
     } else {
-      promises.push(Promise.resolve({ comments: [], stats: null }));
+      promises.push(Promise.resolve({ comments: [], engagement: null }));
     }
 
     if (mastodonUrl && !blueskyOnly) {
       promises.push(
         fetchMastodonComments(mastodonUrl).catch(e => {
           console.error('Mastodon comments error:', e);
-          return { comments: [], stats: null };
+          return { comments: [], engagement: null };
         })
       );
     } else {
-      promises.push(Promise.resolve({ comments: [], stats: null }));
+      promises.push(Promise.resolve({ comments: [], engagement: null }));
     }
 
     try {
@@ -1066,13 +1078,14 @@
       const allComments = [...blueskyResult.comments, ...mastodonResult.comments];
       allComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      // Collect stats from both platforms
-      const stats = {
-        bluesky: blueskyResult.stats,
-        mastodon: mastodonResult.stats
-      };
-
-      renderComments(container, allComments, blueskyUrl, mastodonUrl, stats);
+      renderComments(
+        container,
+        allComments,
+        blueskyUrl,
+        mastodonUrl,
+        blueskyResult.engagement,
+        mastodonResult.engagement
+      );
     } catch (e) {
       console.error('Failed to load comments:', e);
       container.innerHTML = `<div class="social-comments-error">${t.failed}</div>`;
