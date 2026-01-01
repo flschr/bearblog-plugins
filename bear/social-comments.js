@@ -394,12 +394,9 @@
 
     btn.onclick = () => {
       if (nativeButton) nativeButton.click();
-      // Get current count and increment by 1
+      // Keep current count, just add "and you"
       const currentLikes = parseInt(btn.dataset.totalLikes || '0', 10);
-      const newLikes = currentLikes + 1;
-      btn.dataset.totalLikes = newLikes;
-      // Update to "X and you liked this post"
-      btn.innerHTML = buildButtonInner(icons.heart, newLikes, ui.likedCountYou);
+      btn.innerHTML = buildButtonInner(icons.heart, currentLikes, ui.likedCountYou);
       btn.classList.add('liked');
       btn.disabled = true;
     };
