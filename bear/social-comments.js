@@ -221,14 +221,23 @@
       const urlObj = new URL(url);
       const statusId = urlObj.pathname.split('/').pop();
 
-      const res = await fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`);
-      const data = await res.json();
+      // Fetch both status and context in parallel
+      const [statusRes, contextRes] = await Promise.all([
+        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`),
+        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}/context`)
+      ]);
+
+      const data = await statusRes.json();
+      const context = await contextRes.json();
+
+      // Count all descendants (threaded replies), not just direct replies
+      const totalReplies = context.descendants?.length || 0;
 
       return {
         likes: data.favourites_count || 0,
         reposts: data.reblogs_count || 0,
-        replies: data.replies_count || 0,
-        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + (data.replies_count || 0)
+        replies: totalReplies,
+        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies
       };
     } catch {
       return null;
@@ -354,11 +363,19 @@
     const icon = isLiked ? icons.heart : icons.heartOutline;
 
     // Show count-based text: "X liked this post" or "X and you liked this post"
-    if (totalLikes > 0) {
-      const label = isLiked ? ui.likedCountYou : ui.likedCount;
-      btn.innerHTML = buildButtonInner(icon, totalLikes, label);
+    if (isLiked) {
+      // User has liked - always show "and you" variant, button is disabled
+      if (totalLikes > 0) {
+        btn.innerHTML = buildButtonInner(icon, totalLikes, ui.likedCountYou);
+      } else {
+        // Edge case: user liked but count is 0 (data not yet updated)
+        btn.innerHTML = buildButtonInner(icon, 0, ui.likedCountYou);
+      }
+    } else if (totalLikes > 0) {
+      // Others liked, user hasn't - show count with likedCount text, user can vote
+      btn.innerHTML = buildButtonInner(icon, totalLikes, ui.likedCount);
     } else {
-      // No likes yet - show "Like this post" without count
+      // No likes yet - show "Like this post", user can vote
       btn.innerHTML = buildButtonInner(icon, 0, ui.like);
     }
   }
