@@ -169,6 +169,13 @@
       .replace(/^www\./, '');
   }
 
+  // Strip site title after last "|" from document.title
+  function getCleanTitle() {
+    const title = document.title;
+    const lastPipe = title.lastIndexOf('|');
+    return lastPipe > 0 ? title.substring(0, lastPipe).trim() : title;
+  }
+
   // --- BearBlog API ---
 
   async function fetchBearBlog() {
@@ -428,8 +435,8 @@
       targetUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}`;
     } else {
       const shareText = mastodonHandle
-        ? `${mastodonHandle} Re: ${document.title} ${window.location.href}`
-        : `Re: ${document.title} ${window.location.href}`;
+        ? `${mastodonHandle} Re: ${getCleanTitle()} ${window.location.href}`
+        : `Re: ${getCleanTitle()} ${window.location.href}`;
       targetUrl = `https://${instance}/share?text=${encodeURIComponent(shareText)}`;
     }
 
@@ -544,7 +551,7 @@
       if (url) {
         window.open(url, '_blank');
       } else {
-        const shareText = `Re: ${document.title} ${window.location.href}`;
+        const shareText = `Re: ${getCleanTitle()} ${window.location.href}`;
         window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(shareText)}`, '_blank');
       }
     };
@@ -572,7 +579,7 @@
     btn.innerHTML = buildButtonInner(icons.mail, 0, ui.mail);
 
     btn.onclick = () => {
-      window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
+      window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(getCleanTitle())}`;
     };
 
     return btn;
