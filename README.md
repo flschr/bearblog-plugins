@@ -11,7 +11,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Image Lazy Loading](#image-lazy-loading)** – Automatic lazy loading for all images
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
 - **[Reply and Like](#reply-and-like)** – Adds customizable reply buttons (Mail/Mastodon) and optional styled like button
-- **[Social Comments](#social-comments)** – Embeds Bluesky and/or Mastodon comments on your blog posts (no React needed!)
+- **[Social Comments](#social-comments)** – Social engagement buttons with live Bluesky/Mastodon reaction counts
 
 ---
 
@@ -168,93 +168,39 @@ When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` 
 
 ### Social Comments
 
-*   **Description**: Displays comments from Bluesky and/or Mastodon on your blog posts. Unlike other solutions, this plugin is **pure vanilla JavaScript** with no React dependency. Comments are fetched directly from the Bluesky AT Protocol API and Mastodon's public API. Supports automatic dark/light mode detection, German/English translations, and nested replies. See it in action [on elmcat's blog](https://elmc.at/).
-*   **Installation**: Add the following code to your `Custom footer content`:
+*   **Description**: Social engagement buttons that show live reaction counts from Bluesky and Mastodon. Includes an optional like button that enhances Bear Blog's native upvote. See it in action [on my personal website](https://fischr.org/).
+*   **Installation**: Add to `Custom footer content`:
     ```html
-    <script src="https://flschr.github.io/bearblog-plugins/social-comments.js" defer></script>
-    <div id="social-comments"></div>
+    <script src="https://flschr.github.io/bearblog-plugins/social-comments.js"
+            data-email="your@email.com"
+            data-like
+            defer></script>
     ```
 
 #### Options
 
-| Attribute | Description |
-|-----------|-------------|
-| `data-container` | Custom container ID (default: `social-comments`) |
-| `data-lang` | Language: `de` or `en` (default: `en`) |
-| `data-bluesky-only` | Only show Bluesky comments |
-| `data-mastodon-only` | Only show Mastodon comments |
-| `data-no-styles` | Disable built-in styles (use your own CSS) |
-| `data-theme` | Force `dark` or `light` theme (default: auto-detect) |
-| `data-mappings-url` | Custom URL for mappings.json (default: bearblog-automation repo) |
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-email` | Yes | Your email for the mail button |
+| `data-like` | No | Show like button (uses Bear Blog's native upvote) |
+| `data-mastodon` | No | Your Mastodon handle for reply threading |
+| `data-services` | No | Comma-separated list: `bluesky,mastodon,mail` (default: all) |
+| `data-mappings-url` | No | Custom URL for mappings.json |
 
-#### Finding Post URLs
+Custom button texts: `data-like="Like|liked|and you liked"` and `data-conv="Start|X comments|X reactions|Share|1 comment"`.
 
-The plugin looks for Bluesky/Mastodon post URLs in two ways (in order of priority):
+#### Post URL Mapping
 
-**Method 1: Meta Tags (per-post override)**
+The plugin finds your social posts via meta tags or [bearblog-automation](https://github.com/flschr/bearblog-automation)'s `mappings.json`:
 
-Add meta tags to individual blog posts:
 ```html
 <meta name="bsky-post" content="https://bsky.app/profile/you.bsky.social/post/abc123">
 <meta name="mastodon-post" content="https://mastodon.social/@you/123456789">
 ```
 
-**Method 2: Automatic via mappings.json (Recommended)**
-
-If you use [bearblog-automation](https://github.com/flschr/bearblog-automation), the plugin automatically fetches `mappings.json` and looks up the current article URL. No per-post configuration needed!
-
-Expected mappings.json structure:
-```json
-{
-  "https://yourblog.com/article-slug/": {
-    "bluesky": "https://bsky.app/profile/you.bsky.social/post/abc123",
-    "mastodon": "https://mastodon.social/@you/123456789"
-  }
-}
-```
-
-To use a custom mappings URL:
-```html
-<script src="..." data-mappings-url="https://your-domain.com/mappings.json" defer></script>
-```
-
-#### How It Works
-
-1. **URL Lookup**: Checks meta tags first, then falls back to mappings.json
-2. **API Fetching**: Fetches replies using public Bluesky/Mastodon APIs (no auth needed)
-3. **Rendering**: Comments show avatars, handles, timestamps, and engagement counts
-4. **Nested Replies**: Supports threaded conversations up to 3 levels deep
-5. **Join Links**: Provides "Reply on Bluesky/Mastodon" buttons for readers
-
 #### CSS Classes
 
-```css
-.social-comments              /* Main container */
-.social-comments-header       /* Header with title and join links */
-.social-comments-title        /* "Comments" heading */
-.social-comments-join         /* Container for join links */
-.social-comments-join-bluesky /* Bluesky join button */
-.social-comments-join-mastodon /* Mastodon join button */
-.social-comments-list         /* Comments list */
-.social-comment               /* Individual comment */
-.social-comment-header        /* Comment header (avatar, name, meta) */
-.social-comment-avatar        /* User avatar */
-.social-comment-author        /* Author info container */
-.social-comment-name          /* Display name */
-.social-comment-handle        /* @handle */
-.social-comment-content       /* Comment text */
-.social-comment-footer        /* Likes/reposts stats */
-.social-comment-replies       /* Nested replies container */
-```
-
-#### Comparison with bluesky-comments (React)
-
-| Feature | social-comments.js | bluesky-comments |
-|---------|-------------------|------------------|
-| React required | ❌ No | ✅ Yes |
-| Mastodon support | ✅ Yes | ❌ No |
-| Bundle size | ~15KB | ~100KB+ (with React) |
-| Import maps | ❌ Not needed | ✅ Required |
+`.social-reactions-wrapper`, `.social-reactions-buttons`, `.social-reactions-button`, `.sr-button-like`, `.sr-button-bluesky`, `.sr-button-mastodon`, `.sr-button-mail`
 
 ---
 

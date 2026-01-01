@@ -1,8 +1,12 @@
 (function() {
   'use strict';
 
+  // --- Initialization Guard (prevent duplicate requests) ---
+  let isInitialized = false;
+
   // --- Early DOM Setup (prevent FOUC) ---
   const upvoteForm = document.querySelector('#upvote-form');
+  const nativeUpvoteBtn = upvoteForm?.querySelector('.upvote-button, button');
   if (upvoteForm) upvoteForm.style.display = 'none';
 
   const scriptTag = document.currentScript;
@@ -31,6 +35,46 @@
 
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  const FETCH_TIMEOUT = 8000; // 8 seconds
+
+  // --- Dark Mode Detection (cached) ---
+  let cachedDarkMode = null;
+
+  function isDarkMode() {
+    if (cachedDarkMode !== null) return cachedDarkMode;
+    const bgColor = getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/\d+/g);
+    if (match) {
+      const [r, g, b] = match.map(Number);
+      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+      cachedDarkMode = luminance < 128;
+    } else {
+      cachedDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return cachedDarkMode;
+  }
+
+  // --- Fetch with Timeout ---
+  async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
+  async function safeJsonParse(response) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
 
   const ui = {
     like: customLike[0] || 'Like this post',           // No likes yet, button clickable
@@ -60,19 +104,6 @@
   let modal = null;
   let modalInput = null;
   let storedMastoUrl = null;
-
-  // --- Dark Mode Detection ---
-
-  function isDarkMode() {
-    const bgColor = getComputedStyle(document.body).backgroundColor;
-    const match = bgColor.match(/\d+/g);
-    if (match) {
-      const [r, g, b] = match.map(Number);
-      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
-      return luminance < 128;
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
 
   // --- Cache Utilities ---
 
@@ -141,9 +172,8 @@
   // --- BearBlog API ---
 
   async function fetchBearBlog() {
-    const form = document.querySelector('#upvote-form');
-    const uid = form?.querySelector('input[name="uid"]')?.value
-      || form?.action?.match(/\/upvote\/([^\/]+)/)?.[1];
+    const uid = upvoteForm?.querySelector('input[name="uid"]')?.value
+      || upvoteForm?.action?.match(/\/upvote\/([^\/]+)/)?.[1];
 
     if (!uid) return null;
 
@@ -152,9 +182,9 @@
     if (cached) return cached;
 
     try {
-      const res = await fetch(`/upvote-info/${uid}/`);
-      const data = await res.json();
-      setCache(cacheKey, data);
+      const res = await fetchWithTimeout(`/upvote-info/${uid}/`);
+      const data = await safeJsonParse(res);
+      if (data) setCache(cacheKey, data);
       return data;
     } catch {
       return null;
@@ -182,8 +212,10 @@
     }
 
     try {
-      const res = await fetch(mappingsUrl);
-      const mappings = await res.json();
+      const res = await fetchWithTimeout(mappingsUrl);
+      const mappings = await safeJsonParse(res);
+      if (!mappings) return { bluesky: metaBluesky, mastodon: metaMastodon };
+
       const currentUrl = normalizeUrl(window.location.href);
 
       for (const [url, data] of Object.entries(mappings)) {
@@ -215,20 +247,22 @@
       let did = getDIDFromCache(handle);
 
       if (!did) {
-        const didRes = await fetch(
+        const didRes = await fetchWithTimeout(
           `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
         );
-        const didData = await didRes.json();
+        const didData = await safeJsonParse(didRes);
+        if (!didData?.did) return null;
         did = didData.did;
         cacheDID(handle, did);
       }
 
       const postUri = `at://${did}/app.bsky.feed.post/${postId}`;
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(postUri)}&depth=0`
       );
-      const { thread } = await res.json();
-      const post = thread.post;
+      const data = await safeJsonParse(res);
+      const post = data?.thread?.post;
+      if (!post) return null;
 
       return {
         likes: post.likeCount || 0,
@@ -248,15 +282,16 @@
 
       // Fetch both status and context in parallel
       const [statusRes, contextRes] = await Promise.all([
-        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`),
-        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}/context`)
+        fetchWithTimeout(`${urlObj.origin}/api/v1/statuses/${statusId}`),
+        fetchWithTimeout(`${urlObj.origin}/api/v1/statuses/${statusId}/context`)
       ]);
 
-      const data = await statusRes.json();
-      const context = await contextRes.json();
+      const data = await safeJsonParse(statusRes);
+      const context = await safeJsonParse(contextRes);
+      if (!data) return null;
 
       // Count all descendants (threaded replies), not just direct replies
-      const totalReplies = context.descendants?.length || 0;
+      const totalReplies = context?.descendants?.length || 0;
 
       return {
         likes: data.favourites_count || 0,
@@ -468,6 +503,7 @@
   function createLikeButton(nativeButton) {
     const btn = document.createElement('button');
     btn.className = 'social-reactions-button sr-button-like';
+    btn.setAttribute('aria-label', ui.like);
     btn.innerHTML = buildButtonInner(icons.heartOutline, 0, ui.loading);
 
     btn.onclick = () => {
@@ -477,6 +513,7 @@
       btn.innerHTML = buildButtonInner(icons.heart, currentLikes, ui.likedCountYou);
       btn.classList.add('liked');
       btn.disabled = true;
+      btn.setAttribute('aria-label', ui.likedCountYou);
     };
 
     buttonRefs.like = btn;
@@ -486,6 +523,7 @@
   function createBlueskyButton() {
     const btn = document.createElement('button');
     btn.className = 'social-reactions-button sr-button-bluesky';
+    btn.setAttribute('aria-label', 'Bluesky');
     btn.innerHTML = buildButtonInner(icons.bluesky, 0, ui.loading);
 
     btn.onclick = () => {
@@ -505,6 +543,7 @@
   function createMastodonButton() {
     const btn = document.createElement('button');
     btn.className = 'social-reactions-button sr-button-mastodon';
+    btn.setAttribute('aria-label', 'Mastodon');
     btn.innerHTML = buildButtonInner(icons.mastodon, 0, ui.loading);
 
     btn.onclick = () => showMastodonModal(btn.dataset.url || null);
@@ -516,6 +555,7 @@
   function createMailButton() {
     const btn = document.createElement('button');
     btn.className = 'social-reactions-button sr-button-mail';
+    btn.setAttribute('aria-label', ui.mail);
     btn.innerHTML = buildButtonInner(icons.mail, 0, ui.mail);
 
     btn.onclick = () => {
@@ -528,6 +568,10 @@
   // --- Main Init ---
 
   async function init() {
+    // Prevent duplicate initialization
+    if (isInitialized) return;
+    isInitialized = true;
+
     if (!document.body.classList.contains('post') || !email) {
       // Show native button again if we're not on a post page
       if (upvoteForm) upvoteForm.style.display = '';
@@ -537,8 +581,6 @@
     // Phase 1: Instant UI (no network calls yet)
     const btnContainer = document.createElement('div');
     btnContainer.className = 'social-reactions-buttons';
-
-    const nativeUpvoteBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
 
     if (likeEnabled && nativeUpvoteBtn) {
       btnContainer.appendChild(createLikeButton(nativeUpvoteBtn));
