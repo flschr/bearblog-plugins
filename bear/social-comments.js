@@ -1,15 +1,25 @@
 (function() {
   'use strict';
 
+  // --- Early DOM Setup (prevent FOUC) ---
+  const upvoteForm = document.querySelector('#upvote-form');
+  if (upvoteForm) upvoteForm.style.display = 'none';
+
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
-  const mastodonHandle = scriptTag?.dataset.mastodon;
+  const mastodonHandle = scriptTag?.dataset.mastodon || '';
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
+  const likeEnabled = scriptTag?.dataset.like !== undefined;
 
   const customLike = scriptTag?.dataset.like?.split('|') || [];
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
-  const activeServices = scriptTag?.dataset.services ? scriptTag.dataset.services.split(',').map(s => s.trim()) : ['bluesky', 'mastodon', 'mail'];
-  
+  const activeServices = scriptTag?.dataset.services
+    ? scriptTag.dataset.services.split(',').map(s => s.trim())
+    : ['bluesky', 'mastodon', 'mail'];
+
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
   const ui = {
     like: customLike[0] || 'Like this post',
     thankYou: customLike[1] || 'Thank you!',
@@ -19,6 +29,7 @@
     reactions: customConv[2] || 'reactions, join in',
     unmapped: customConv[3] || 'Share & Discuss',
     joinConvSingular: customConv[4] || 'comment, join the conversation',
+    loading: '…',
     modalTitle: 'Your Mastodon instance',
     modalPlaceholder: 'e.g. mastodon.social',
     modalCancel: 'Cancel',
@@ -34,174 +45,476 @@
     bluesky: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>'
   };
 
-  let modal = null, modalInput = null, storedMastoUrl = null;
+  let modal = null;
+  let modalInput = null;
+  let storedMastoUrl = null;
 
-  function normalizeUrl(url) { return url.replace(/[?#].*$/, '').replace(/\/$/, '').replace(/^https?:\/\//, '').replace(/^www\./, ''); }
-  function isDarkMode() { const bg = getComputedStyle(document.body).backgroundColor; const rgb = bg.match(/\d+/g); return rgb ? (rgb[0]*299 + rgb[1]*587 + rgb[2]*114)/1000 < 128 : false; }
+  // --- Cache Utilities ---
+
+  function getCached(key) {
+    try {
+      const item = sessionStorage.getItem(key);
+      if (!item) return null;
+      const { data, expires } = JSON.parse(item);
+      if (Date.now() > expires) {
+        sessionStorage.removeItem(key);
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function setCache(key, data, ttl = CACHE_TTL) {
+    try {
+      sessionStorage.setItem(key, JSON.stringify({
+        data,
+        expires: Date.now() + ttl
+      }));
+    } catch {
+      // Storage full or unavailable
+    }
+  }
+
+  function getDIDFromCache(handle) {
+    try {
+      const item = localStorage.getItem(`bsky_did_${handle}`);
+      if (!item) return null;
+      const { did, expires } = JSON.parse(item);
+      if (Date.now() > expires) {
+        localStorage.removeItem(`bsky_did_${handle}`);
+        return null;
+      }
+      return did;
+    } catch {
+      return null;
+    }
+  }
+
+  function cacheDID(handle, did) {
+    try {
+      localStorage.setItem(`bsky_did_${handle}`, JSON.stringify({
+        did,
+        expires: Date.now() + DID_CACHE_TTL
+      }));
+    } catch {
+      // Storage full or unavailable
+    }
+  }
+
+  // --- Utility Functions ---
+
+  function normalizeUrl(url) {
+    return url
+      .replace(/[?#].*$/, '')
+      .replace(/\/$/, '')
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '');
+  }
+
+  // --- BearBlog API ---
 
   async function fetchBearBlog() {
-    const f = document.querySelector('#upvote-form');
-    const uid = f?.querySelector('input[name="uid"]')?.value || f?.action.match(/\/upvote\/([^\/]+)/)?.[1];
+    const form = document.querySelector('#upvote-form');
+    const uid = form?.querySelector('input[name="uid"]')?.value
+      || form?.action?.match(/\/upvote\/([^\/]+)/)?.[1];
+
     if (!uid) return null;
+
+    const cacheKey = `bearblog_${uid}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
     try {
       const res = await fetch(`/upvote-info/${uid}/`);
-      return await res.json();
-    } catch (e) { return null; }
+      const data = await res.json();
+      setCache(cacheKey, data);
+      return data;
+    } catch {
+      return null;
+    }
   }
 
-  async function init() {
-    if (!document.body.classList.contains('post') || !email) return;
+  // --- Social URL Discovery ---
 
-    const [urls, bb] = await Promise.all([findSocialUrls(), fetchBearBlog()]);
-    const [bsky, masto] = await Promise.all([
-      urls.bluesky ? fetchEngagement(urls.bluesky, 'bsky') : null,
-      urls.mastodon ? fetchEngagement(urls.mastodon, 'masto') : null
-    ]);
-
-    const btnContainer = document.createElement('div');
-    btnContainer.className = 'social-reactions-buttons';
-
-    const buildInner = (icon, count, text) => {
-      const cPart = count > 0 ? `<span class="sr-count">${count}</span>` : '';
-      return `<span class="sr-icon">${icon}</span>${cPart}<span class="sr-text">${text}</span>`;
-    };
-
-    const upBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
-    if (scriptTag?.dataset.like !== undefined && upBtn) {
-      const total = (bsky?.likes||0) + (masto?.likes||0) + (bb?.upvote_count||0);
-      const btn = document.createElement('button');
-      btn.className = 'social-reactions-button sr-button-like';
-      
-      const upd = (v, c) => {
-        btn.classList.toggle('liked', v);
-        btn.disabled = v;
-        // Text-Logik: Falls geliket, zeige "X and you liked this"
-        const label = v ? ui.liked : ui.like;
-        btn.innerHTML = buildInner(v ? icons.heart : icons.heartOutline, c, label);
-      };
-
-      upd(bb?.upvoted || upBtn.disabled, total);
-
-      btn.onclick = () => {
-        upBtn.click();
-        btn.innerHTML = buildInner(icons.heart, total, ui.thankYou);
-        btn.classList.add('liked');
-        btn.disabled = true;
-        setTimeout(() => upd(true, total + 1), 3000);
-      };
-      btnContainer.appendChild(btn);
-      document.querySelector('#upvote-form').style.display = 'none';
-    }
-
-    if (activeServices.includes('bluesky')) {
-      const btn = document.createElement('button');
-      btn.className = 'social-reactions-button sr-button-bluesky';
-      btn.innerHTML = buildInner(icons.bluesky, getCount(bsky, urls.bluesky), getTxt(bsky, urls.bluesky));
-      btn.onclick = () => { if (urls.bluesky) window.open(urls.bluesky, '_blank'); else window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent('Re: ' + document.title + ' ' + window.location.href)}`, '_blank'); };
-      btnContainer.appendChild(btn);
-    }
-
-    if (activeServices.includes('mastodon')) {
-      const btn = document.createElement('button');
-      btn.className = 'social-reactions-button sr-button-mastodon';
-      btn.innerHTML = buildInner(icons.mastodon, getCount(masto, urls.mastodon), getTxt(masto, urls.mastodon));
-      btn.onclick = () => {
-        storedMastoUrl = urls.mastodon;
-        createModal();
-        modal.style.display = 'flex';
-        modalInput.value = localStorage.getItem('mastodon_instance') || '';
-        modalInput.focus();
-      };
-      btnContainer.appendChild(btn);
-    }
-
-    if (activeServices.includes('mail')) {
-      const btn = document.createElement('button');
-      btn.className = 'social-reactions-button sr-button-mail';
-      btn.innerHTML = buildInner(icons.mail, 0, ui.mail);
-      btn.onclick = () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
-      btnContainer.appendChild(btn);
-    }
-
-    const wrap = document.createElement('div');
-    wrap.className = 'social-reactions-wrapper';
-    wrap.appendChild(btnContainer);
-    const target = document.querySelector('#upvote-form') || document.querySelector('.blog-content');
-    if (target) target.parentNode.insertBefore(wrap, target);
-  }
-
-  // Helper Functions
   async function findSocialUrls() {
-    let bUrl = document.querySelector('meta[name="bsky-post"]')?.content || null;
-    let mUrl = document.querySelector('meta[name="mastodon-post"]')?.content || null;
+    const metaBluesky = document.querySelector('meta[name="bsky-post"]')?.content || null;
+    const metaMastodon = document.querySelector('meta[name="mastodon-post"]')?.content || null;
+
+    // If both meta tags exist, skip mappings fetch entirely
+    if (metaBluesky && metaMastodon) {
+      return { bluesky: metaBluesky, mastodon: metaMastodon };
+    }
+
+    const cacheKey = `mappings_${normalizeUrl(window.location.href)}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return {
+        bluesky: metaBluesky || cached.bluesky,
+        mastodon: metaMastodon || cached.mastodon
+      };
+    }
+
     try {
       const res = await fetch(mappingsUrl);
       const mappings = await res.json();
-      const current = normalizeUrl(window.location.href);
-      for (const [u, d] of Object.entries(mappings)) {
-        if (normalizeUrl(u) === current) { bUrl = bUrl || d.bluesky; mUrl = mUrl || d.mastodon; break; }
+      const currentUrl = normalizeUrl(window.location.href);
+
+      for (const [url, data] of Object.entries(mappings)) {
+        if (normalizeUrl(url) === currentUrl) {
+          setCache(cacheKey, data);
+          return {
+            bluesky: metaBluesky || data.bluesky,
+            mastodon: metaMastodon || data.mastodon
+          };
+        }
       }
-    } catch (e) {}
-    return { bluesky: bUrl, mastodon: mUrl };
+    } catch {
+      // Mapping fetch failed
+    }
+
+    return { bluesky: metaBluesky, mastodon: metaMastodon };
   }
 
-  async function fetchEngagement(url, platform) {
+  // --- Platform-Specific Engagement Fetchers ---
+
+  async function fetchBlueskyEngagement(url) {
+    const match = url.match(/bsky\.app\/profile\/([^\/]+)\/post\/([^\/\?]+)/);
+    if (!match) return null;
+
+    const [, handle, postId] = match;
+
     try {
-      if (platform === 'bsky') {
-        const match = url.match(/bsky\.app\/profile\/([^\/]+)\/post\/([^\/\?]+)/);
-        const didRes = await fetch(`https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${match[1]}`);
-        const { did } = await didRes.json();
-        const res = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(`at://${did}/app.bsky.feed.post/${match[2]}`)}&depth=0`);
-        const { thread } = await res.json();
-        return { likes: thread.post.likeCount||0, total: (thread.post.likeCount||0) + (thread.post.repostCount||0) + (thread.post.replyCount||0), replies: thread.post.replyCount||0 };
-      } else {
-        const u = new URL(url);
-        const id = u.pathname.split('/').pop();
-        const [sRes, cRes] = await Promise.all([
-          fetch(`${u.origin}/api/v1/statuses/${id}`),
-          fetch(`${u.origin}/api/v1/statuses/${id}/context`)
-        ]);
-        const sData = await sRes.json();
-        const cData = await cRes.json();
-        const rCount = cData.descendants ? cData.descendants.length : (sData.replies_count || 0);
-        return { likes: sData.favourites_count||0, total: (sData.favourites_count||0) + (sData.reblogs_count||0) + rCount, replies: rCount };
+      // Try to get DID from cache first
+      let did = getDIDFromCache(handle);
+
+      if (!did) {
+        const didRes = await fetch(
+          `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
+        );
+        const didData = await didRes.json();
+        did = didData.did;
+        cacheDID(handle, did);
       }
-    } catch (e) { return null; }
+
+      const postUri = `at://${did}/app.bsky.feed.post/${postId}`;
+      const res = await fetch(
+        `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(postUri)}&depth=0`
+      );
+      const { thread } = await res.json();
+      const post = thread.post;
+
+      return {
+        likes: post.likeCount || 0,
+        reposts: post.repostCount || 0,
+        replies: post.replyCount || 0,
+        total: (post.likeCount || 0) + (post.repostCount || 0) + (post.replyCount || 0)
+      };
+    } catch {
+      return null;
+    }
   }
 
-  const getTxt = (eng, url) => {
-    if (!url) return ui.unmapped;
-    if (!eng) return ui.startConv;
-    const t = (eng.likes||0) + (eng.reposts||0) + (eng.replies||0);
-    if (t === 0) return ui.startConv;
-    return eng.replies > 0 ? (eng.replies === 1 ? ui.joinConvSingular : ui.joinConvPlural) : ui.reactions;
-  };
+  async function fetchMastodonEngagement(url) {
+    try {
+      const urlObj = new URL(url);
+      const statusId = urlObj.pathname.split('/').pop();
 
-  const getCount = (eng, url) => (url && eng?.total > 0) ? (eng.replies > 0 ? eng.replies : eng.total) : 0;
+      const res = await fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`);
+      const data = await res.json();
+
+      return {
+        likes: data.favourites_count || 0,
+        reposts: data.reblogs_count || 0,
+        replies: data.replies_count || 0,
+        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + (data.replies_count || 0)
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // --- UI Helper Functions ---
+
+  function buildButtonInner(icon, count, text) {
+    const countHtml = count > 0 ? `<span class="sr-count">${count}</span>` : '';
+    return `<span class="sr-icon">${icon}</span>${countHtml}<span class="sr-text">${text}</span>`;
+  }
+
+  function getButtonText(engagement, hasUrl) {
+    if (!hasUrl) return ui.unmapped;
+    if (!engagement) return ui.startConv;
+
+    const total = (engagement.likes || 0) + (engagement.reposts || 0) + (engagement.replies || 0);
+    if (total === 0) return ui.startConv;
+
+    if (engagement.replies > 0) {
+      return engagement.replies === 1 ? ui.joinConvSingular : ui.joinConvPlural;
+    }
+    return ui.reactions;
+  }
+
+  function getButtonCount(engagement, hasUrl) {
+    if (!hasUrl || !engagement || engagement.total <= 0) return 0;
+    return engagement.replies > 0 ? engagement.replies : engagement.total;
+  }
+
+  // --- Modal ---
 
   function createModal() {
     if (modal) return;
-    const dark = isDarkMode();
+
     modal = document.createElement('div');
     modal.className = 'sr-modal-overlay';
-    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;font-family:inherit;';
-    modal.innerHTML = `<div class="sr-modal-content" style="background:${dark ? '#1e1e1e' : '#fff'}; padding:1.5rem; border-radius:12px; max-width:320px; width:90%; color:${dark ? '#ebdbb2' : '#333'}; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-        <label style="display:block; margin-bottom:0.7rem; font-weight:bold;">${ui.modalTitle}</label>
-        <input type="text" id="masto-instance" placeholder="${ui.modalPlaceholder}" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid ${dark ? '#444' : '#ccc'}; border-radius:6px; background:${dark ? '#2a2a2a' : '#fff'}; color:inherit; box-sizing:border-box;">
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-          <button id="masto-cancel" style="padding:0.5rem 1rem; background:none; border:none; cursor:pointer; color:inherit;">${ui.modalCancel}</button>
-          <button id="masto-submit" style="padding:0.5rem 1rem; background:#6364ff; color:#fff; border:none; border-radius:6px; cursor:pointer;">${ui.modalOpen}</button>
-        </div></div>`;
+    modal.innerHTML = `
+      <div class="sr-modal-content">
+        <label class="sr-modal-label">${ui.modalTitle}</label>
+        <input type="text" class="sr-modal-input" placeholder="${ui.modalPlaceholder}">
+        <div class="sr-modal-buttons">
+          <button class="sr-modal-cancel">${ui.modalCancel}</button>
+          <button class="sr-modal-submit">${ui.modalOpen}</button>
+        </div>
+      </div>`;
+
     document.body.appendChild(modal);
-    modalInput = modal.querySelector('#masto-instance');
-    modal.querySelector('#masto-cancel').onclick = () => modal.style.display = 'none';
-    modal.querySelector('#masto-submit').onclick = () => {
-      let inst = modalInput.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-      if (!inst) return; localStorage.setItem('mastodon_instance', inst);
-      modal.style.display = 'none';
-      const u = storedMastoUrl ? `https://${inst}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}` : `https://${inst}/share?text=${encodeURIComponent(mastodonHandle + ' Re: ' + document.title + ' ' + window.location.href)}`;
-      window.open(u, '_blank');
+    modalInput = modal.querySelector('.sr-modal-input');
+
+    modal.querySelector('.sr-modal-cancel').onclick = () => {
+      modal.classList.remove('sr-modal-visible');
     };
+
+    modal.querySelector('.sr-modal-submit').onclick = handleMastodonSubmit;
+
+    modalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleMastodonSubmit();
+      if (e.key === 'Escape') modal.classList.remove('sr-modal-visible');
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('sr-modal-visible');
+    });
+  }
+
+  function handleMastodonSubmit() {
+    const instance = modalInput.value.trim()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '');
+
+    if (!instance) return;
+
+    localStorage.setItem('mastodon_instance', instance);
+    modal.classList.remove('sr-modal-visible');
+
+    let targetUrl;
+    if (storedMastoUrl) {
+      targetUrl = `https://${instance}/authorize_interaction?uri=${encodeURIComponent(storedMastoUrl)}`;
+    } else {
+      const shareText = mastodonHandle
+        ? `${mastodonHandle} Re: ${document.title} ${window.location.href}`
+        : `Re: ${document.title} ${window.location.href}`;
+      targetUrl = `https://${instance}/share?text=${encodeURIComponent(shareText)}`;
+    }
+
+    window.open(targetUrl, '_blank');
+  }
+
+  function showMastodonModal(mastodonUrl) {
+    storedMastoUrl = mastodonUrl;
+    createModal();
+    modal.classList.add('sr-modal-visible');
+    modalInput.value = localStorage.getItem('mastodon_instance') || '';
+    modalInput.focus();
+  }
+
+  // --- Button State Management ---
+
+  const buttonRefs = {
+    like: null,
+    bluesky: null,
+    mastodon: null
+  };
+
+  function updateLikeButton(engagement, bearBlogData, nativeButton) {
+    const btn = buttonRefs.like;
+    if (!btn) return;
+
+    const totalLikes = (engagement?.bluesky?.likes || 0)
+      + (engagement?.mastodon?.likes || 0)
+      + (bearBlogData?.upvote_count || 0);
+
+    const isLiked = bearBlogData?.upvoted || nativeButton?.disabled;
+
+    btn.classList.toggle('liked', isLiked);
+    btn.disabled = isLiked;
+    const label = isLiked ? ui.liked : ui.like;
+    const icon = isLiked ? icons.heart : icons.heartOutline;
+    btn.innerHTML = buildButtonInner(icon, totalLikes, label);
+  }
+
+  function updateBlueskyButton(engagement, url) {
+    const btn = buttonRefs.bluesky;
+    if (!btn) return;
+
+    btn.innerHTML = buildButtonInner(
+      icons.bluesky,
+      getButtonCount(engagement, url),
+      getButtonText(engagement, url)
+    );
+  }
+
+  function updateMastodonButton(engagement, url) {
+    const btn = buttonRefs.mastodon;
+    if (!btn) return;
+
+    btn.innerHTML = buildButtonInner(
+      icons.mastodon,
+      getButtonCount(engagement, url),
+      getButtonText(engagement, url)
+    );
+  }
+
+  // --- Button Creators (instant, no data) ---
+
+  function createLikeButton(nativeButton) {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-like';
+    btn.innerHTML = buildButtonInner(icons.heartOutline, 0, ui.loading);
+
+    btn.onclick = () => {
+      if (nativeButton) nativeButton.click();
+      btn.innerHTML = buildButtonInner(icons.heart, 0, ui.thankYou);
+      btn.classList.add('liked');
+      btn.disabled = true;
+    };
+
+    buttonRefs.like = btn;
+    return btn;
+  }
+
+  function createBlueskyButton() {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-bluesky';
+    btn.innerHTML = buildButtonInner(icons.bluesky, 0, ui.loading);
+
+    btn.onclick = () => {
+      const url = btn.dataset.url;
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        const shareText = `Re: ${document.title} ${window.location.href}`;
+        window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(shareText)}`, '_blank');
+      }
+    };
+
+    buttonRefs.bluesky = btn;
+    return btn;
+  }
+
+  function createMastodonButton() {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-mastodon';
+    btn.innerHTML = buildButtonInner(icons.mastodon, 0, ui.loading);
+
+    btn.onclick = () => showMastodonModal(btn.dataset.url || null);
+
+    buttonRefs.mastodon = btn;
+    return btn;
+  }
+
+  function createMailButton() {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-mail';
+    btn.innerHTML = buildButtonInner(icons.mail, 0, ui.mail);
+
+    btn.onclick = () => {
+      window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(document.title)}`;
+    };
+
+    return btn;
+  }
+
+  // --- Main Init ---
+
+  async function init() {
+    if (!document.body.classList.contains('post') || !email) {
+      // Show native button again if we're not on a post page
+      if (upvoteForm) upvoteForm.style.display = '';
+      return;
+    }
+
+    // Phase 1: Instant UI (no network calls yet)
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'social-reactions-buttons';
+
+    const nativeUpvoteBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
+
+    if (likeEnabled && nativeUpvoteBtn) {
+      btnContainer.appendChild(createLikeButton(nativeUpvoteBtn));
+    }
+
+    if (activeServices.includes('bluesky')) {
+      btnContainer.appendChild(createBlueskyButton());
+    }
+
+    if (activeServices.includes('mastodon')) {
+      btnContainer.appendChild(createMastodonButton());
+    }
+
+    if (activeServices.includes('mail')) {
+      btnContainer.appendChild(createMailButton());
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-reactions-wrapper';
+    wrapper.appendChild(btnContainer);
+
+    const target = upvoteForm || document.querySelector('.blog-content');
+    if (target) {
+      target.parentNode.insertBefore(wrapper, target);
+    }
+
+    // Phase 2: Load data and update buttons
+    const needsBluesky = activeServices.includes('bluesky') || likeEnabled;
+    const needsMastodon = activeServices.includes('mastodon') || likeEnabled;
+    const needsBearBlog = likeEnabled;
+
+    const [urls, bearBlogData] = await Promise.all([
+      (needsBluesky || needsMastodon) ? findSocialUrls() : { bluesky: null, mastodon: null },
+      needsBearBlog ? fetchBearBlog() : null
+    ]);
+
+    // Store URLs in button data attributes for click handlers
+    if (buttonRefs.bluesky && urls.bluesky) {
+      buttonRefs.bluesky.dataset.url = urls.bluesky;
+    }
+    if (buttonRefs.mastodon && urls.mastodon) {
+      buttonRefs.mastodon.dataset.url = urls.mastodon;
+    }
+
+    // Fetch engagement data only for services that need it
+    const [blueskyEngagement, mastodonEngagement] = await Promise.all([
+      (needsBluesky && urls.bluesky) ? fetchBlueskyEngagement(urls.bluesky) : null,
+      (needsMastodon && urls.mastodon) ? fetchMastodonEngagement(urls.mastodon) : null
+    ]);
+
+    const engagement = {
+      bluesky: blueskyEngagement,
+      mastodon: mastodonEngagement
+    };
+
+    // Phase 3: Update buttons with real data
+    if (likeEnabled) {
+      updateLikeButton(engagement, bearBlogData, nativeUpvoteBtn);
+    }
+
+    if (activeServices.includes('bluesky')) {
+      updateBlueskyButton(blueskyEngagement, urls.bluesky);
+    }
+
+    if (activeServices.includes('mastodon')) {
+      updateMastodonButton(mastodonEngagement, urls.mastodon);
+    }
   }
 
   init();
