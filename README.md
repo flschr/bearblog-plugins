@@ -176,12 +176,19 @@ When a Mastodon toot URL is found, the reply button uses Mastodon's `/interact` 
             data-like
             defer></script>
     ```
+    Or without the mail button (only Bluesky/Mastodon):
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/social-comments.js"
+            data-services="bluesky,mastodon"
+            data-like
+            defer></script>
+    ```
 
 #### Options
 
 | Attribute | Required | Description |
 |-----------|----------|-------------|
-| `data-email` | Yes | Your email for the mail button |
+| `data-email` | No | Your email for the mail button (only needed if mail service is enabled) |
 | `data-like` | No | Show like button (uses Bear Blog's native upvote) |
 | `data-mastodon` | No | Your Mastodon handle for reply threading |
 | `data-services` | No | Comma-separated list: `bluesky,mastodon,mail` (default: all) |
