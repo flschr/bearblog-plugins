@@ -11,8 +11,20 @@
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
   const likeEnabled = scriptTag?.dataset.like !== undefined;
 
+  // data-like="text1|text2|text3" format:
+  //   [0] like:          No likes yet, user can click       → "Like this post"
+  //   [1] likedCount:    Others liked, user can still click → "X liked this post"
+  //   [2] likedCountYou: User has liked, button disabled    → "X and you liked this"
   const customLike = scriptTag?.dataset.like?.split('|') || [];
+
+  // data-conv="text1|text2|text3|text4|text5" format:
+  //   [0] startConv:       No comments yet           → "Start the conversation"
+  //   [1] joinConvPlural:  Multiple comments         → "X comments, join the conversation"
+  //   [2] reactions:       Reactions but no comments → "X reactions, join in"
+  //   [3] unmapped:        No social URL mapped      → "Share & Discuss"
+  //   [4] joinConvSingular: Single comment           → "1 comment, join the conversation"
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
+
   const activeServices = scriptTag?.dataset.services
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
     : ['bluesky', 'mastodon', 'mail'];
@@ -21,9 +33,9 @@
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const ui = {
-    like: customLike[0] || 'Like this post',
-    likedCount: customLike[1] || 'liked this post',
-    likedCountYou: customLike[2] || 'and you liked this post',
+    like: customLike[0] || 'Like this post',           // No likes yet, button clickable
+    likedCount: customLike[1] || 'liked this post',    // Others liked, button clickable
+    likedCountYou: customLike[2] || 'and you liked this post', // User liked, button disabled
     startConv: customConv[0] || 'Start the conversation',
     joinConvPlural: customConv[1] || 'comments, join the conversation',
     reactions: customConv[2] || 'reactions, join in',
@@ -221,14 +233,23 @@
       const urlObj = new URL(url);
       const statusId = urlObj.pathname.split('/').pop();
 
-      const res = await fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`);
-      const data = await res.json();
+      // Fetch both status and context in parallel
+      const [statusRes, contextRes] = await Promise.all([
+        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}`),
+        fetch(`${urlObj.origin}/api/v1/statuses/${statusId}/context`)
+      ]);
+
+      const data = await statusRes.json();
+      const context = await contextRes.json();
+
+      // Count all descendants (threaded replies), not just direct replies
+      const totalReplies = context.descendants?.length || 0;
 
       return {
         likes: data.favourites_count || 0,
         reposts: data.reblogs_count || 0,
-        replies: data.replies_count || 0,
-        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + (data.replies_count || 0)
+        replies: totalReplies,
+        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies
       };
     } catch {
       return null;
@@ -354,11 +375,19 @@
     const icon = isLiked ? icons.heart : icons.heartOutline;
 
     // Show count-based text: "X liked this post" or "X and you liked this post"
-    if (totalLikes > 0) {
-      const label = isLiked ? ui.likedCountYou : ui.likedCount;
-      btn.innerHTML = buildButtonInner(icon, totalLikes, label);
+    if (isLiked) {
+      // User has liked - always show "and you" variant, button is disabled
+      if (totalLikes > 0) {
+        btn.innerHTML = buildButtonInner(icon, totalLikes, ui.likedCountYou);
+      } else {
+        // Edge case: user liked but count is 0 (data not yet updated)
+        btn.innerHTML = buildButtonInner(icon, 0, ui.likedCountYou);
+      }
+    } else if (totalLikes > 0) {
+      // Others liked, user hasn't - show count with likedCount text, user can vote
+      btn.innerHTML = buildButtonInner(icon, totalLikes, ui.likedCount);
     } else {
-      // No likes yet - show "Like this post" without count
+      // No likes yet - show "Like this post", user can vote
       btn.innerHTML = buildButtonInner(icon, 0, ui.like);
     }
   }
