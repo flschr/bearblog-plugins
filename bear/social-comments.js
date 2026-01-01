@@ -585,7 +585,7 @@
     if (isInitialized) return;
     isInitialized = true;
 
-    if (!document.body.classList.contains('post') || !email) {
+    if (!document.body.classList.contains('post')) {
       // Show native button again if we're not on a post page
       if (upvoteForm) upvoteForm.style.display = '';
       return;
@@ -607,7 +607,7 @@
       btnContainer.appendChild(createMastodonButton());
     }
 
-    if (activeServices.includes('mail')) {
+    if (activeServices.includes('mail') && email) {
       btnContainer.appendChild(createMailButton());
     }
 
