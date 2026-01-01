@@ -11,8 +11,20 @@
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
   const likeEnabled = scriptTag?.dataset.like !== undefined;
 
+  // data-like="text1|text2|text3" format:
+  //   [0] like:          No likes yet, user can click       → "Like this post"
+  //   [1] likedCount:    Others liked, user can still click → "X liked this post"
+  //   [2] likedCountYou: User has liked, button disabled    → "X and you liked this"
   const customLike = scriptTag?.dataset.like?.split('|') || [];
+
+  // data-conv="text1|text2|text3|text4|text5" format:
+  //   [0] startConv:       No comments yet           → "Start the conversation"
+  //   [1] joinConvPlural:  Multiple comments         → "X comments, join the conversation"
+  //   [2] reactions:       Reactions but no comments → "X reactions, join in"
+  //   [3] unmapped:        No social URL mapped      → "Share & Discuss"
+  //   [4] joinConvSingular: Single comment           → "1 comment, join the conversation"
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
+
   const activeServices = scriptTag?.dataset.services
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
     : ['bluesky', 'mastodon', 'mail'];
@@ -21,9 +33,9 @@
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const ui = {
-    like: customLike[0] || 'Like this post',
-    likedCount: customLike[1] || 'liked this post',
-    likedCountYou: customLike[2] || 'and you liked this post',
+    like: customLike[0] || 'Like this post',           // No likes yet, button clickable
+    likedCount: customLike[1] || 'liked this post',    // Others liked, button clickable
+    likedCountYou: customLike[2] || 'and you liked this post', // User liked, button disabled
     startConv: customConv[0] || 'Start the conversation',
     joinConvPlural: customConv[1] || 'comments, join the conversation',
     reactions: customConv[2] || 'reactions, join in',
