@@ -336,6 +336,19 @@
 
     const dark = isDarkMode();
 
+    // Add selection styling for the modal input
+    if (!document.getElementById('sr-modal-styles')) {
+      const style = document.createElement('style');
+      style.id = 'sr-modal-styles';
+      style.textContent = `
+        #sr-mastodon-modal input::selection {
+          background: ${dark ? '#6364ff' : '#6364ff'};
+          color: #fff;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     modal = document.createElement('div');
     modal.id = 'sr-mastodon-modal';
     modal.setAttribute('role', 'dialog');
