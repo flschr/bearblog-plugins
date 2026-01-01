@@ -61,6 +61,19 @@
   let modalInput = null;
   let storedMastoUrl = null;
 
+  // --- Dark Mode Detection ---
+
+  function isDarkMode() {
+    const bgColor = getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/\d+/g);
+    if (match) {
+      const [r, g, b] = match.map(Number);
+      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+      return luminance < 128;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
   // --- Cache Utilities ---
 
   function getCached(key) {
@@ -286,35 +299,70 @@
   function createModal() {
     if (modal) return;
 
+    const dark = isDarkMode();
+
     modal = document.createElement('div');
-    modal.className = 'sr-modal-overlay';
-    modal.innerHTML = `
-      <div class="sr-modal-content">
-        <label class="sr-modal-label">${ui.modalTitle}</label>
-        <input type="text" class="sr-modal-input" placeholder="${ui.modalPlaceholder}">
-        <div class="sr-modal-buttons">
-          <button class="sr-modal-cancel">${ui.modalCancel}</button>
-          <button class="sr-modal-submit">${ui.modalOpen}</button>
-        </div>
-      </div>`;
+    modal.id = 'sr-mastodon-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'sr-modal-title');
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
 
-    document.body.appendChild(modal);
-    modalInput = modal.querySelector('.sr-modal-input');
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `background:${dark ? '#1e1e1e' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${dark ? '0.4' : '0.15'});`;
 
-    modal.querySelector('.sr-modal-cancel').onclick = () => {
-      modal.classList.remove('sr-modal-visible');
-    };
+    const label = document.createElement('label');
+    label.id = 'sr-modal-title';
+    label.textContent = ui.modalTitle;
+    label.style.cssText = 'display:block;margin-bottom:0.5rem;font-weight:bold;';
 
-    modal.querySelector('.sr-modal-submit').onclick = handleMastodonSubmit;
+    modalInput = document.createElement('input');
+    modalInput.type = 'text';
+    modalInput.placeholder = ui.modalPlaceholder;
+    modalInput.setAttribute('aria-label', ui.modalTitle);
+    modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${dark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${dark ? '#2a2a2a' : '#fff'};color:${dark ? '#e0e0e0' : '#333'};`;
 
-    modalInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleMastodonSubmit();
-      if (e.key === 'Escape') modal.classList.remove('sr-modal-visible');
-    });
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = ui.modalCancel;
+    cancelBtn.type = 'button';
+    cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${dark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${dark ? '#e0e0e0' : '#333'};`;
+    cancelBtn.addEventListener('click', closeModal);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.textContent = ui.modalOpen;
+    submitBtn.type = 'button';
+    submitBtn.style.cssText = 'padding:0.5rem 1rem;border:none;background:#6364ff;color:#fff;border-radius:4px;cursor:pointer;';
+    submitBtn.addEventListener('click', handleMastodonSubmit);
+
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(submitBtn);
+
+    dialog.appendChild(label);
+    dialog.appendChild(modalInput);
+    dialog.appendChild(buttonContainer);
+    modal.appendChild(dialog);
 
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.remove('sr-modal-visible');
+      if (e.target === modal) closeModal();
     });
+
+    modalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleMastodonSubmit();
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  function closeModal() {
+    if (modal) modal.style.display = 'none';
   }
 
   function handleMastodonSubmit() {
@@ -325,7 +373,7 @@
     if (!instance) return;
 
     localStorage.setItem('mastodon_instance', instance);
-    modal.classList.remove('sr-modal-visible');
+    closeModal();
 
     let targetUrl;
     if (storedMastoUrl) {
@@ -343,9 +391,10 @@
   function showMastodonModal(mastodonUrl) {
     storedMastoUrl = mastodonUrl;
     createModal();
-    modal.classList.add('sr-modal-visible');
+    modal.style.display = 'flex';
     modalInput.value = localStorage.getItem('mastodon_instance') || '';
     modalInput.focus();
+    modalInput.select();
   }
 
   // --- Button State Management ---
