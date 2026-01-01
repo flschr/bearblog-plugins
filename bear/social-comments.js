@@ -22,8 +22,8 @@
 
   const ui = {
     like: customLike[0] || 'Like this post',
-    thankYou: customLike[1] || 'Thank you!',
-    liked: customLike[2] || 'and you liked this',
+    likedCount: customLike[1] || 'liked this post',
+    likedCountYou: customLike[2] || 'and you liked this post',
     startConv: customConv[0] || 'Start the conversation',
     joinConvPlural: customConv[1] || 'comments, join the conversation',
     reactions: customConv[2] || 'reactions, join in',
@@ -345,11 +345,22 @@
 
     const isLiked = bearBlogData?.upvoted || nativeButton?.disabled;
 
+    // Store total likes for onclick handler
+    btn.dataset.totalLikes = totalLikes;
+
     btn.classList.toggle('liked', isLiked);
     btn.disabled = isLiked;
-    const label = isLiked ? ui.liked : ui.like;
+
     const icon = isLiked ? icons.heart : icons.heartOutline;
-    btn.innerHTML = buildButtonInner(icon, totalLikes, label);
+
+    // Show count-based text: "X liked this post" or "X and you liked this post"
+    if (totalLikes > 0) {
+      const label = isLiked ? ui.likedCountYou : ui.likedCount;
+      btn.innerHTML = buildButtonInner(icon, totalLikes, label);
+    } else {
+      // No likes yet - show "Like this post" without count
+      btn.innerHTML = buildButtonInner(icon, 0, ui.like);
+    }
   }
 
   function updateBlueskyButton(engagement, url) {
@@ -383,7 +394,9 @@
 
     btn.onclick = () => {
       if (nativeButton) nativeButton.click();
-      btn.innerHTML = buildButtonInner(icons.heart, 0, ui.thankYou);
+      // Keep current count, just add "and you"
+      const currentLikes = parseInt(btn.dataset.totalLikes || '0', 10);
+      btn.innerHTML = buildButtonInner(icons.heart, currentLikes, ui.likedCountYou);
       btn.classList.add('liked');
       btn.disabled = true;
     };
