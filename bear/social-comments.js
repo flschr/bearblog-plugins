@@ -1,16 +1,24 @@
 (function() {
   'use strict';
 
+  // --- Early DOM Setup (prevent FOUC) ---
+  const upvoteForm = document.querySelector('#upvote-form');
+  if (upvoteForm) upvoteForm.style.display = 'none';
+
   const scriptTag = document.currentScript;
   const email = scriptTag?.dataset.email;
   const mastodonHandle = scriptTag?.dataset.mastodon || '';
   const mappingsUrl = scriptTag?.dataset.mappingsUrl || 'https://raw.githubusercontent.com/flschr/bearblog-automation/main/mappings.json';
+  const likeEnabled = scriptTag?.dataset.like !== undefined;
 
   const customLike = scriptTag?.dataset.like?.split('|') || [];
   const customConv = scriptTag?.dataset.conv?.split('|') || [];
   const activeServices = scriptTag?.dataset.services
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
     : ['bluesky', 'mastodon', 'mail'];
+
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const ui = {
     like: customLike[0] || 'Like this post',
@@ -21,6 +29,7 @@
     reactions: customConv[2] || 'reactions, join in',
     unmapped: customConv[3] || 'Share & Discuss',
     joinConvSingular: customConv[4] || 'comment, join the conversation',
+    loading: '…',
     modalTitle: 'Your Mastodon instance',
     modalPlaceholder: 'e.g. mastodon.social',
     modalCancel: 'Cancel',
@@ -40,6 +49,60 @@
   let modalInput = null;
   let storedMastoUrl = null;
 
+  // --- Cache Utilities ---
+
+  function getCached(key) {
+    try {
+      const item = sessionStorage.getItem(key);
+      if (!item) return null;
+      const { data, expires } = JSON.parse(item);
+      if (Date.now() > expires) {
+        sessionStorage.removeItem(key);
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function setCache(key, data, ttl = CACHE_TTL) {
+    try {
+      sessionStorage.setItem(key, JSON.stringify({
+        data,
+        expires: Date.now() + ttl
+      }));
+    } catch {
+      // Storage full or unavailable
+    }
+  }
+
+  function getDIDFromCache(handle) {
+    try {
+      const item = localStorage.getItem(`bsky_did_${handle}`);
+      if (!item) return null;
+      const { did, expires } = JSON.parse(item);
+      if (Date.now() > expires) {
+        localStorage.removeItem(`bsky_did_${handle}`);
+        return null;
+      }
+      return did;
+    } catch {
+      return null;
+    }
+  }
+
+  function cacheDID(handle, did) {
+    try {
+      localStorage.setItem(`bsky_did_${handle}`, JSON.stringify({
+        did,
+        expires: Date.now() + DID_CACHE_TTL
+      }));
+    } catch {
+      // Storage full or unavailable
+    }
+  }
+
   // --- Utility Functions ---
 
   function normalizeUrl(url) {
@@ -55,13 +118,19 @@
   async function fetchBearBlog() {
     const form = document.querySelector('#upvote-form');
     const uid = form?.querySelector('input[name="uid"]')?.value
-      || form?.action.match(/\/upvote\/([^\/]+)/)?.[1];
+      || form?.action?.match(/\/upvote\/([^\/]+)/)?.[1];
 
     if (!uid) return null;
 
+    const cacheKey = `bearblog_${uid}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
     try {
       const res = await fetch(`/upvote-info/${uid}/`);
-      return await res.json();
+      const data = await res.json();
+      setCache(cacheKey, data);
+      return data;
     } catch {
       return null;
     }
@@ -70,8 +139,22 @@
   // --- Social URL Discovery ---
 
   async function findSocialUrls() {
-    let blueskyUrl = document.querySelector('meta[name="bsky-post"]')?.content || null;
-    let mastodonUrl = document.querySelector('meta[name="mastodon-post"]')?.content || null;
+    const metaBluesky = document.querySelector('meta[name="bsky-post"]')?.content || null;
+    const metaMastodon = document.querySelector('meta[name="mastodon-post"]')?.content || null;
+
+    // If both meta tags exist, skip mappings fetch entirely
+    if (metaBluesky && metaMastodon) {
+      return { bluesky: metaBluesky, mastodon: metaMastodon };
+    }
+
+    const cacheKey = `mappings_${normalizeUrl(window.location.href)}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return {
+        bluesky: metaBluesky || cached.bluesky,
+        mastodon: metaMastodon || cached.mastodon
+      };
+    }
 
     try {
       const res = await fetch(mappingsUrl);
@@ -80,16 +163,18 @@
 
       for (const [url, data] of Object.entries(mappings)) {
         if (normalizeUrl(url) === currentUrl) {
-          blueskyUrl = blueskyUrl || data.bluesky;
-          mastodonUrl = mastodonUrl || data.mastodon;
-          break;
+          setCache(cacheKey, data);
+          return {
+            bluesky: metaBluesky || data.bluesky,
+            mastodon: metaMastodon || data.mastodon
+          };
         }
       }
     } catch {
-      // Mapping fetch failed, use meta tags only
+      // Mapping fetch failed
     }
 
-    return { bluesky: blueskyUrl, mastodon: mastodonUrl };
+    return { bluesky: metaBluesky, mastodon: metaMastodon };
   }
 
   // --- Platform-Specific Engagement Fetchers ---
@@ -98,12 +183,20 @@
     const match = url.match(/bsky\.app\/profile\/([^\/]+)\/post\/([^\/\?]+)/);
     if (!match) return null;
 
+    const [, handle, postId] = match;
+
     try {
-      const [, handle, postId] = match;
-      const didRes = await fetch(
-        `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
-      );
-      const { did } = await didRes.json();
+      // Try to get DID from cache first
+      let did = getDIDFromCache(handle);
+
+      if (!did) {
+        const didRes = await fetch(
+          `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
+        );
+        const didData = await didRes.json();
+        did = didData.did;
+        cacheDID(handle, did);
+      }
 
       const postUri = `at://${did}/app.bsky.feed.post/${postId}`;
       const res = await fetch(
@@ -234,49 +327,78 @@
     modalInput.focus();
   }
 
-  // --- Button Creators ---
+  // --- Button State Management ---
 
-  function createLikeButton(engagement, bearBlogData, nativeButton) {
-    const totalLikes = (engagement.bluesky?.likes || 0)
-      + (engagement.mastodon?.likes || 0)
+  const buttonRefs = {
+    like: null,
+    bluesky: null,
+    mastodon: null
+  };
+
+  function updateLikeButton(engagement, bearBlogData, nativeButton) {
+    const btn = buttonRefs.like;
+    if (!btn) return;
+
+    const totalLikes = (engagement?.bluesky?.likes || 0)
+      + (engagement?.mastodon?.likes || 0)
       + (bearBlogData?.upvote_count || 0);
 
-    const btn = document.createElement('button');
-    btn.className = 'social-reactions-button sr-button-like';
+    const isLiked = bearBlogData?.upvoted || nativeButton?.disabled;
 
-    const isLiked = bearBlogData?.upvoted || nativeButton.disabled;
-
-    function updateButton(liked, count) {
-      btn.classList.toggle('liked', liked);
-      btn.disabled = liked;
-      const label = liked ? ui.liked : ui.like;
-      const icon = liked ? icons.heart : icons.heartOutline;
-      btn.innerHTML = buildButtonInner(icon, count, label);
-    }
-
-    updateButton(isLiked, totalLikes);
-
-    btn.onclick = () => {
-      nativeButton.click();
-      btn.innerHTML = buildButtonInner(icons.heart, totalLikes, ui.thankYou);
-      btn.classList.add('liked');
-      btn.disabled = true;
-      setTimeout(() => updateButton(true, totalLikes + 1), 3000);
-    };
-
-    return btn;
+    btn.classList.toggle('liked', isLiked);
+    btn.disabled = isLiked;
+    const label = isLiked ? ui.liked : ui.like;
+    const icon = isLiked ? icons.heart : icons.heartOutline;
+    btn.innerHTML = buildButtonInner(icon, totalLikes, label);
   }
 
-  function createBlueskyButton(engagement, url) {
-    const btn = document.createElement('button');
-    btn.className = 'social-reactions-button sr-button-bluesky';
+  function updateBlueskyButton(engagement, url) {
+    const btn = buttonRefs.bluesky;
+    if (!btn) return;
+
     btn.innerHTML = buildButtonInner(
       icons.bluesky,
       getButtonCount(engagement, url),
       getButtonText(engagement, url)
     );
+  }
+
+  function updateMastodonButton(engagement, url) {
+    const btn = buttonRefs.mastodon;
+    if (!btn) return;
+
+    btn.innerHTML = buildButtonInner(
+      icons.mastodon,
+      getButtonCount(engagement, url),
+      getButtonText(engagement, url)
+    );
+  }
+
+  // --- Button Creators (instant, no data) ---
+
+  function createLikeButton(nativeButton) {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-like';
+    btn.innerHTML = buildButtonInner(icons.heartOutline, 0, ui.loading);
 
     btn.onclick = () => {
+      if (nativeButton) nativeButton.click();
+      btn.innerHTML = buildButtonInner(icons.heart, 0, ui.thankYou);
+      btn.classList.add('liked');
+      btn.disabled = true;
+    };
+
+    buttonRefs.like = btn;
+    return btn;
+  }
+
+  function createBlueskyButton() {
+    const btn = document.createElement('button');
+    btn.className = 'social-reactions-button sr-button-bluesky';
+    btn.innerHTML = buildButtonInner(icons.bluesky, 0, ui.loading);
+
+    btn.onclick = () => {
+      const url = btn.dataset.url;
       if (url) {
         window.open(url, '_blank');
       } else {
@@ -285,20 +407,18 @@
       }
     };
 
+    buttonRefs.bluesky = btn;
     return btn;
   }
 
-  function createMastodonButton(engagement, url) {
+  function createMastodonButton() {
     const btn = document.createElement('button');
     btn.className = 'social-reactions-button sr-button-mastodon';
-    btn.innerHTML = buildButtonInner(
-      icons.mastodon,
-      getButtonCount(engagement, url),
-      getButtonText(engagement, url)
-    );
+    btn.innerHTML = buildButtonInner(icons.mastodon, 0, ui.loading);
 
-    btn.onclick = () => showMastodonModal(url);
+    btn.onclick = () => showMastodonModal(btn.dataset.url || null);
 
+    buttonRefs.mastodon = btn;
     return btn;
   }
 
@@ -317,16 +437,65 @@
   // --- Main Init ---
 
   async function init() {
-    if (!document.body.classList.contains('post') || !email) return;
+    if (!document.body.classList.contains('post') || !email) {
+      // Show native button again if we're not on a post page
+      if (upvoteForm) upvoteForm.style.display = '';
+      return;
+    }
+
+    // Phase 1: Instant UI (no network calls yet)
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'social-reactions-buttons';
+
+    const nativeUpvoteBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
+
+    if (likeEnabled && nativeUpvoteBtn) {
+      btnContainer.appendChild(createLikeButton(nativeUpvoteBtn));
+    }
+
+    if (activeServices.includes('bluesky')) {
+      btnContainer.appendChild(createBlueskyButton());
+    }
+
+    if (activeServices.includes('mastodon')) {
+      btnContainer.appendChild(createMastodonButton());
+    }
+
+    if (activeServices.includes('mail')) {
+      btnContainer.appendChild(createMailButton());
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-reactions-wrapper';
+    wrapper.appendChild(btnContainer);
+
+    const target = upvoteForm || document.querySelector('.blog-content');
+    if (target) {
+      target.parentNode.insertBefore(wrapper, target);
+    }
+
+    // Phase 2: Load data and update buttons
+    const needsBluesky = activeServices.includes('bluesky') || likeEnabled;
+    const needsMastodon = activeServices.includes('mastodon') || likeEnabled;
+    const needsBearBlog = likeEnabled;
 
     const [urls, bearBlogData] = await Promise.all([
-      findSocialUrls(),
-      fetchBearBlog()
+      (needsBluesky || needsMastodon) ? findSocialUrls() : { bluesky: null, mastodon: null },
+      needsBearBlog ? fetchBearBlog() : null
     ]);
 
+    // Store URLs in button data attributes for click handlers
+    if (buttonRefs.bluesky && urls.bluesky) {
+      buttonRefs.bluesky.dataset.url = urls.bluesky;
+    }
+    if (buttonRefs.mastodon && urls.mastodon) {
+      buttonRefs.mastodon.dataset.url = urls.mastodon;
+    }
+
+    // Fetch engagement data only for services that need it
     const [blueskyEngagement, mastodonEngagement] = await Promise.all([
-      urls.bluesky ? fetchBlueskyEngagement(urls.bluesky) : null,
-      urls.mastodon ? fetchMastodonEngagement(urls.mastodon) : null
+      (needsBluesky && urls.bluesky) ? fetchBlueskyEngagement(urls.bluesky) : null,
+      (needsMastodon && urls.mastodon) ? fetchMastodonEngagement(urls.mastodon) : null
     ]);
 
     const engagement = {
@@ -334,39 +503,17 @@
       mastodon: mastodonEngagement
     };
 
-    const btnContainer = document.createElement('div');
-    btnContainer.className = 'social-reactions-buttons';
-
-    // Like button
-    const nativeUpvoteBtn = document.querySelector('#upvote-form .upvote-button, #upvote-form button');
-    if (scriptTag?.dataset.like !== undefined && nativeUpvoteBtn) {
-      btnContainer.appendChild(createLikeButton(engagement, bearBlogData, nativeUpvoteBtn));
-      document.querySelector('#upvote-form').style.display = 'none';
+    // Phase 3: Update buttons with real data
+    if (likeEnabled) {
+      updateLikeButton(engagement, bearBlogData, nativeUpvoteBtn);
     }
 
-    // Bluesky button
     if (activeServices.includes('bluesky')) {
-      btnContainer.appendChild(createBlueskyButton(blueskyEngagement, urls.bluesky));
+      updateBlueskyButton(blueskyEngagement, urls.bluesky);
     }
 
-    // Mastodon button
     if (activeServices.includes('mastodon')) {
-      btnContainer.appendChild(createMastodonButton(mastodonEngagement, urls.mastodon));
-    }
-
-    // Mail button
-    if (activeServices.includes('mail')) {
-      btnContainer.appendChild(createMailButton());
-    }
-
-    // Insert into DOM
-    const wrapper = document.createElement('div');
-    wrapper.className = 'social-reactions-wrapper';
-    wrapper.appendChild(btnContainer);
-
-    const target = document.querySelector('#upvote-form') || document.querySelector('.blog-content');
-    if (target) {
-      target.parentNode.insertBefore(wrapper, target);
+      updateMastodonButton(mastodonEngagement, urls.mastodon);
     }
   }
 
