@@ -1043,10 +1043,10 @@
         $textarea.setAttribute('data-toolbar-initialized', 'true');
 
         // Disable browser autocomplete/autocorrect features on mobile
+        // Note: spellcheck is NOT disabled to allow browser extensions like LanguageTool to work
         $textarea.setAttribute('autocomplete', 'off');
         $textarea.setAttribute('autocorrect', 'off');
         $textarea.setAttribute('autocapitalize', 'off');
-        $textarea.setAttribute('spellcheck', 'false');
 
         // Inject CSS styles once
         injectStyles();
@@ -2476,10 +2476,10 @@
         fsTextarea.value = $textarea.value;
 
         // Disable browser autocomplete/autocorrect features on mobile
+        // Note: spellcheck is NOT disabled to allow browser extensions like LanguageTool to work
         fsTextarea.setAttribute('autocomplete', 'off');
         fsTextarea.setAttribute('autocorrect', 'off');
         fsTextarea.setAttribute('autocapitalize', 'off');
-        fsTextarea.setAttribute('spellcheck', 'false');
 
         fsTextarea.style.cssText = `
             flex: 1;
