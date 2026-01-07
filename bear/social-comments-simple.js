@@ -283,7 +283,7 @@
 
     const text = document.createElement('span');
     text.className = 'mail-text';
-    text.textContent = 'Reply by mail';
+    text.textContent = 'Reply';
 
     btn.appendChild(icon);
     btn.appendChild(text);
