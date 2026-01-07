@@ -317,28 +317,42 @@
       btn.style.cursor = 'default';
     } else {
       let cleanupHeartbeat = null;
+      let isLiking = false;
 
-      btn.addEventListener('mouseenter', () => {
-        cleanupHeartbeat = startHeartbeat(btn);
-      });
+      const handleMouseEnter = () => {
+        if (!isLiking) {
+          cleanupHeartbeat = startHeartbeat(btn);
+        }
+      };
 
-      btn.addEventListener('mouseleave', () => {
+      const handleMouseLeave = () => {
         if (cleanupHeartbeat) {
           cleanupHeartbeat();
           cleanupHeartbeat = null;
         }
-      });
+      };
+
+      btn.addEventListener('mouseenter', handleMouseEnter);
+      btn.addEventListener('mouseleave', handleMouseLeave);
 
       btn.onclick = () => {
+        isLiking = true;
+
+        // Clean up hearts immediately
+        if (cleanupHeartbeat) {
+          cleanupHeartbeat();
+          cleanupHeartbeat = null;
+        }
+
+        // Remove event listeners to prevent new hearts
+        btn.removeEventListener('mouseenter', handleMouseEnter);
+        btn.removeEventListener('mouseleave', handleMouseLeave);
+
         if (nativeButton) nativeButton.click();
         count.textContent = totalLikes + 1;
         btn.disabled = true;
         btn.classList.add('liked');
         btn.style.cursor = 'default';
-        if (cleanupHeartbeat) {
-          cleanupHeartbeat();
-          cleanupHeartbeat = null;
-        }
       };
     }
 
@@ -360,8 +374,8 @@
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
-      // Calculate fan angle (-30° to +30° from vertical)
-      const angle = (Math.random() - 0.5) * 60; // -30 to +30 degrees
+      // Calculate fan angle (-25° to +25° from vertical for tighter spread)
+      const angle = (Math.random() - 0.5) * 50; // -25 to +25 degrees
 
       heart.style.left = `${centerX}px`;
       heart.style.top = `${centerY}px`;
@@ -369,13 +383,13 @@
 
       document.body.appendChild(heart);
 
-      const removeTimeout = setTimeout(() => heart.remove(), 1800);
+      const removeTimeout = setTimeout(() => heart.remove(), 2000);
       timeouts.push(removeTimeout);
     };
 
-    // Create hearts at smooth, regular intervals
+    // Create hearts at smooth, regular intervals (200ms for smoother flow)
     createHeart(); // First heart immediately
-    heartInterval = setInterval(createHeart, 150);
+    heartInterval = setInterval(createHeart, 200);
 
     // Return cleanup function
     return () => {
@@ -669,7 +683,7 @@
       position: fixed;
       pointer-events: none;
       z-index: 5;
-      animation: flyUpFan 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      animation: flyUpFan 2s ease-out forwards;
       opacity: 0;
       --fly-angle: 0deg;
     }
@@ -683,44 +697,51 @@
 
     @keyframes flyUpFan {
       0% {
-        transform: translate(0, 0) scale(0.2) rotate(0deg);
+        transform: translate(0, 0) scale(0.5) rotate(0deg);
         opacity: 0;
       }
-      15% {
+      10% {
         transform: translate(
-          calc(sin(var(--fly-angle)) * 10px),
-          -10px
-        ) scale(0.6) rotate(calc(var(--fly-angle) * 0.5));
+          calc(sin(var(--fly-angle)) * 8px),
+          -12px
+        ) scale(0.7) rotate(calc(var(--fly-angle) * 0.3));
+        opacity: 0.8;
+      }
+      25% {
+        transform: translate(
+          calc(sin(var(--fly-angle)) * 18px),
+          -35px
+        ) scale(0.95) rotate(calc(var(--fly-angle) * 0.8));
         opacity: 1;
       }
-      40% {
+      50% {
         transform:
           translate(
             calc(sin(var(--fly-angle)) * 35px),
-            -60px
+            -75px
           )
-          scale(1.1)
+          scale(1.0)
           rotate(calc(var(--fly-angle) * 1.5));
-        opacity: 0.95;
+        opacity: 0.9;
       }
-      70% {
+      75% {
         transform:
           translate(
-            calc(sin(var(--fly-angle)) * 55px),
+            calc(sin(var(--fly-angle)) * 48px),
             -110px
           )
-          scale(0.7)
-          rotate(calc(var(--fly-angle) * 3));
-        opacity: 0.6;
+          scale(0.8)
+          rotate(calc(var(--fly-angle) * 2.5));
+        opacity: 0.5;
       }
       100% {
         transform:
           translate(
-            calc(sin(var(--fly-angle)) * 65px),
+            calc(sin(var(--fly-angle)) * 55px),
             -140px
           )
-          scale(0.3)
-          rotate(calc(var(--fly-angle) * 4));
+          scale(0.4)
+          rotate(calc(var(--fly-angle) * 3.5));
         opacity: 0;
       }
     }
