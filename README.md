@@ -63,10 +63,16 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 ### Privacy Embeds
 
 *   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English). See it in [on this page](https://fischr.org/oben-links-am-lago-di-benaco/).
-*   **Installation**: Add this to `Custom <head> content` (not footer!) to block iframes before the browser's preload scanner can see them:
+*   **Installation**: Add this to `Custom <head> content` (not footer!). The inline script blocks connections immediately, before the browser's preload scanner can initiate any requests:
     ```html
+    <script>
+    // Critical inline blocker - prevents early connections
+    (function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
+    </script>
     <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
     ```
+
+    **Important**: The inline `<script>` block MUST come first and be embedded directly (not loaded from external URL) to prevent early connections to video/map providers.
 
 ---
 

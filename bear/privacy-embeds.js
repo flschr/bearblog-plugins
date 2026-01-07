@@ -1,50 +1,57 @@
 (function() {
   'use strict';
 
-  // Neutralize a single iframe by moving src to data-src
-  function neutralizeIframe(iframe) {
-    const src = iframe.getAttribute('src');
-    if (src && src.startsWith('http') && !iframe.hasAttribute('data-src')) {
-      iframe.setAttribute('data-src', src);
-      iframe.removeAttribute('src');
+  // Check if inline blocker is already running (recommended setup)
+  let observer = window._privacyEmbedsObserver;
+
+  if (!observer) {
+    // Fallback: Set up blocking if inline script wasn't used
+    // Note: This may not prevent early connections from preload scanner
+
+    // Neutralize a single iframe by moving src to data-src
+    function neutralizeIframe(iframe) {
+      const src = iframe.getAttribute('src');
+      if (src && src.startsWith('http') && !iframe.hasAttribute('data-src')) {
+        iframe.setAttribute('data-src', src);
+        iframe.removeAttribute('src');
+      }
     }
-  }
 
-  // Neutralize all iframes with src
-  function neutralizeIframes() {
-    document.querySelectorAll('iframe[src]').forEach(neutralizeIframe);
-  }
+    // Neutralize all iframes with src
+    function neutralizeIframes() {
+      document.querySelectorAll('iframe[src]').forEach(neutralizeIframe);
+    }
 
-  // Set up MutationObserver to catch iframes as they're added during parsing
-  // This runs BEFORE the browser's preload scanner can see the iframe sources
-  const observer = new MutationObserver(function(mutations) {
-    for (let i = 0; i < mutations.length; i++) {
-      const nodes = mutations[i].addedNodes;
-      for (let j = 0; j < nodes.length; j++) {
-        const node = nodes[j];
-        if (node.nodeType === 1) {
-          if (node.tagName === 'IFRAME') {
-            neutralizeIframe(node);
-          }
-          const iframes = node.querySelectorAll && node.querySelectorAll('iframe[src]');
-          if (iframes) {
-            for (let k = 0; k < iframes.length; k++) {
-              neutralizeIframe(iframes[k]);
+    // Set up MutationObserver to catch iframes as they're added during parsing
+    observer = new MutationObserver(function(mutations) {
+      for (let i = 0; i < mutations.length; i++) {
+        const nodes = mutations[i].addedNodes;
+        for (let j = 0; j < nodes.length; j++) {
+          const node = nodes[j];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IFRAME') {
+              neutralizeIframe(node);
+            }
+            const iframes = node.querySelectorAll && node.querySelectorAll('iframe[src]');
+            if (iframes) {
+              for (let k = 0; k < iframes.length; k++) {
+                neutralizeIframe(iframes[k]);
+              }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  // Start observing immediately (this runs during HTML parsing)
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+    // Start observing immediately
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
 
-  // Also process any iframes that might already exist
-  neutralizeIframes();
+    // Also process any iframes that might already exist
+    neutralizeIframes();
+  }
 
   function initPrivacyEmbeds() {
     // Stop the observer - DOM is ready, all iframes are neutralized
