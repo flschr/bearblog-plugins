@@ -374,8 +374,8 @@
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
-      // Calculate fan angle (-30° to +30° from vertical)
-      const angle = (Math.random() - 0.5) * 60; // -30 to +30 degrees
+      // Calculate fan angle (-45° to +45° from vertical for wider spread)
+      const angle = (Math.random() - 0.5) * 90; // -45 to +45 degrees
 
       heart.style.left = `${centerX}px`;
       heart.style.top = `${centerY}px`;
@@ -702,7 +702,7 @@
       }
       10% {
         transform: translate(
-          calc(sin(var(--fly-angle)) * 8px),
+          calc(sin(var(--fly-angle)) * 12px),
           -15px
         ) scale(1);
         opacity: 1;
@@ -710,7 +710,7 @@
       100% {
         transform:
           translate(
-            calc(sin(var(--fly-angle)) * 50px),
+            calc(sin(var(--fly-angle)) * 80px),
             -120px
           )
           scale(0.9);
