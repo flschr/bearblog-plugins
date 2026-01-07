@@ -345,73 +345,41 @@
     return btn;
   }
 
-  // Start heartbeat animation with rhythm: bum-bum --- bum-bum
+  // Start smooth continuous heart animation
   function startHeartbeat(btn) {
-    let beatCount = 0;
     const timeouts = [];
-    let patternInterval;
+    let heartInterval;
 
-    const createBeat = () => {
+    const createHeart = () => {
       const rect = btn.getBoundingClientRect();
+      const heart = document.createElement('div');
+      heart.className = 'flying-heart';
+      heart.innerHTML = icons.heart;
 
-      // Create 2-3 hearts per beat that fan out
-      const heartCount = Math.floor(Math.random() * 2) + 2;
+      // Start from button center
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
 
-      for (let i = 0; i < heartCount; i++) {
-        const timeout = setTimeout(() => {
-          const heart = document.createElement('div');
-          heart.className = 'flying-heart';
-          heart.innerHTML = icons.heart;
+      // Calculate fan angle (-30° to +30° from vertical)
+      const angle = (Math.random() - 0.5) * 60; // -30 to +30 degrees
 
-          // Start from button center
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
+      heart.style.left = `${centerX}px`;
+      heart.style.top = `${centerY}px`;
+      heart.style.setProperty('--fly-angle', `${angle}deg`);
 
-          // Calculate fan angle (-30° to +30° from vertical)
-          const angle = (Math.random() - 0.5) * 60; // -30 to +30 degrees
+      document.body.appendChild(heart);
 
-          heart.style.left = `${centerX}px`;
-          heart.style.top = `${centerY}px`;
-          heart.style.setProperty('--fly-angle', `${angle}deg`);
-
-          document.body.appendChild(heart);
-          setTimeout(() => heart.remove(), 1800);
-        }, i * 25);
-
-        timeouts.push(timeout);
-      }
-
-      beatCount++;
+      const removeTimeout = setTimeout(() => heart.remove(), 1800);
+      timeouts.push(removeTimeout);
     };
 
-    // Heartbeat pattern: beat, pause(200ms), beat, pause(700ms), repeat
-    let inPattern = false;
-
-    const runPattern = () => {
-      if (inPattern) return;
-      inPattern = true;
-
-      // First beat
-      createBeat();
-
-      // Second beat after 200ms
-      const secondBeatTimeout = setTimeout(() => {
-        createBeat();
-        inPattern = false;
-      }, 200);
-
-      timeouts.push(secondBeatTimeout);
-    };
-
-    // Start immediately
-    runPattern();
-
-    // Repeat pattern every 900ms (200ms for second beat + 700ms pause)
-    patternInterval = setInterval(runPattern, 900);
+    // Create hearts at smooth, regular intervals
+    createHeart(); // First heart immediately
+    heartInterval = setInterval(createHeart, 150);
 
     // Return cleanup function
     return () => {
-      clearInterval(patternInterval);
+      clearInterval(heartInterval);
       timeouts.forEach(timeout => clearTimeout(timeout));
       timeouts.length = 0;
     };
@@ -606,28 +574,81 @@
   // --- Inject CSS Styles ---
   const style = document.createElement('style');
   style.textContent = `
-    /* Like button */
-    .simple-like-button {
+    /* Container */
+    .simple-reactions {
+      display: flex;
+      gap: 0.5rem;
+      margin: 3rem 0 2rem 0;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Base button styles */
+    .simple-reaction-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+      color: #333;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
       position: relative;
-      overflow: visible;
       z-index: 10;
     }
 
-    /* Mail button with text */
-    .simple-mail-button {
-      position: relative;
+    .simple-reaction-button:hover:not(:disabled) {
+      border-color: #999;
+      transform: translateY(-1px);
     }
 
+    .simple-reaction-button.liked {
+      background: #fff0f0;
+      border-color: #fb4934;
+      color: #fb4934;
+    }
+
+    .simple-reaction-button .icon {
+      font-size: 1.1em;
+      line-height: 1;
+    }
+
+    .simple-reaction-button .count {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Dark mode */
+    html[data-theme="dark"] .simple-reaction-button {
+      background: rgba(255,255,255,0.05);
+      border-color: #444;
+      color: #e0e0e0;
+    }
+
+    html[data-theme="dark"] .simple-reaction-button:hover:not(:disabled) {
+      background: rgba(255,255,255,0.1);
+      border-color: #666;
+    }
+
+    html[data-theme="dark"] .simple-reaction-button.liked {
+      background: rgba(251, 73, 52, 0.15);
+      border-color: #fb4934;
+      color: #fb4934;
+    }
+
+    /* Like button */
+    .simple-like-button {
+      overflow: visible;
+    }
+
+    /* Mail button with text */
     .simple-mail-button .mail-text {
       margin-left: 0.4rem;
       font-weight: 500;
       white-space: nowrap;
-    }
-
-    /* All reaction buttons need z-index to be above hearts */
-    .simple-reaction-button {
-      position: relative;
-      z-index: 10;
     }
 
     /* HeartBeat animation for liked state */
