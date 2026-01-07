@@ -10,6 +10,7 @@
   const showDetails = scriptTag?.dataset.details !== undefined;
   const groupByType = scriptTag?.dataset.groupByType !== undefined;
   const lang = scriptTag?.dataset.lang || 'en';
+  const debug = scriptTag?.dataset.debug !== undefined;
 
   // UI text configuration
   const ui = {
@@ -21,6 +22,7 @@
       mentions: 'Mentions',
       loading: 'Loading reactions…',
       noReactions: 'No reactions yet',
+      setupRequired: 'No webmentions received. Make sure webmention.io and Brid.gy are configured.',
       liked: 'liked this',
       reposted: 'reposted this',
       commented: 'commented',
@@ -34,6 +36,7 @@
       mentions: 'Erwähnungen',
       loading: 'Lade Reaktionen…',
       noReactions: 'Noch keine Reaktionen',
+      setupRequired: 'Keine Webmentions empfangen. Stelle sicher, dass webmention.io und Brid.gy konfiguriert sind.',
       liked: 'gefällt das',
       reposted: 'geteilt',
       commented: 'kommentiert',
@@ -248,25 +251,55 @@
     // Check cache first
     const cached = getCache();
     if (cached) {
+      if (debug) console.log('[Webmentions] Using cached data:', cached);
       return cached;
     }
 
-    try {
-      const response = await fetch(
-        `https://webmention.io/api/mentions.jf2?target=${encodeURIComponent(document.URL)}`
-      );
+    // Try multiple URL variants to handle different configurations
+    const targetUrl = document.URL;
+    const urls = [
+      targetUrl,  // Original URL
+      targetUrl.replace(/\/$/, ''),  // Without trailing slash
+      targetUrl + (targetUrl.endsWith('/') ? '' : '/'),  // With trailing slash
+    ];
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch webmentions');
-      }
-
-      const data = await response.json();
-      setCache(data);
-      return data;
-    } catch (error) {
-      console.error('Webmention fetch error:', error);
-      return null;
+    if (debug) {
+      console.log('[Webmentions] Trying URLs:', urls);
     }
+
+    for (const url of urls) {
+      try {
+        const apiUrl = `https://webmention.io/api/mentions.jf2?target=${encodeURIComponent(url)}`;
+        if (debug) console.log('[Webmentions] Fetching:', apiUrl);
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          if (debug) console.log('[Webmentions] Response not OK:', response.status);
+          continue;
+        }
+
+        const data = await response.json();
+        if (debug) console.log('[Webmentions] API Response:', data);
+
+        // If we got data with children, cache and return it
+        if (data && data.children && data.children.length > 0) {
+          setCache(data);
+          return data;
+        }
+
+        // If this is the first URL and it returned empty, try the next variant
+        if (debug) console.log('[Webmentions] No children in response, trying next URL variant');
+
+      } catch (error) {
+        if (debug) console.error('[Webmentions] Fetch error:', error);
+        continue;
+      }
+    }
+
+    // Return empty result if no URL variant worked
+    if (debug) console.log('[Webmentions] No webmentions found for any URL variant');
+    return { type: 'feed', name: 'Webmentions', children: [] };
   }
 
   // Initialize plugin
@@ -298,9 +331,26 @@
     if (!data || !data.children || data.children.length === 0) {
       // Show "no reactions" message
       const noReactions = document.createElement('div');
-      noReactions.className = 'webmention-reactions';
-      noReactions.style.cssText = 'margin: 1rem 0; opacity: 0.5;';
-      noReactions.textContent = t.noReactions;
+      noReactions.className = 'webmention-reactions webmention-empty';
+      noReactions.style.cssText = 'margin: 1rem 0; opacity: 0.5; font-size: 0.95rem;';
+
+      // In debug mode, show setup hint
+      if (debug) {
+        noReactions.innerHTML = `
+          <div>${t.setupRequired}</div>
+          <details style="margin-top: 0.5rem; opacity: 0.7;">
+            <summary style="cursor: pointer;">Debug info</summary>
+            <pre style="font-size: 0.85rem; margin-top: 0.5rem;">Checked URLs:
+${document.URL}
+${document.URL.replace(/\/$/, '')}
+${document.URL + (document.URL.endsWith('/') ? '' : '/')}
+
+See console for more details.</pre>
+          </details>
+        `;
+      } else {
+        noReactions.textContent = t.noReactions;
+      }
 
       if (upvoteForm) {
         upvoteForm.parentNode.insertBefore(noReactions, upvoteForm.nextSibling);

@@ -239,6 +239,7 @@ The plugin finds your social posts via meta tags or [bearblog-automation](https:
 |-----------|----------|-------------|
 | `data-details` | No | Show detailed view with all individual reactions |
 | `data-lang` | No | Language: `de` or `en` (default) |
+| `data-debug` | No | Enable debug mode with console logging and detailed error messages |
 
 #### Setup Guide
 
