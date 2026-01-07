@@ -1,26 +1,25 @@
 (function() {
   'use strict';
 
+  // Shared functions for neutralizing iframes
+  function neutralizeIframe(iframe) {
+    const src = iframe.getAttribute('src');
+    if (src && src.startsWith('http') && !iframe.hasAttribute('data-src')) {
+      iframe.setAttribute('data-src', src);
+      iframe.removeAttribute('src');
+    }
+  }
+
+  function neutralizeIframes() {
+    document.querySelectorAll('iframe[src]').forEach(neutralizeIframe);
+  }
+
   // Check if inline blocker is already running (recommended setup)
   let observer = window._privacyEmbedsObserver;
 
   if (!observer) {
     // Fallback: Set up blocking if inline script wasn't used
     // Note: This may not prevent early connections from preload scanner
-
-    // Neutralize a single iframe by moving src to data-src
-    function neutralizeIframe(iframe) {
-      const src = iframe.getAttribute('src');
-      if (src && src.startsWith('http') && !iframe.hasAttribute('data-src')) {
-        iframe.setAttribute('data-src', src);
-        iframe.removeAttribute('src');
-      }
-    }
-
-    // Neutralize all iframes with src
-    function neutralizeIframes() {
-      document.querySelectorAll('iframe[src]').forEach(neutralizeIframe);
-    }
 
     // Set up MutationObserver to catch iframes as they're added during parsing
     observer = new MutationObserver(function(mutations) {
