@@ -272,6 +272,29 @@
     return btn;
   }
 
+  function createMailButton(onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'simple-reaction-button simple-mail-button';
+    btn.title = 'Reply by mail';
+
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.innerHTML = icons.mail;
+
+    const text = document.createElement('span');
+    text.className = 'mail-text';
+    text.textContent = 'Reply by mail';
+
+    btn.appendChild(icon);
+    btn.appendChild(text);
+
+    if (onClick) {
+      btn.onclick = onClick;
+    }
+
+    return btn;
+  }
+
   function createLikeButton(totalLikes, isLiked, nativeButton) {
     const btn = document.createElement('button');
     btn.className = 'simple-reaction-button simple-like-button';
@@ -293,16 +316,16 @@
       btn.disabled = true;
       btn.style.cursor = 'default';
     } else {
-      let heartbeatInterval = null;
+      let cleanupHeartbeat = null;
 
       btn.addEventListener('mouseenter', () => {
-        heartbeatInterval = startHeartbeat(btn);
+        cleanupHeartbeat = startHeartbeat(btn);
       });
 
       btn.addEventListener('mouseleave', () => {
-        if (heartbeatInterval) {
-          clearInterval(heartbeatInterval);
-          heartbeatInterval = null;
+        if (cleanupHeartbeat) {
+          cleanupHeartbeat();
+          cleanupHeartbeat = null;
         }
       });
 
@@ -312,8 +335,9 @@
         btn.disabled = true;
         btn.classList.add('liked');
         btn.style.cursor = 'default';
-        if (heartbeatInterval) {
-          clearInterval(heartbeatInterval);
+        if (cleanupHeartbeat) {
+          cleanupHeartbeat();
+          cleanupHeartbeat = null;
         }
       };
     }
@@ -323,59 +347,44 @@
 
   // Start heartbeat animation with rhythm: bum-bum --- bum-bum
   function startHeartbeat(btn) {
-    const text = 'Like this post';
     let beatCount = 0;
+    const timeouts = [];
+    let patternInterval;
 
     const createBeat = () => {
       const rect = btn.getBoundingClientRect();
-      const isFirstBeat = beatCount % 2 === 0;
 
-      // Create 2-3 hearts per beat
+      // Create 2-3 hearts per beat that fan out
       const heartCount = Math.floor(Math.random() * 2) + 2;
 
       for (let i = 0; i < heartCount; i++) {
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           const heart = document.createElement('div');
           heart.className = 'flying-heart';
           heart.innerHTML = icons.heart;
 
-          const xOffset = (Math.random() - 0.5) * 60;
-          heart.style.left = `${rect.left + rect.width / 2 + xOffset}px`;
-          heart.style.top = `${rect.top}px`;
+          // Start from button center
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+
+          // Calculate fan angle (-30° to +30° from vertical)
+          const angle = (Math.random() - 0.5) * 60; // -30 to +30 degrees
+
+          heart.style.left = `${centerX}px`;
+          heart.style.top = `${centerY}px`;
+          heart.style.setProperty('--fly-angle', `${angle}deg`);
 
           document.body.appendChild(heart);
-          setTimeout(() => heart.remove(), 2000);
-        }, i * 50);
+          setTimeout(() => heart.remove(), 1500);
+        }, i * 40);
+
+        timeouts.push(timeout);
       }
-
-      // Create flying letters
-      const letters = text.split('');
-      const startX = rect.left + rect.width / 2 - (letters.length * 8);
-
-      letters.forEach((letter, i) => {
-        if (letter === ' ') return;
-
-        setTimeout(() => {
-          const letterEl = document.createElement('div');
-          letterEl.className = 'flying-letter';
-          letterEl.textContent = letter;
-
-          const xOffset = (i * 16) + (Math.random() - 0.5) * 10;
-          const yOffset = (Math.random() - 0.5) * 15;
-
-          letterEl.style.left = `${startX + xOffset}px`;
-          letterEl.style.top = `${rect.top + yOffset}px`;
-
-          document.body.appendChild(letterEl);
-          setTimeout(() => letterEl.remove(), 2000);
-        }, i * 30);
-      });
 
       beatCount++;
     };
 
-    // Heartbeat pattern: beat, pause(150ms), beat, pause(500ms), repeat
-    let patternInterval;
+    // Heartbeat pattern: beat, pause(200ms), beat, pause(700ms), repeat
     let inPattern = false;
 
     const runPattern = () => {
@@ -386,10 +395,12 @@
       createBeat();
 
       // Second beat after 200ms
-      setTimeout(() => {
+      const secondBeatTimeout = setTimeout(() => {
         createBeat();
         inPattern = false;
       }, 200);
+
+      timeouts.push(secondBeatTimeout);
     };
 
     // Start immediately
@@ -398,7 +409,12 @@
     // Repeat pattern every 900ms (200ms for second beat + 700ms pause)
     patternInterval = setInterval(runPattern, 900);
 
-    return patternInterval;
+    // Return cleanup function
+    return () => {
+      clearInterval(patternInterval);
+      timeouts.forEach(timeout => clearTimeout(timeout));
+      timeouts.length = 0;
+    };
   }
 
   // --- Mastodon Modal ---
@@ -573,11 +589,8 @@
 
     // Mail button (show if service enabled and email configured)
     if (activeServices.includes('mail') && email) {
-      buttons.push(createButton(
-        icons.mail,
-        '',
-        () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(getCleanTitle())}`,
-        'Reply by mail'
+      buttons.push(createMailButton(
+        () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(getCleanTitle())}`
       ));
     }
 
@@ -599,6 +612,17 @@
       overflow: visible;
     }
 
+    /* Mail button with text */
+    .simple-mail-button {
+      position: relative;
+    }
+
+    .simple-mail-button .mail-text {
+      margin-left: 0.4rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
     /* HeartBeat animation for liked state */
     .simple-like-button.liked:hover .icon svg {
       animation: sr-heartBeat 0.8s infinite;
@@ -612,86 +636,49 @@
       70% { transform: scale(1); }
     }
 
-    /* Flying hearts animation */
+    /* Flying hearts animation - fan out from button */
     .flying-heart {
       position: fixed;
       pointer-events: none;
       z-index: 9999;
-      animation: flyUp 2s ease-out forwards;
-      opacity: 1;
+      animation: flyUpFan 1.5s ease-out forwards;
+      opacity: 0;
+      --fly-angle: 0deg;
     }
 
     .flying-heart svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: #fb4934;
-      filter: drop-shadow(0 2px 4px rgba(251, 73, 52, 0.3));
+      filter: drop-shadow(0 2px 4px rgba(251, 73, 52, 0.4));
     }
 
-    @keyframes flyUp {
+    @keyframes flyUpFan {
       0% {
-        transform: translateY(0) scale(0.5) rotate(0deg);
+        transform: translate(0, 0) scale(0.3) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
         opacity: 1;
       }
       50% {
-        transform: translateY(-80px) scale(1) rotate(180deg);
-        opacity: 0.8;
-      }
-      100% {
-        transform: translateY(-150px) scale(0.3) rotate(360deg);
-        opacity: 0;
-      }
-    }
-
-    /* Add slight rotation variation */
-    .flying-heart:nth-child(odd) {
-      animation: flyUpRotate 2s ease-out forwards;
-    }
-
-    @keyframes flyUpRotate {
-      0% {
-        transform: translateY(0) scale(0.5) rotate(0deg);
-        opacity: 1;
-      }
-      50% {
-        transform: translateY(-80px) scale(1) rotate(-180deg);
-        opacity: 0.8;
-      }
-      100% {
-        transform: translateY(-150px) scale(0.3) rotate(-360deg);
-        opacity: 0;
-      }
-    }
-
-    /* Flying letters animation */
-    .flying-letter {
-      position: fixed;
-      pointer-events: none;
-      z-index: 9998;
-      animation: flyUpLetter 2s ease-out forwards;
-      opacity: 1;
-      font-weight: 600;
-      font-size: 14px;
-      color: #fb4934;
-      text-shadow:
-        0 0 10px rgba(251, 73, 52, 0.5),
-        0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    @keyframes flyUpLetter {
-      0% {
-        transform: translateY(0) scale(0.8);
-        opacity: 0;
-      }
-      20% {
-        opacity: 1;
-      }
-      50% {
-        transform: translateY(-80px) scale(1);
+        transform:
+          translate(
+            calc(sin(var(--fly-angle)) * 40px),
+            -70px
+          )
+          scale(1)
+          rotate(calc(var(--fly-angle) * 2));
         opacity: 0.9;
       }
       100% {
-        transform: translateY(-150px) scale(0.5);
+        transform:
+          translate(
+            calc(sin(var(--fly-angle)) * 60px),
+            -130px
+          )
+          scale(0.4)
+          rotate(calc(var(--fly-angle) * 4));
         opacity: 0;
       }
     }
