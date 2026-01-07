@@ -610,6 +610,7 @@
     .simple-like-button {
       position: relative;
       overflow: visible;
+      z-index: 10;
     }
 
     /* Mail button with text */
@@ -621,6 +622,12 @@
       margin-left: 0.4rem;
       font-weight: 500;
       white-space: nowrap;
+    }
+
+    /* All reaction buttons need z-index to be above hearts */
+    .simple-reaction-button {
+      position: relative;
+      z-index: 10;
     }
 
     /* HeartBeat animation for liked state */
@@ -636,11 +643,11 @@
       70% { transform: scale(1); }
     }
 
-    /* Flying hearts animation - fan out from button */
+    /* Flying hearts animation - fan out from button (behind button) */
     .flying-heart {
       position: fixed;
       pointer-events: none;
-      z-index: 9999;
+      z-index: 5;
       animation: flyUpFan 1.5s ease-out forwards;
       opacity: 0;
       --fly-angle: 0deg;
