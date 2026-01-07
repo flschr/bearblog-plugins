@@ -12,6 +12,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
 - **[Reply and Like](#reply-and-like)** – Adds customizable reply buttons (Mail/Mastodon) and optional styled like button
 - **[Social Comments](#social-comments)** – Social engagement buttons with live Bluesky/Mastodon reaction counts
+- **[Webmention Reactions](#webmention-reactions)** – Lightweight webmention display showing aggregated likes, reposts, comments, and backlinks
 
 ---
 
@@ -214,6 +215,82 @@ The plugin finds your social posts via meta tags or [bearblog-automation](https:
 #### CSS Classes
 
 `.social-reactions-wrapper`, `.social-reactions-buttons`, `.social-reactions-button`, `.sr-button-like`, `.sr-button-bluesky`, `.sr-button-mastodon`, `.sr-button-mail`
+
+---
+
+### Webmention Reactions
+
+*   **Description**: A lightweight plugin that displays aggregated reactions from Webmention.io in a clean, minimalist style (similar to Felix Schwenzel's [wirres.net](https://wirres.net/)). Shows counts for likes, reposts, comments, and backlinks from other blogs. Works with [Brid.gy](https://brid.gy/) to collect interactions from Mastodon, Bluesky, and other platforms as webmentions.
+*   **Installation**: First, set up Webmention.io and Brid.gy (see setup guide below), then add this to `Custom footer content`:
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/webmention-reactions.js" defer></script>
+    ```
+    Or with detailed view and German language:
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/webmention-reactions.js"
+            data-details
+            data-lang="de"
+            defer></script>
+    ```
+
+#### Options
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-details` | No | Show detailed view with all individual reactions |
+| `data-lang` | No | Language: `de` or `en` (default) |
+
+#### Setup Guide
+
+Before using this plugin, you need to set up Webmention.io and Brid.gy:
+
+1. **Add rel="me" link** to your Bear Blog footer for IndieAuth:
+   ```html
+   <a style="display: none;" href="https://github.com/yourusername" rel="me">GitHub</a>
+   ```
+
+2. **Link back from GitHub**: Add your Bear Blog URL to your GitHub profile.
+
+3. **Sign in to [Webmention.io](https://webmention.io/)** using your Bear Blog URL (it will authenticate via GitHub).
+
+4. **Add webmention endpoint** to your Bear Blog header (`Custom <head> content`):
+   ```html
+   <link rel="webmention" href="https://webmention.io/yourblog.com/webmention" />
+   <link rel="pingback" href="https://webmention.io/yourblog.com/xmlrpc">
+   ```
+
+5. **Connect social accounts via [Brid.gy](https://brid.gy/)**:
+   - Sign in with Mastodon (grant read access)
+   - Sign in with Bluesky (using app password)
+   - Brid.gy will automatically send interactions as webmentions to webmention.io
+
+6. **Add the plugin script** to your footer (see installation above).
+
+For more detailed instructions, see:
+- [Yordi's guide on displaying webmentions](https://yordi.me/step-by-step-guide-to-show-webmention-interactions-on-bear-blog/)
+- [Gobino's setup tutorial](https://gobino.be/adding-webmentions-to-my-blog-tutorial/)
+
+#### What This Shows
+
+The plugin displays four types of interactions:
+
+- **Likes** ❤️ — from Mastodon favorites, Bluesky likes, etc.
+- **Reposts** 🔄 — shares, boosts, retweets
+- **Comments** 💬 — replies from social media (via Brid.gy)
+- **Mentions** 🔗 — backlinks from other blogs
+
+#### CSS Classes
+
+```css
+.webmention-reactions
+.webmention-like-of
+.webmention-repost-of
+.webmention-in-reply-to
+.webmention-mention-of
+.webmention-details
+.webmention-section
+.webmention-item
+```
 
 ---
 
