@@ -12,6 +12,7 @@ A collection of plugins to enhance the [Bear Blog](https://bearblog.dev/) reader
 - **[Custom Date Formatting](#custom-date-formatting)** – Customizable date format with German month names
 - **[Reply and Like](#reply-and-like)** – Adds customizable reply buttons (Mail/Mastodon) and optional styled like button
 - **[Social Comments](#social-comments)** – Social engagement buttons with live Bluesky/Mastodon reaction counts
+- **[Social Comments Simple](#social-comments-simple)** – Minimalist version showing only icons and counts (recommended)
 - **[Webmention Reactions](#webmention-reactions)** – Lightweight webmention display showing aggregated likes, reposts, comments, and backlinks
 
 ---
@@ -215,6 +216,134 @@ The plugin finds your social posts via meta tags or [bearblog-automation](https:
 #### CSS Classes
 
 `.social-reactions-wrapper`, `.social-reactions-buttons`, `.social-reactions-button`, `.sr-button-like`, `.sr-button-bluesky`, `.sr-button-mastodon`, `.sr-button-mail`
+
+---
+
+### Social Comments Simple
+
+*   **Description**: A minimalist version of Social Comments showing only icons and aggregated counts. Clean, simple design inspired by Felix Schwenzel's [wirres.net](https://wirres.net/). Shows total likes (aggregated from all platforms + Bear Blog), platform-specific interaction counts, and total comments. **Recommended for most users.**
+*   **Installation**: Add to `Custom footer content`:
+    ```html
+    <script src="https://flschr.github.io/bearblog-plugins/social-comments-simple.js"
+            data-email="your@email.com"
+            data-like
+            defer></script>
+    ```
+
+#### Features
+
+- **❤️ Total Likes** — Aggregates likes from Mastodon + Bluesky + Bear Blog's native upvotes
+- **🐘 Mastodon** — Shows total interactions (likes + boosts + replies), clicks to open Mastodon post
+- **🦋 Bluesky** — Shows total interactions (likes + reposts + replies), clicks to open Bluesky post
+- **💬 Comments** — Shows total comment count across all platforms (informational only)
+- **✉️ Mail** — Optional mail reply button
+
+#### Options
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-email` | No | Your email for the mail button (only if mail service is enabled) |
+| `data-like` | No | Show aggregated like button (includes Bear Blog upvotes) |
+| `data-mastodon` | No | Your Mastodon handle for reply threading |
+| `data-services` | No | Which services to show: `mail` (default: none, only social platforms) |
+| `data-mappings-url` | No | Custom URL for mappings.json (default: bearblog-automation) |
+
+#### Example with all options
+
+```html
+<script src="https://flschr.github.io/bearblog-plugins/social-comments-simple.js"
+        data-email="blog@example.com"
+        data-mastodon="@you@mastodon.social"
+        data-like
+        data-services="mail"
+        data-mappings-url="https://your-url/mappings.json"
+        defer></script>
+```
+
+#### CSS Styling
+
+Add this to your `Custom <head> content` to style the buttons:
+
+```css
+<style>
+.simple-reactions {
+    display: flex;
+    gap: 0.5rem;
+    margin: 3rem 0 2rem 0;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.simple-reaction-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.simple-reaction-button:hover:not(:disabled) {
+    border-color: #999;
+    transform: translateY(-1px);
+}
+
+.simple-reaction-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.simple-reaction-button.liked {
+    background: #fff0f0;
+    border-color: #fb4934;
+    color: #fb4934;
+}
+
+.simple-reaction-button .icon {
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.simple-reaction-button .count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Dark mode support */
+html[data-theme="dark"] .simple-reaction-button {
+    background: rgba(255,255,255,0.05);
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .simple-reaction-button:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+    border-color: #666;
+}
+
+html[data-theme="dark"] .simple-reaction-button.liked {
+    background: rgba(251, 73, 52, 0.15);
+    border-color: #fb4934;
+    color: #fb4934;
+}
+</style>
+```
+
+#### Post URL Mapping
+
+Same as Social Comments - uses meta tags or mappings.json:
+
+```html
+<meta name="bsky-post" content="https://bsky.app/profile/you.bsky.social/post/abc123">
+<meta name="mastodon-post" content="https://mastodon.social/@you/123456789">
+```
+
+Or use [bearblog-automation](https://github.com/flschr/bearblog-automation)'s `mappings.json`.
 
 ---
 
