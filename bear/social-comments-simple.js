@@ -375,8 +375,8 @@
           heart.style.setProperty('--fly-angle', `${angle}deg`);
 
           document.body.appendChild(heart);
-          setTimeout(() => heart.remove(), 1500);
-        }, i * 40);
+          setTimeout(() => heart.remove(), 1800);
+        }, i * 25);
 
         timeouts.push(timeout);
       }
@@ -648,7 +648,7 @@
       position: fixed;
       pointer-events: none;
       z-index: 5;
-      animation: flyUpFan 1.5s ease-out forwards;
+      animation: flyUpFan 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       opacity: 0;
       --fly-angle: 0deg;
     }
@@ -662,29 +662,43 @@
 
     @keyframes flyUpFan {
       0% {
-        transform: translate(0, 0) scale(0.3) rotate(0deg);
+        transform: translate(0, 0) scale(0.2) rotate(0deg);
         opacity: 0;
       }
-      10% {
+      15% {
+        transform: translate(
+          calc(sin(var(--fly-angle)) * 10px),
+          -10px
+        ) scale(0.6) rotate(calc(var(--fly-angle) * 0.5));
         opacity: 1;
       }
-      50% {
+      40% {
         transform:
           translate(
-            calc(sin(var(--fly-angle)) * 40px),
-            -70px
+            calc(sin(var(--fly-angle)) * 35px),
+            -60px
           )
-          scale(1)
-          rotate(calc(var(--fly-angle) * 2));
-        opacity: 0.9;
+          scale(1.1)
+          rotate(calc(var(--fly-angle) * 1.5));
+        opacity: 0.95;
+      }
+      70% {
+        transform:
+          translate(
+            calc(sin(var(--fly-angle)) * 55px),
+            -110px
+          )
+          scale(0.7)
+          rotate(calc(var(--fly-angle) * 3));
+        opacity: 0.6;
       }
       100% {
         transform:
           translate(
-            calc(sin(var(--fly-angle)) * 60px),
-            -130px
+            calc(sin(var(--fly-angle)) * 65px),
+            -140px
           )
-          scale(0.4)
+          scale(0.3)
           rotate(calc(var(--fly-angle) * 4));
         opacity: 0;
       }
