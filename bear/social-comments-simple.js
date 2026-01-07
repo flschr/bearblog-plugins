@@ -276,17 +276,7 @@
     const btn = document.createElement('button');
     btn.className = 'simple-reaction-button simple-mail-button';
     btn.title = 'Reply by mail';
-
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.innerHTML = icons.mail;
-
-    const text = document.createElement('span');
-    text.className = 'mail-text';
-    text.textContent = 'Reply by mail';
-
-    btn.appendChild(icon);
-    btn.appendChild(text);
+    btn.innerHTML = `<span class="icon">${icons.mail}</span>`;
 
     if (onClick) {
       btn.onclick = onClick;
