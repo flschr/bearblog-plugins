@@ -64,16 +64,48 @@ On iOS, the "Smart Clipboard" feature triggers a paste permission popup. You can
 ### Privacy Embeds
 
 *   **Description**: Replaces external iframes (videos, maps, etc.) with privacy-friendly placeholders. Users must click to load content, preventing automatic data transfer to third-party providers. Supports YouTube (auto-switches to youtube-nocookie.com), Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, and Arte. Automatically detects browser language (German/English). See it in [on this page](https://fischr.org/oben-links-am-lago-di-benaco/).
-*   **Installation**: Add this to `Custom <head> content` (not footer!). The inline script blocks connections immediately, before the browser's preload scanner can initiate any requests:
-    ```html
-    <script>
-    // Critical inline blocker - prevents early connections
-    (function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
-    </script>
-    <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
-    ```
 
-    **Important**: The inline `<script>` block MUST come first and be embedded directly (not loaded from external URL) to prevent early connections to video/map providers.
+#### ⚠️ Important: Preload Scanner Issue
+
+Due to the browser's preload scanner, the basic installation may still make **early connections** to video/map providers before JavaScript can block them. This is a known browser behavior that cannot be fully prevented with JavaScript alone.
+
+**For 100% privacy guarantee**, use the [CSP (Content Security Policy) method](#csp-method-recommended) below.
+
+#### Basic Installation (95% effective)
+
+Add this to `Custom <head> content` (not footer!):
+```html
+<script>
+// Critical inline blocker - prevents early connections
+(function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
+</script>
+<script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
+```
+
+**Note**: The inline `<script>` block MUST come first and be embedded directly (not loaded from external URL).
+
+#### CSP Method (Recommended)
+
+For **absolute privacy guarantee**, add a Content Security Policy header that blocks iframes at the browser level, **before** the preload scanner runs:
+
+```html
+<!-- Add this FIRST in Custom <head> content -->
+<meta http-equiv="Content-Security-Policy" content="frame-src 'self' data: blob:">
+
+<!-- Then add the privacy-embeds scripts -->
+<script>
+// Critical inline blocker
+(function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
+</script>
+<script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
+```
+
+**What happens with CSP:**
+- ✅ **Zero** connections to YouTube/Maps until user clicks
+- ⚠️ Browser console shows CSP errors (harmless - this means it's working!)
+- ✅ Embeds still work perfectly when user clicks to load
+
+**For detailed explanation**, see [PRIVACY-EMBEDS-PRELOAD-SCANNER.md](PRIVACY-EMBEDS-PRELOAD-SCANNER.md)
 
 ---
 
