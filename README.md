@@ -7,7 +7,7 @@ A collection of plugins to enhance [Bear Blog](https://bearblog.dev/). Used on [
 ### Markdown Toolbar
 Adds a formatting toolbar to the Bear Blog post editor with buttons for bold, italic, links, lists, code blocks, and more. Includes optional AI-powered alt-text generation for images via OpenAI API.
 
-**Installation** (Dashboard → Settings → Custom dashboard Javascript):
+**Installation** (Dashboard → Settings → Custom dashboard):
 ```html
 <script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar.js"></script>
 ```
