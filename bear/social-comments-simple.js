@@ -285,21 +285,26 @@
     count.className = 'count';
     count.textContent = totalLikes;
 
-    const text = document.createElement('span');
-    text.className = 'like-text';
-    text.textContent = 'Like this post';
-
     btn.appendChild(icon);
     btn.appendChild(count);
-    btn.appendChild(text);
 
     if (isLiked) {
       btn.classList.add('liked');
       btn.disabled = true;
       btn.style.cursor = 'default';
     } else {
-      // Add hover animation for flying hearts
-      btn.addEventListener('mouseenter', createFlyingHearts);
+      let heartbeatInterval = null;
+
+      btn.addEventListener('mouseenter', () => {
+        heartbeatInterval = startHeartbeat(btn);
+      });
+
+      btn.addEventListener('mouseleave', () => {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+      });
 
       btn.onclick = () => {
         if (nativeButton) nativeButton.click();
@@ -307,39 +312,93 @@
         btn.disabled = true;
         btn.classList.add('liked');
         btn.style.cursor = 'default';
-        btn.removeEventListener('mouseenter', createFlyingHearts);
-        text.style.display = 'none';
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
       };
     }
 
     return btn;
   }
 
-  // Create flying hearts animation
-  function createFlyingHearts(event) {
-    const btn = event.currentTarget;
-    const rect = btn.getBoundingClientRect();
+  // Start heartbeat animation with rhythm: bum-bum --- bum-bum
+  function startHeartbeat(btn) {
+    const text = 'Like this post';
+    let beatCount = 0;
 
-    // Create 3-5 hearts
-    const heartCount = Math.floor(Math.random() * 3) + 3;
+    const createBeat = () => {
+      const rect = btn.getBoundingClientRect();
+      const isFirstBeat = beatCount % 2 === 0;
 
-    for (let i = 0; i < heartCount; i++) {
+      // Create 2-3 hearts per beat
+      const heartCount = Math.floor(Math.random() * 2) + 2;
+
+      for (let i = 0; i < heartCount; i++) {
+        setTimeout(() => {
+          const heart = document.createElement('div');
+          heart.className = 'flying-heart';
+          heart.innerHTML = icons.heart;
+
+          const xOffset = (Math.random() - 0.5) * 60;
+          heart.style.left = `${rect.left + rect.width / 2 + xOffset}px`;
+          heart.style.top = `${rect.top}px`;
+
+          document.body.appendChild(heart);
+          setTimeout(() => heart.remove(), 2000);
+        }, i * 50);
+      }
+
+      // Create flying letters
+      const letters = text.split('');
+      const startX = rect.left + rect.width / 2 - (letters.length * 8);
+
+      letters.forEach((letter, i) => {
+        if (letter === ' ') return;
+
+        setTimeout(() => {
+          const letterEl = document.createElement('div');
+          letterEl.className = 'flying-letter';
+          letterEl.textContent = letter;
+
+          const xOffset = (i * 16) + (Math.random() - 0.5) * 10;
+          const yOffset = (Math.random() - 0.5) * 15;
+
+          letterEl.style.left = `${startX + xOffset}px`;
+          letterEl.style.top = `${rect.top + yOffset}px`;
+
+          document.body.appendChild(letterEl);
+          setTimeout(() => letterEl.remove(), 2000);
+        }, i * 30);
+      });
+
+      beatCount++;
+    };
+
+    // Heartbeat pattern: beat, pause(150ms), beat, pause(500ms), repeat
+    let patternInterval;
+    let inPattern = false;
+
+    const runPattern = () => {
+      if (inPattern) return;
+      inPattern = true;
+
+      // First beat
+      createBeat();
+
+      // Second beat after 200ms
       setTimeout(() => {
-        const heart = document.createElement('div');
-        heart.className = 'flying-heart';
-        heart.innerHTML = icons.heart;
+        createBeat();
+        inPattern = false;
+      }, 200);
+    };
 
-        // Random horizontal offset
-        const xOffset = (Math.random() - 0.5) * 40;
-        heart.style.left = `${rect.left + rect.width / 2 + xOffset}px`;
-        heart.style.top = `${rect.top + rect.height / 2}px`;
+    // Start immediately
+    runPattern();
 
-        document.body.appendChild(heart);
+    // Repeat pattern every 900ms (200ms for second beat + 700ms pause)
+    patternInterval = setInterval(runPattern, 900);
 
-        // Remove after animation
-        setTimeout(() => heart.remove(), 2000);
-      }, i * 100);
-    }
+    return patternInterval;
   }
 
   // --- Mastodon Modal ---
@@ -534,21 +593,10 @@
   // --- Inject CSS Styles ---
   const style = document.createElement('style');
   style.textContent = `
-    /* Like button with text */
+    /* Like button */
     .simple-like-button {
       position: relative;
       overflow: visible;
-    }
-
-    .simple-like-button .like-text {
-      display: none;
-      margin-left: 0.4rem;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-
-    .simple-like-button:not(.liked):hover .like-text {
-      display: inline;
     }
 
     /* HeartBeat animation for liked state */
@@ -586,11 +634,11 @@
         opacity: 1;
       }
       50% {
-        transform: translateY(-60px) scale(1) rotate(180deg);
+        transform: translateY(-80px) scale(1) rotate(180deg);
         opacity: 0.8;
       }
       100% {
-        transform: translateY(-120px) scale(0.3) rotate(360deg);
+        transform: translateY(-150px) scale(0.3) rotate(360deg);
         opacity: 0;
       }
     }
@@ -606,11 +654,44 @@
         opacity: 1;
       }
       50% {
-        transform: translateY(-60px) scale(1) rotate(-180deg);
+        transform: translateY(-80px) scale(1) rotate(-180deg);
         opacity: 0.8;
       }
       100% {
-        transform: translateY(-120px) scale(0.3) rotate(-360deg);
+        transform: translateY(-150px) scale(0.3) rotate(-360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Flying letters animation */
+    .flying-letter {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9998;
+      animation: flyUpLetter 2s ease-out forwards;
+      opacity: 1;
+      font-weight: 600;
+      font-size: 14px;
+      color: #fb4934;
+      text-shadow:
+        0 0 10px rgba(251, 73, 52, 0.5),
+        0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes flyUpLetter {
+      0% {
+        transform: translateY(0) scale(0.8);
+        opacity: 0;
+      }
+      20% {
+        opacity: 1;
+      }
+      50% {
+        transform: translateY(-80px) scale(1);
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateY(-150px) scale(0.5);
         opacity: 0;
       }
     }
