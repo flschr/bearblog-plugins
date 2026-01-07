@@ -5,7 +5,7 @@ A collection of plugins to enhance [Bear Blog](https://bearblog.dev/). Used on [
 ## Available Plugins
 
 ### Markdown Toolbar
-Adds a toolbar to the post editor with formatting buttons and optional AI-powered alt-text generation.
+Adds a formatting toolbar to the Bear Blog post editor with buttons for bold, italic, links, lists, code blocks, and more. Includes optional AI-powered alt-text generation for images via OpenAI API.
 
 **Installation** (Dashboard → Settings → Custom dashboard Javascript):
 ```html
@@ -15,7 +15,7 @@ Adds a toolbar to the post editor with formatting buttons and optional AI-powere
 ---
 
 ### Blog Search
-Client-side search with floating search button and infinite scroll for `/blog` page.
+Adds a client-side search functionality to your blog with a floating search button. Features instant search results, keyword highlighting, and automatic infinite scroll on the `/blog` page for easy browsing.
 
 **Installation** (Custom footer content):
 ```html
@@ -25,7 +25,7 @@ Client-side search with floating search button and infinite scroll for `/blog` p
 ---
 
 ### Theme Switcher
-Dark/light mode toggle that saves user preference.
+Implements a dark/light mode toggle that remembers the user's preference in localStorage. The theme is applied instantly to prevent flash of unstyled content.
 
 **Installation** (requires element with `id="theme-toggle"` in your theme):
 ```html
@@ -39,9 +39,9 @@ Dark/light mode toggle that saves user preference.
 ---
 
 ### Privacy Embeds
-Replaces iframes (YouTube, Maps, etc.) with privacy-friendly consent placeholders. Supports YouTube, Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, Arte.
+Replaces external iframes (YouTube, Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, Arte) with privacy-friendly consent placeholders. Videos and maps only load after user consent, preventing tracking before interaction.
 
-**Installation** (Custom <head> content):
+**Standard Installation** (Custom <head> content):
 ```html
 <script>
 (function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
@@ -49,12 +49,21 @@ Replaces iframes (YouTube, Maps, etc.) with privacy-friendly consent placeholder
 <script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
 ```
 
-**Note**: Due to browser preload scanner, early connections may still occur. For 100% privacy guarantee, see [PRIVACY-EMBEDS-PRELOAD-SCANNER.md](PRIVACY-EMBEDS-PRELOAD-SCANNER.md).
+**Perfect Privacy Installation** (100% guarantee via CSP):
+```html
+<meta http-equiv="Content-Security-Policy" content="frame-src 'self' data: blob:">
+<script>
+(function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
+</script>
+<script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
+```
+
+The CSP meta tag blocks all external iframe connections at browser level, preventing even the preload scanner from initiating connections before user consent. Console warnings are normal and indicate successful blocking.
 
 ---
 
 ### Image Lazy Loading
-Automatically adds `loading="lazy"` to all images in main content.
+Automatically adds native `loading="lazy"` attribute to all images in your blog posts. Images load only when they're about to enter the viewport, improving page load performance and reducing bandwidth usage.
 
 **Installation** (Custom footer content):
 ```html
@@ -64,7 +73,7 @@ Automatically adds `loading="lazy"` to all images in main content.
 ---
 
 ### Custom Date Formatting
-Customizable date format with German month names. Edit `format_string` variable in script to customize.
+Replaces default date formats throughout your blog with customizable formatting. Comes with German month names by default, but can be adapted to any language or format by editing the `format_string` variable in the script.
 
 **Installation** (Custom footer content):
 ```html
@@ -74,7 +83,7 @@ Customizable date format with German month names. Edit `format_string` variable 
 ---
 
 ### Reply and Like
-Reply buttons (Mail/Mastodon) with optional styled like button. Mastodon replies can be threaded under original toot.
+Adds reply buttons for email and Mastodon at the end of each post, with an optional animated like button. Mastodon replies can be threaded directly under your original toot, making it easy for readers to join the conversation.
 
 **Installation** (Custom footer content):
 ```html
@@ -88,7 +97,7 @@ Reply buttons (Mail/Mastodon) with optional styled like button. Mastodon replies
 ---
 
 ### Social Comments
-Social engagement buttons showing live reaction counts from Bluesky and Mastodon.
+Displays social engagement buttons with live reaction counts from Bluesky and Mastodon. Shows real-time likes, reposts, and replies from your posts on these platforms, encouraging reader interaction across multiple social networks.
 
 **Installation** (Custom footer content):
 ```html
@@ -101,14 +110,14 @@ Social engagement buttons showing live reaction counts from Bluesky and Mastodon
 ---
 
 ### Webmention Reactions
-Displays aggregated webmentions (likes, reposts, comments, mentions) from Webmention.io and Brid.gy.
+Displays aggregated webmentions from across the web, including likes, reposts, comments, and mentions. Integrates with Webmention.io and Brid.gy to collect reactions from various social platforms and websites that support the Webmention standard.
 
 **Installation** (Custom footer content):
 ```html
 <script src="https://flschr.github.io/bearblog-plugins/webmention-reactions.js" defer></script>
 ```
 
-**Setup required**: See [webmention.io](https://webmention.io/) and [brid.gy](https://brid.gy/) setup guides.
+**Setup required**: Configure [webmention.io](https://webmention.io/) and [brid.gy](https://brid.gy/) to collect webmentions for your domain.
 
 ---
 
