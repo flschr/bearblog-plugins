@@ -273,25 +273,73 @@
   }
 
   function createLikeButton(totalLikes, isLiked, nativeButton) {
-    const btn = createButton(
-      icons.heart,
-      totalLikes,
-      !isLiked ? () => {
-        if (nativeButton) nativeButton.click();
-        btn.querySelector('.count').textContent = totalLikes + 1;
-        btn.disabled = true;
-        btn.classList.add('liked');
-        btn.style.cursor = 'default';
-      } : null,
-      isLiked ? 'You liked this' : 'Like this post'
-    );
+    const btn = document.createElement('button');
+    btn.className = 'simple-reaction-button simple-like-button';
+    btn.title = isLiked ? 'You liked this' : 'Like this post';
+
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.innerHTML = icons.heart;
+
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = totalLikes;
+
+    const text = document.createElement('span');
+    text.className = 'like-text';
+    text.textContent = 'Like this post';
+
+    btn.appendChild(icon);
+    btn.appendChild(count);
+    btn.appendChild(text);
 
     if (isLiked) {
       btn.classList.add('liked');
       btn.disabled = true;
+      btn.style.cursor = 'default';
+    } else {
+      // Add hover animation for flying hearts
+      btn.addEventListener('mouseenter', createFlyingHearts);
+
+      btn.onclick = () => {
+        if (nativeButton) nativeButton.click();
+        count.textContent = totalLikes + 1;
+        btn.disabled = true;
+        btn.classList.add('liked');
+        btn.style.cursor = 'default';
+        btn.removeEventListener('mouseenter', createFlyingHearts);
+        text.style.display = 'none';
+      };
     }
 
     return btn;
+  }
+
+  // Create flying hearts animation
+  function createFlyingHearts(event) {
+    const btn = event.currentTarget;
+    const rect = btn.getBoundingClientRect();
+
+    // Create 3-5 hearts
+    const heartCount = Math.floor(Math.random() * 3) + 3;
+
+    for (let i = 0; i < heartCount; i++) {
+      setTimeout(() => {
+        const heart = document.createElement('div');
+        heart.className = 'flying-heart';
+        heart.innerHTML = icons.heart;
+
+        // Random horizontal offset
+        const xOffset = (Math.random() - 0.5) * 40;
+        heart.style.left = `${rect.left + rect.width / 2 + xOffset}px`;
+        heart.style.top = `${rect.top + rect.height / 2}px`;
+
+        document.body.appendChild(heart);
+
+        // Remove after animation
+        setTimeout(() => heart.remove(), 2000);
+      }, i * 100);
+    }
   }
 
   // --- Mastodon Modal ---
@@ -482,6 +530,92 @@
       container.style.display = 'none';
     }
   }
+
+  // --- Inject CSS Styles ---
+  const style = document.createElement('style');
+  style.textContent = `
+    /* Like button with text */
+    .simple-like-button {
+      position: relative;
+      overflow: visible;
+    }
+
+    .simple-like-button .like-text {
+      display: none;
+      margin-left: 0.4rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .simple-like-button:not(.liked):hover .like-text {
+      display: inline;
+    }
+
+    /* HeartBeat animation for liked state */
+    .simple-like-button.liked:hover .icon svg {
+      animation: sr-heartBeat 0.8s infinite;
+    }
+
+    @keyframes sr-heartBeat {
+      0% { transform: scale(1); }
+      14% { transform: scale(1.3); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.3); }
+      70% { transform: scale(1); }
+    }
+
+    /* Flying hearts animation */
+    .flying-heart {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      animation: flyUp 2s ease-out forwards;
+      opacity: 1;
+    }
+
+    .flying-heart svg {
+      width: 20px;
+      height: 20px;
+      fill: #fb4934;
+      filter: drop-shadow(0 2px 4px rgba(251, 73, 52, 0.3));
+    }
+
+    @keyframes flyUp {
+      0% {
+        transform: translateY(0) scale(0.5) rotate(0deg);
+        opacity: 1;
+      }
+      50% {
+        transform: translateY(-60px) scale(1) rotate(180deg);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translateY(-120px) scale(0.3) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Add slight rotation variation */
+    .flying-heart:nth-child(odd) {
+      animation: flyUpRotate 2s ease-out forwards;
+    }
+
+    @keyframes flyUpRotate {
+      0% {
+        transform: translateY(0) scale(0.5) rotate(0deg);
+        opacity: 1;
+      }
+      50% {
+        transform: translateY(-60px) scale(1) rotate(-180deg);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translateY(-120px) scale(0.3) rotate(-360deg);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
 
   init();
 })();
