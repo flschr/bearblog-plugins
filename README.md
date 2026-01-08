@@ -14,21 +14,10 @@ Adds a formatting toolbar to the Bear Blog post editor with buttons for bold, it
 
 #### AI Alt-Text Feature (Optional)
 
-The toolbar includes an optional AI-powered alt-text generator for images using OpenAI's Vision API.
+- The toolbar includes an **optional** AI-powered alt-text generator for images using OpenAI's Vision API.
+- Your OpenAI API key is stored in your browser's localStorage. Do not use this on shared computers and set spending limits in your OpenAI account settings](https://platform.openai.com/settings/organization/limits).
 
-**Security note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with risks:
-
-- **XSS vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key.
-- **Shared computers**: Anyone with access to your browser can view the key via Developer Tools.
-- **No encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript).
-
-**Recommendations:**
-1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month).
-2. **Use a dedicated API key** just for this toolbar (you can revoke it anytime).
-3. **Don't use this feature** on shared or public computers.
-4. The risk is limited: an attacker can only make API calls on your behalf — they cannot access your OpenAI account or other data.
-
-#### Deep Dive: How the AI Integration Works
+#### How the AI Integration Works
 
 The AI integration uses the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
 
@@ -38,8 +27,8 @@ The AI integration uses the [OpenAI Vision API](https://platform.openai.com/docs
 
 ---
 
-### Markdown Toolbar (Basic)
-Lightweight toolbar for the Bear Blog post editor with core formatting buttons only. Useful if you want a minimal toolbar without AI features or additional UI.
+### LEGACY: Markdown Toolbar (Basic)
+Lightweight toolbar for the Bear Blog post editor with core formatting buttons only. Useful if you want a minimal toolbar without AI features or additional UI. This toolbar is not maintaned any more.
 
 **Installation** (Dashboard → Settings → Custom dashboard):
 ```html
