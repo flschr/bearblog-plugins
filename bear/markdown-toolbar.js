@@ -598,41 +598,6 @@
         return false; // Default: disabled
     }
 
-    function isSmartClipboardEnabled() {
-        const userSettings = loadUserSettings();
-        if (userSettings && typeof userSettings.enableSmartClipboard === 'boolean') {
-            return userSettings.enableSmartClipboard;
-        }
-        return true; // Default: enabled (existing behavior)
-    }
-
-    async function canReadClipboardSilently() {
-        if (!navigator.clipboard?.readText) {
-            return false;
-        }
-
-        const userAgent = navigator.userAgent || '';
-        const isFirefox = /firefox/i.test(userAgent);
-        const isIOS = /iphone|ipad|ipod/i.test(userAgent);
-
-        if (!navigator.permissions?.query) {
-            return !isFirefox && !isIOS;
-        }
-
-        try {
-            const status = await navigator.permissions.query({ name: 'clipboard-read' });
-            if (status.state === 'granted') {
-                return true;
-            }
-            if (status.state === 'prompt') {
-                return !isFirefox && !isIOS;
-            }
-            return false;
-        } catch (error) {
-            return false;
-        }
-    }
-
     function isAiAltTextEnabled() {
         const userSettings = loadUserSettings();
         if (userSettings && typeof userSettings.enableAiAltText === 'boolean') {
@@ -1746,35 +1711,6 @@
         undoRedoLabel.appendChild(undoRedoText);
         optionsGrid.appendChild(undoRedoLabel);
 
-        // Smart Clipboard Toggle (auto-paste URLs from clipboard)
-        const clipboardLabel = document.createElement('label');
-        clipboardLabel.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            background: ${isDark ? '#002530' : '#f8f9fa'};
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            color: ${isDark ? '#ddd' : '#444'};
-            transition: background 0.15s;
-        `;
-        clipboardLabel.onmouseover = () => clipboardLabel.style.background = isDark ? '#003545' : '#eef0f2';
-        clipboardLabel.onmouseout = () => clipboardLabel.style.background = isDark ? '#002530' : '#f8f9fa';
-
-        const clipboardCheckbox = document.createElement('input');
-        clipboardCheckbox.type = 'checkbox';
-        clipboardCheckbox.checked = isSmartClipboardEnabled();
-        clipboardCheckbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
-
-        const clipboardText = document.createElement('span');
-        clipboardText.textContent = 'Smart Clipboard (auto-paste URLs)';
-
-        clipboardLabel.appendChild(clipboardCheckbox);
-        clipboardLabel.appendChild(clipboardText);
-        optionsGrid.appendChild(clipboardLabel);
-
         optionsSection.appendChild(optionsGrid);
         panel.appendChild(optionsSection);
 
@@ -2065,7 +2001,6 @@
                 fullscreenCheckbox.checked = true; // Default: fullscreen enabled
                 actionCheckbox.checked = false; // Default: action buttons disabled
                 undoRedoCheckbox.checked = false; // Default: undo/redo buttons disabled
-                clipboardCheckbox.checked = true; // Default: smart clipboard enabled
                 snippetCheckbox.checked = false; // Default: custom snippet disabled
                 snippetTextarea.value = ''; // Default: empty snippet
                 aiCheckbox.checked = false; // Default: AI alt-text disabled
@@ -2101,7 +2036,6 @@
                 showFullscreenButton: fullscreenCheckbox.checked,
                 showActionButtons: actionCheckbox.checked,
                 showUndoRedoButtons: undoRedoCheckbox.checked,
-                enableSmartClipboard: clipboardCheckbox.checked,
                 showCustomSnippet: snippetCheckbox.checked,
                 customSnippetText: snippetTextarea.value,
                 enableAiAltText: aiCheckbox.checked,
@@ -3235,19 +3169,7 @@
         const end = activeTextarea.selectionEnd;
         const selected = activeTextarea.value.substring(start, end);
 
-        // Try to get URL from clipboard (with validation)
-        // Only if Smart Clipboard is enabled - iOS users can disable this to avoid paste menu
-        let url = '';
-        if (isSmartClipboardEnabled() && await canReadClipboardSilently()) {
-            try {
-                const clip = await navigator.clipboard.readText();
-                if (isValidUrl(clip)) {
-                    url = clip.trim();
-                }
-            } catch (e) {
-                // Clipboard access denied or empty - this is expected behavior, no warning needed
-            }
-        }
+        const url = '';
 
         // Ensure focus is on textarea
         activeTextarea.focus();
@@ -3338,33 +3260,8 @@
         }
     }
 
-    // Validate and sanitize URL from clipboard
-    function isValidUrl(str) {
-        if (!str || typeof str !== 'string') return false;
-        const trimmed = str.trim();
-        // Max URL length to prevent abuse
-        if (trimmed.length > INTERNAL.MAX_URL_LENGTH) return false;
-        // Block dangerous protocols
-        if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return false;
-        // Must start with http:// or https://
-        return /^https?:\/\//i.test(trimmed);
-    }
-
-    // Check if a string looks like an image URL
-    function isImageUrl(str) {
-        if (!isValidUrl(str)) return false;
-        const trimmed = str.trim();
-        // Check for common image extensions or known image hosts
-        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)(\?.*)?$/i;
-        const imageHosts = /\b(cdn\.digitaloceanspaces\.com|imgur\.com|i\.imgur\.com|cloudinary\.com|unsplash\.com|images\.unsplash\.com|pexels\.com|images\.pexels\.com|flickr\.com|staticflickr\.com|giphy\.com|media\.giphy\.com)\b/i;
-        return imageExtensions.test(trimmed) || imageHosts.test(trimmed);
-    }
-
-    // Handle smart image button with clipboard detection
-    async function handleSmartImageUpload() {
+    function handleImageUpload() {
         const activeTextarea = getActiveTextarea();
-
-        // Save cursor position
         const savedStart = activeTextarea ? activeTextarea.selectionStart : 0;
         const savedEnd = activeTextarea ? activeTextarea.selectionEnd : 0;
 
@@ -3377,160 +3274,13 @@
             $textarea.selectionEnd = fsTextarea.selectionEnd;
         }
 
-        // Check clipboard for image URL only if Smart Clipboard is enabled
-        // iOS users can disable this to avoid the paste menu popup
-        if (isSmartClipboardEnabled() && await canReadClipboardSilently()) {
-            try {
-                const clipboardText = await navigator.clipboard.readText();
-                if (isImageUrl(clipboardText)) {
-                    showImageUrlDialog(clipboardText.trim());
-                    return;
-                }
-            } catch (e) {
-                // Clipboard access denied or empty - just proceed with upload
-            }
-        }
-
-        // Ensure focus and cursor position before triggering upload
         if (activeTextarea) {
             activeTextarea.focus();
             activeTextarea.setSelectionRange(savedStart, savedEnd);
         }
 
-        // No image URL in clipboard (or Smart Clipboard disabled), trigger normal upload
         // Note: "upload-image" is just an <a> link, the actual file input has id="file"
         document.getElementById('file')?.click();
-    }
-
-    // Show dialog asking whether to use clipboard URL or upload
-    function showImageUrlDialog(imageUrl) {
-        // Save cursor position before dialog opens (focus will be lost)
-        const activeTextarea = getActiveTextarea();
-        const savedCursorPos = activeTextarea.selectionStart;
-        const savedSelectionEnd = activeTextarea.selectionEnd;
-
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10003;
-        `;
-
-        // Create dialog panel
-        const dialog = document.createElement('div');
-        dialog.style.cssText = `
-            background: ${isDark ? '#01242e' : 'white'};
-            border-radius: 12px;
-            padding: 24px;
-            max-width: 420px;
-            width: 90%;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            font-family: system-ui, sans-serif;
-        `;
-
-        // Build dialog content safely (no innerHTML with user content)
-        const headerDiv = document.createElement('div');
-        headerDiv.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;';
-
-        const iconSpan = document.createElement('span');
-        iconSpan.style.cssText = 'color:#0969da;flex-shrink:0;';
-        iconSpan.innerHTML = ICONS.info;
-
-        const contentDiv = document.createElement('div');
-
-        const titleDiv = document.createElement('div');
-        titleDiv.style.cssText = `font-weight:600;font-size:16px;color:${isDark ? '#fff' : '#333'};margin-bottom:8px;`;
-        titleDiv.textContent = 'Image URL detected';
-
-        const descDiv = document.createElement('div');
-        descDiv.style.cssText = `font-size:14px;color:${isDark ? '#aaa' : '#666'};margin-bottom:12px;`;
-        descDiv.textContent = 'An image URL was found in your clipboard.';
-
-        const urlDiv = document.createElement('div');
-        urlDiv.style.cssText = `font-size:12px;word-break:break-all;padding:8px;background:${isDark ? '#002530' : '#f5f5f5'};border-radius:6px;font-family:ui-monospace,monospace;color:${isDark ? '#888' : '#666'};`;
-        urlDiv.textContent = imageUrl.length > 60 ? imageUrl.substring(0, 57) + '...' : imageUrl;
-
-        contentDiv.appendChild(titleDiv);
-        contentDiv.appendChild(descDiv);
-        contentDiv.appendChild(urlDiv);
-        headerDiv.appendChild(iconSpan);
-        headerDiv.appendChild(contentDiv);
-
-        const buttonDiv = document.createElement('div');
-        buttonDiv.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
-
-        const uploadBtn = document.createElement('button');
-        uploadBtn.textContent = 'Upload new image';
-        uploadBtn.style.cssText = `
-            padding: 8px 16px;
-            background: transparent;
-            color: ${isDark ? '#888' : '#666'};
-            border: 1px solid ${isDark ? '#444' : '#ccc'};
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        `;
-
-        const useBtn = document.createElement('button');
-        useBtn.textContent = 'Use this URL';
-        useBtn.style.cssText = `
-            padding: 8px 16px;
-            background: #2e7d32;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-        `;
-
-        buttonDiv.appendChild(uploadBtn);
-        buttonDiv.appendChild(useBtn);
-        dialog.appendChild(headerDiv);
-        dialog.appendChild(buttonDiv);
-        overlay.appendChild(dialog);
-        document.body.appendChild(overlay);
-
-        // Close handler
-        const closeOverlay = () => {
-            removeDialogFromStack(overlay);
-            overlay.remove();
-        };
-
-        // Close on overlay click
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeOverlay();
-        });
-
-        // Handle "Use this URL" button
-        useBtn.addEventListener('click', () => {
-            closeOverlay();
-            // Restore cursor position before inserting
-            focusTextarea(activeTextarea);
-            activeTextarea.setSelectionRange(savedCursorPos, savedSelectionEnd);
-            insertText(`![](${imageUrl})`);
-        });
-
-        // Handle "Upload new image" button
-        uploadBtn.addEventListener('click', () => {
-            closeOverlay();
-            // Note: "upload-image" is just an <a> link, the actual file input has id="file"
-            document.getElementById('file')?.click();
-        });
-
-        // Register with dialog manager for Escape key handling
-        pushDialog(overlay, closeOverlay);
-
-        // Focus the "Use this URL" button
-        useBtn.focus();
     }
 
     // Show confirmation dialog for reset with clear warning
@@ -3661,7 +3411,7 @@
                 break;
 
             case 'upload':
-                handleSmartImageUpload();
+                handleImageUpload();
                 break;
 
             case 'gallery': {
