@@ -611,13 +611,23 @@
             return false;
         }
 
+        const userAgent = navigator.userAgent || '';
+        const isFirefox = /firefox/i.test(userAgent);
+        const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+
         if (!navigator.permissions?.query) {
-            return false;
+            return !isFirefox && !isIOS;
         }
 
         try {
             const status = await navigator.permissions.query({ name: 'clipboard-read' });
-            return status.state === 'granted';
+            if (status.state === 'granted') {
+                return true;
+            }
+            if (status.state === 'prompt') {
+                return !isFirefox && !isIOS;
+            }
+            return false;
         } catch (error) {
             return false;
         }
