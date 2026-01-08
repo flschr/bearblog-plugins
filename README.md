@@ -96,8 +96,57 @@ Adds reply buttons for email and Mastodon at the end of each post, with an optio
 
 ---
 
-### Social Comments
-Displays social engagement buttons with live reaction counts from Bluesky and Mastodon. Shows real-time likes, reposts, and replies from your posts on these platforms, encouraging reader interaction across multiple social networks.
+### Social Comments (Simple)
+Unified engagement plugin displaying social reactions and blog webmentions. Shows live counts from Bluesky and Mastodon with an animated like button. Includes support for displaying traditional blog webmentions collected via webmention.io.
+
+**Installation** (Custom footer content):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/social-comments-simple.js"
+        data-email="your@email.com"
+        data-like
+        defer></script>
+```
+
+**Configuration options**:
+- `data-email` - Your email for reply functionality
+- `data-mastodon` - Your Mastodon handle (e.g., "@user@instance.social")
+- `data-mappings-url` - URL to mappings.json (default: flschr/bearblog-automation)
+- `data-like` - Show like button (omit to hide)
+- `data-services` - Active services, comma-separated (default: "mastodon,bluesky,comments,mail")
+  - Available: `mastodon`, `bluesky`, `comments`, `mail`, `webmentions`
+
+**Webmentions configuration** (add to enable blog mentions):
+- `data-services` - Add `webmentions` to the services list
+- `data-webmentions-repo` - GitHub repository (default: "flschr/bearblog-automation")
+- `data-webmentions-show-excerpt` - Show content excerpt (default: "true", set to "false" to hide)
+- `data-webmentions-max-mentions` - Maximum mentions to show initially (default: 0 = show all)
+- `data-webmentions-lang` - Language for UI text: "en" or "de" (default: "en")
+
+**Example with webmentions enabled**:
+```html
+<script src="https://flschr.github.io/bearblog-plugins/social-comments-simple.js"
+        data-email="your@email.com"
+        data-like
+        data-services="mastodon,bluesky,comments,mail,webmentions"
+        data-webmentions-repo="flschr/bearblog-automation"
+        data-webmentions-show-excerpt="true"
+        data-webmentions-max-mentions="5"
+        defer></script>
+```
+
+**Features**:
+- Live engagement counts from Bluesky and Mastodon
+- Animated like button with viral effects
+- Blog webmentions display with cards
+- Dark mode support
+- Mobile responsive
+- Session caching (5 minutes)
+- Graceful error handling
+
+---
+
+### Social Comments (Classic)
+Original social comments plugin with modal interactions and detailed engagement metrics.
 
 **Installation** (Custom footer content):
 ```html
@@ -118,67 +167,6 @@ Displays aggregated webmentions from across the web, including likes, reposts, c
 ```
 
 **Setup required**: Configure [webmention.io](https://webmention.io/) and [brid.gy](https://brid.gy/) to collect webmentions for your domain.
-
----
-
-### Webmentions Display
-Displays traditional blog webmentions collected via webmention.io and stored in a GitHub repository. Shows blog mentions for the current article with title, author, published date, and content excerpt. Automatically fetches data from your GitHub repository and caches it for performance.
-
-**Installation** (Custom footer content):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/webmentions.js"
-        data-repo="username/repo-name"
-        defer></script>
-```
-
-**Configuration options**:
-- `data-repo` - GitHub repository in format "username/repo-name" (default: "flschr/bearblog-automation")
-- `data-show-excerpt` - Show content excerpt (default: "true", set to "false" to hide)
-- `data-max-mentions` - Maximum number of mentions to show initially (default: 0 = show all)
-- `data-show-no-mentions` - Show "No mentions yet" message when none exist (omit to hide silently)
-- `data-lang` - Language for UI text: "en" or "de" (default: "en")
-- `data-debug` - Enable console debugging (omit for production)
-
-**Example with all options**:
-```html
-<script src="https://flschr.github.io/bearblog-plugins/webmentions.js"
-        data-repo="flschr/bearblog-automation"
-        data-show-excerpt="true"
-        data-max-mentions="5"
-        data-show-no-mentions
-        data-lang="en"
-        defer></script>
-```
-
-**Data format**: The plugin expects a `webmentions.json` file in your repository root with this structure:
-```json
-{
-  "https://example.com/article-slug/": {
-    "target": "https://example.com/article-slug/",
-    "mentions": [
-      {
-        "source": "https://other-blog.com/post/",
-        "type": "mention",
-        "published": "2026-01-08T12:00:00Z",
-        "author": {
-          "name": "Author Name",
-          "url": "https://author-website.com/"
-        },
-        "title": "Post title that links to your article",
-        "content": "Excerpt or summary of the mention..."
-      }
-    ]
-  }
-}
-```
-
-**Features**:
-- Automatic URL matching (handles trailing slashes)
-- Session caching (5 minutes) to reduce API calls
-- Dark mode support
-- Mobile responsive design
-- Graceful error handling (silent fail if data unavailable)
-- "Show more" button when limiting displayed mentions
 
 ---
 
