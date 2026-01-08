@@ -30,7 +30,6 @@
     const INTERNAL = {
         // Timing
         DEBOUNCE_DELAY: 100,           // Character counter debounce (ms)
-        SYNC_POLL_INTERVAL: 300,       // Fullscreen sync polling (ms)
         SETTINGS_CACHE_TTL: 1000,      // Settings cache lifetime (ms)
         SAVE_TIMEOUT: 30000,           // AJAX save timeout (ms)
         PREVIEW_SAVE_TIMEOUT: 15000,   // Preview save timeout (ms)
@@ -389,6 +388,66 @@
         return function(...args) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    function createExternalLink(href, text, style) {
+        const link = document.createElement('a');
+        link.href = href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = text;
+        if (style) {
+            link.style.cssText = style;
+        }
+        return link;
+    }
+
+    function createTextareaValueObserver(textarea, onChange) {
+        const proto = Object.getPrototypeOf(textarea);
+        const valueDescriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+        if (!valueDescriptor || !valueDescriptor.configurable) {
+            return () => {};
+        }
+
+        const previousOwnDescriptor = Object.getOwnPropertyDescriptor(textarea, 'value');
+        const originalSetRangeText = textarea.setRangeText;
+
+        Object.defineProperty(textarea, 'value', {
+            configurable: true,
+            get() {
+                return valueDescriptor.get.call(textarea);
+            },
+            set(value) {
+                const previousValue = valueDescriptor.get.call(textarea);
+                valueDescriptor.set.call(textarea, value);
+                if (previousValue !== value) {
+                    onChange(value, previousValue);
+                }
+            }
+        });
+
+        if (typeof originalSetRangeText === 'function') {
+            textarea.setRangeText = function(...args) {
+                const previousValue = textarea.value;
+                const result = originalSetRangeText.apply(textarea, args);
+                const nextValue = textarea.value;
+                if (previousValue !== nextValue) {
+                    onChange(nextValue, previousValue);
+                }
+                return result;
+            };
+        }
+
+        return () => {
+            if (typeof originalSetRangeText === 'function') {
+                textarea.setRangeText = originalSetRangeText;
+            }
+            if (previousOwnDescriptor) {
+                Object.defineProperty(textarea, 'value', previousOwnDescriptor);
+            } else {
+                delete textarea.value;
+            }
         };
     }
 
@@ -1880,9 +1939,15 @@
             margin-top: 8px;
             line-height: 1.4;
         `;
-        aiInfo.innerHTML = 'Adds an ALT button to generate alt-text for selected image markdown using OpenAI GPT-4o. ' +
-            'Select an image in your text, then click ALT. ' +
-            '<a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0969da;">Get an API key</a>';
+        aiInfo.appendChild(document.createTextNode(
+            'Adds an ALT button to generate alt-text for selected image markdown using OpenAI GPT-4o. ' +
+            'Select an image in your text, then click ALT. '
+        ));
+        aiInfo.appendChild(createExternalLink(
+            'https://platform.openai.com/api-keys',
+            'Get an API key',
+            'color: #0969da;'
+        ));
         aiWrapper.appendChild(aiInfo);
 
         // Security warning (below "Get an API key")
@@ -1897,10 +1962,15 @@
             line-height: 1.4;
             color: ${isDark ? '#ffc107' : '#664d03'};
         `;
-        securityWarning.innerHTML = `
-            <strong>Note:</strong> API key is stored in localStorage (unencrypted).
-            <a href="https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">More info</a>
-        `;
+        const warningStrong = document.createElement('strong');
+        warningStrong.textContent = 'Note:';
+        securityWarning.appendChild(warningStrong);
+        securityWarning.appendChild(document.createTextNode(' API key is stored in localStorage (unencrypted). '));
+        securityWarning.appendChild(createExternalLink(
+            'https://github.com/flschr/bearblog-plugins#ai-alt-text-feature-optional',
+            'More info',
+            'color: inherit; text-decoration: underline;'
+        ));
         aiWrapper.appendChild(securityWarning);
 
         aiSection.appendChild(aiWrapper);
@@ -1916,10 +1986,19 @@
             font-size: 12px;
             color: ${isDark ? '#888' : '#666'};
         `;
-        aboutSection.innerHTML = `
-            Created by <a href="https://fischr.org" target="_blank" style="color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;">René Fischer</a><br>
-            <a href="https://github.com/flschr/bearblog-plugins" target="_blank" style="color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;">GitHub Repository</a> · Licensed under WTFPL
-        `;
+        aboutSection.appendChild(document.createTextNode('Created by '));
+        aboutSection.appendChild(createExternalLink(
+            'https://fischr.org',
+            'René Fischer',
+            `color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;`
+        ));
+        aboutSection.appendChild(document.createElement('br'));
+        aboutSection.appendChild(createExternalLink(
+            'https://github.com/flschr/bearblog-plugins',
+            'GitHub Repository',
+            `color: ${isDark ? '#58a6ff' : '#0969da'}; text-decoration: none;`
+        ));
+        aboutSection.appendChild(document.createTextNode(' · Licensed under WTFPL'));
         panel.appendChild(aboutSection);
 
         // Buttons
@@ -2776,7 +2855,7 @@
 
         // Reverse sync: when Bear Blog inserts content (e.g., after image upload),
         // sync it back to fullscreen textarea
-        const originalTextareaInputHandler = () => {
+        const syncOriginalToFullscreen = () => {
             if (isSyncing) return;
             // Only sync if content differs (Bear Blog inserted something)
             if ($textarea.value !== fsTextarea.value) {
@@ -2792,33 +2871,18 @@
                 isSyncing = false;
             }
         };
+        const originalTextareaInputHandler = () => {
+            syncOriginalToFullscreen();
+        };
         $textarea.addEventListener('input', originalTextareaInputHandler);
 
-        // Polling sync: catch programmatic changes (e.g., Bear Blog's native image upload)
-        // that modify the textarea without triggering input events
-        const syncInterval = setInterval(() => {
-            if (isSyncing) return;
-            // Check if fullscreen is still active
+        // Observe programmatic changes (e.g., Bear Blog's native image upload)
+        const stopProgrammaticSync = createTextareaValueObserver($textarea, () => {
             if (!document.getElementById('md-fullscreen-textarea')) {
-                clearInterval(syncInterval);
                 return;
             }
-            // Sync if content differs (programmatic change detected)
-            // Fast length check before expensive string comparison
-            if ($textarea.value.length !== fsTextarea.value.length ||
-                $textarea.value !== fsTextarea.value) {
-                isSyncing = true;
-                const cursorPos = fsTextarea.selectionStart;
-                const oldLength = fsTextarea.value.length;
-                fsTextarea.value = $textarea.value;
-                const newLength = fsTextarea.value.length;
-                const diff = newLength - oldLength;
-                // Adjust cursor position based on content length change
-                const newCursorPos = Math.max(0, cursorPos + diff);
-                fsTextarea.setSelectionRange(newCursorPos, newCursorPos);
-                isSyncing = false;
-            }
-        }, INTERNAL.SYNC_POLL_INTERVAL); // Check regularly for responsive sync
+            syncOriginalToFullscreen();
+        });
 
         // Track cleanup state to prevent double-cleanup
         let isCleanedUp = false;
@@ -2850,7 +2914,7 @@
             document.body.style.overflow = '';
             document.removeEventListener('keydown', escHandler);
             $textarea.removeEventListener('input', originalTextareaInputHandler);
-            clearInterval(syncInterval); // Stop polling sync
+            stopProgrammaticSync();
             observer.disconnect();
         };
 
