@@ -120,6 +120,23 @@
     }
   }
 
+  function parseJsonWithRepair(text) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      const cleaned = text
+        .trim()
+        .replace(/}\s*,\s*{/g, ',')
+        .replace(/,\s*}/g, '}');
+
+      try {
+        return JSON.parse(cleaned);
+      } catch {
+        return null;
+      }
+    }
+  }
+
   function isDarkMode() {
     return document.documentElement.dataset.theme === 'dark'
       || document.body.classList.contains('dark-mode')
@@ -326,7 +343,8 @@
       const res = await fetchWithTimeout(dataUrl);
       if (!res.ok) return null;
 
-      const data = await safeJsonParse(res);
+      const text = await res.text();
+      const data = parseJsonWithRepair(text);
       if (data) setCache(cacheKey, data);
       return data;
     } catch {
@@ -418,12 +436,11 @@
       btn.classList.add('liked');
       btn.disabled = true;
       btn.style.cursor = 'default';
-
-      // Add viral effect if high engagement
-      if (totalLikes >= VIRAL_THRESHOLD) {
-        btn.classList.add('viral');
-      }
     } else {
+      if (totalLikes >= VIRAL_THRESHOLD) {
+        btn.classList.add('hype');
+      }
+
       let cleanupHeartbeat = null;
       let isLiking = false;
 
@@ -468,12 +485,8 @@
 
         btn.disabled = true;
         btn.classList.add('liked');
+        btn.classList.remove('hype');
         btn.style.cursor = 'default';
-
-        // Social proof: add viral class for high engagement
-        if (newCount >= VIRAL_THRESHOLD) {
-          btn.classList.add('viral');
-        }
       };
     }
 
@@ -1022,11 +1035,15 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      line-height: 1;
+      line-height: 0;
+      width: 18px;
+      height: 18px;
     }
 
     .simple-reaction-button .icon svg {
       display: block;
+      width: 100%;
+      height: 100%;
     }
 
     .simple-reaction-button .count {
@@ -1077,82 +1094,51 @@
       border-color: #7879ff;
     }
 
-    html[data-theme="dark"] .simple-like-button.viral::before {
-      background: linear-gradient(45deg, #fb4934, #ff8080, #fb4934);
-      opacity: 0;
-    }
-
-    html[data-theme="dark"] .simple-like-button.viral::before {
-      animation: viral-glow-dark 2s ease-in-out infinite;
-    }
-
-    @keyframes viral-glow-dark {
-      0%, 100% {
-        opacity: 0;
-        background-position: 0% 50%;
-      }
-      50% {
-        opacity: 0.6;
-        background-position: 100% 50%;
-      }
-    }
-
     /* Like button */
     .simple-like-button {
       overflow: visible;
     }
 
-    /* Viral effect for high engagement (50+ likes) */
-    .simple-like-button.viral {
-      animation: viral-pulse 2s ease-in-out infinite;
+    @property --sr-hype-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    /* Hype effect for high engagement (50+ likes) */
+    .simple-like-button.hype {
       position: relative;
     }
 
-    .simple-like-button.viral::before {
+    .simple-like-button.hype::before {
       content: '';
       position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      border-radius: 9px;
-      background: linear-gradient(45deg, #fb4934, #ff6b6b, #fb4934);
-      background-size: 200% 200%;
-      opacity: 0;
+      inset: -2px;
+      border-radius: 10px;
+      background: conic-gradient(from var(--sr-hype-angle, 0deg), #fb4934, #121212, #fb4934);
+      animation: sr-hype-spin 3.2s linear infinite;
       z-index: -1;
-      animation: viral-glow 2s ease-in-out infinite;
+      padding: 2px;
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      mask-composite: exclude;
     }
 
-    @keyframes viral-pulse {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.08);
-      }
+    html[data-theme="dark"] .simple-like-button.hype::before {
+      background: conic-gradient(from var(--sr-hype-angle, 0deg), #fb4934, #000, #fb4934);
     }
 
-    @keyframes viral-glow {
-      0%, 100% {
-        opacity: 0;
-        background-position: 0% 50%;
+    @keyframes sr-hype-spin {
+      from {
+        --sr-hype-angle: 0deg;
       }
-      50% {
-        opacity: 0.4;
-        background-position: 100% 50%;
-      }
-    }
-
-    .simple-like-button.viral:hover {
-      animation: viral-pulse-hover 1.5s ease-in-out infinite;
-    }
-
-    @keyframes viral-pulse-hover {
-      0%, 100% {
-        transform: scale(1.05) translateY(-1px);
-      }
-      50% {
-        transform: scale(1.12) translateY(-1px);
+      to {
+        --sr-hype-angle: 360deg;
       }
     }
 
@@ -1172,8 +1158,7 @@
     /* Respect prefers-reduced-motion (WCAG 2.1) */
     @media (prefers-reduced-motion: reduce) {
       .flying-heart,
-      .simple-like-button.viral,
-      .simple-like-button.viral::before,
+      .simple-like-button.hype::before,
       .simple-like-button.liked:hover .icon svg {
         animation: none !important;
       }
