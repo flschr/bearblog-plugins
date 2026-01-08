@@ -570,29 +570,65 @@
     list.style.cssText = 'list-style:none;padding:0;margin:0;';
 
     webmentionsMentions.forEach(mention => {
+      let sourceUrl;
+      try {
+        sourceUrl = new URL(mention.source);
+      } catch {
+        return;
+      }
+
+      if (!['http:', 'https:'].includes(sourceUrl.protocol)) {
+        return;
+      }
+
+      const domain = sourceUrl.hostname.replace(/^www\./, '');
+      const title = mention.title || 'Untitled';
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+
       const listItem = document.createElement('li');
       listItem.className = 'webmention-item';
       listItem.style.cssText = 'margin-bottom:0.75rem;';
 
-      // Extract domain from source URL
-      let domain = '';
-      try {
-        const url = new URL(mention.source);
-        domain = url.hostname.replace(/^www\./, '');
-      } catch {
-        domain = mention.source;
-      }
+      const link = document.createElement('a');
+      link.className = 'webmention-link';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.href = sourceUrl.href;
 
-      const title = mention.title || 'Untitled';
-      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+      const favicon = document.createElement('img');
+      favicon.className = 'webmention-favicon';
+      favicon.width = 16;
+      favicon.height = 16;
+      favicon.loading = 'lazy';
+      favicon.alt = '';
+      favicon.src = faviconUrl;
+      favicon.onerror = () => {
+        favicon.style.display = 'none';
+      };
 
-      listItem.innerHTML = `
-        <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-link">
-          <img src="${faviconUrl}" alt="" class="webmention-favicon" width="16" height="16" loading="lazy" onerror="this.style.display='none'">
-          <span class="webmention-text"><span class="webmention-domain">${domain}</span><span class="webmention-separator">:</span> <span class="webmention-link-title">${title}</span></span>
-        </a>
-      `;
+      const textWrapper = document.createElement('span');
+      textWrapper.className = 'webmention-text';
 
+      const domainSpan = document.createElement('span');
+      domainSpan.className = 'webmention-domain';
+      domainSpan.textContent = domain;
+
+      const separatorSpan = document.createElement('span');
+      separatorSpan.className = 'webmention-separator';
+      separatorSpan.textContent = ':';
+
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'webmention-link-title';
+      titleSpan.textContent = title;
+
+      textWrapper.appendChild(domainSpan);
+      textWrapper.appendChild(separatorSpan);
+      textWrapper.append(' ');
+      textWrapper.appendChild(titleSpan);
+
+      link.appendChild(favicon);
+      link.appendChild(textWrapper);
+      listItem.appendChild(link);
       list.appendChild(listItem);
     });
 
