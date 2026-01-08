@@ -53,8 +53,7 @@
   }
 
   function initPrivacyEmbeds() {
-    // Stop the observer - DOM is ready, all iframes are neutralized
-    observer.disconnect();
+    // Keep observer running to neutralize dynamically added iframes
 
     // Detect browser language (fallback to German if not English)
     const lang = navigator.language || navigator.userLanguage || 'de';
