@@ -112,8 +112,8 @@ Unified engagement plugin displaying social reactions and blog webmentions. Show
 - `data-mastodon` - Your Mastodon handle (e.g., "@user@instance.social")
 - `data-mappings-url` - URL to mappings.json (default: flschr/bearblog-automation)
 - `data-like` - Show like button (omit to hide)
-- `data-services` - Active services, comma-separated (default: "mastodon,bluesky,comments,mail")
-  - Available: `mastodon`, `bluesky`, `comments`, `mail`, `webmentions`
+- `data-services` - Active services, comma-separated (default: "mastodon,bluesky,mail")
+  - Available: `mastodon`, `bluesky`, `mail`, `webmentions`
 
 **Webmentions configuration** (add to enable blog mentions):
 - `data-services` - Add `webmentions` to the services list
@@ -127,10 +127,9 @@ Unified engagement plugin displaying social reactions and blog webmentions. Show
 <script src="https://flschr.github.io/bearblog-plugins/social-comments-simple.js"
         data-email="your@email.com"
         data-like
-        data-services="mastodon,bluesky,comments,mail,webmentions"
+        data-services="mastodon,bluesky,mail,webmentions"
         data-webmentions-repo="flschr/bearblog-automation"
         data-webmentions-show-excerpt="true"
-        data-webmentions-max-mentions="5"
         defer></script>
 ```
 

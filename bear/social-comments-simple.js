@@ -44,8 +44,7 @@
     mail: '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
     mastodon: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 0 0 .023-.043v-1.809a.052.052 0 0 0-.02-.041.053.053 0 0 0-.046-.01 20.282 20.282 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 0 1-.319-1.433.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.668 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12v6.406z"/></svg>',
     bluesky: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>',
-    comments: '<svg viewBox="0 0 640 512" fill="currentColor" width="16" height="16"><path d="M88.2 309.1c9.8-18.3 6.8-40.8-7.5-55.8C59.4 230.9 48 204 48 176c0-63.5 63.8-128 160-128s160 64.5 160 128s-63.8 128-160 128c-13.1 0-25.8-1.3-37.8-3.6c-10.4-2-21.2-.6-30.7 4.2c-4.1 2.1-8.3 4.1-12.6 6c-16 7.2-32.9 13.5-49.9 18c2.8-4.6 5.4-9.1 7.9-13.6c1.1-1.9 2.2-3.9 3.2-5.9zM208 352c114.9 0 208-78.8 208-176S322.9 0 208 0S0 78.8 0 176c0 41.8 17.2 80.1 45.9 110.3c-.9 1.7-1.9 3.5-2.8 5.1c-10.3 18.4-22.3 36.5-36.6 52.1c-6.6 7-8.3 17.2-4.6 25.9C5.8 378.3 14.4 384 24 384c43 0 86.5-13.3 122.7-29.7c4.8-2.2 9.6-4.5 14.2-6.8c15.1 3 30.9 4.5 47.1 4.5zM432 480c16.2 0 31.9-1.6 47.1-4.5c4.6 2.3 9.4 4.6 14.2 6.8C529.5 498.7 573 512 616 512c9.6 0 18.2-5.7 22-14.5c3.8-8.8 2-19-4.6-25.9c-14.2-15.6-26.2-33.7-36.6-52.1c-.9-1.7-1.9-3.4-2.8-5.1C622.8 384.1 640 345.8 640 304c0-94.4-87.9-171.5-198.2-175.8c4.1 15.2 6.2 31.2 6.2 47.8l0 .6c87.2 6.7 144 67.5 144 127.4c0 28-11.4 54.9-32.7 77.2c-14.3 15-17.3 37.6-7.5 55.8c1.1 2 2.2 4 3.2 5.9c2.5 4.5 5.2 9 7.9 13.6c-17-4.5-33.9-10.7-49.9-18c-4.3-1.9-8.5-3.9-12.6-6c-9.5-4.8-20.3-6.2-30.7-4.2c-12.1 2.4-24.8 3.6-37.8 3.6c-61.7 0-110-26.5-136.8-62.3c-16 5.4-32.8 9.4-50 11.8C279 439.8 350 480 432 480z"/></svg>',
-    webmentions: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2v-7h-2v7z"/></svg>'
+    webmentions: '<svg viewBox="-10 -5 1034 1034" fill="currentColor" width="16" height="16"><path d="M857 216l-230 214h111l-85 368h-2l-120 -368h-144l-121 362h-2l-111 -476h-153l185 700h155l117 -363h2l118 363h153l157 -586h113z"/></svg>'
   };
 
   // --- Cache Utilities ---
@@ -475,15 +474,11 @@
 
     const ui = {
       en: {
-        title: 'Blog Mentions',
-        by: 'by',
-        readMore: 'Read full post',
+        title: 'Also mentioned in',
         close: 'Close'
       },
       de: {
-        title: 'Blog-Erwähnungen',
-        by: 'von',
-        readMore: 'Vollständigen Beitrag lesen',
+        title: 'Auch erwähnt in',
         close: 'Schließen'
       }
     };
@@ -565,86 +560,43 @@
       return;
     }
 
-    const ui = {
-      en: {
-        by: 'by',
-        readMore: 'Read full post'
-      },
-      de: {
-        by: 'von',
-        readMore: 'Vollständigen Beitrag lesen'
-      }
-    };
-
-    const t = ui[webmentionsLang] || ui.en;
-
-    // Sort mentions by published date (newest first)
-    const sortedMentions = [...webmentionsMentions].sort((a, b) => {
-      const dateA = new Date(a.published || 0);
-      const dateB = new Date(b.published || 0);
-      return dateB - dateA;
-    });
-
     // Get content area
     const content = webmentionsModal.querySelector('.webmentions-modal-content');
     content.innerHTML = '';
 
-    // Create cards container
-    const cardsContainer = document.createElement('div');
-    cardsContainer.className = 'webmentions-modal-cards';
-    cardsContainer.style.cssText = 'display:flex;flex-direction:column;gap:1.25rem;';
+    // Create simple list
+    const list = document.createElement('ul');
+    list.className = 'webmentions-list';
+    list.style.cssText = 'list-style:none;padding:0;margin:0;';
 
-    sortedMentions.forEach(mention => {
-      const card = document.createElement('div');
-      card.className = 'webmention-modal-card';
+    webmentionsMentions.forEach(mention => {
+      const listItem = document.createElement('li');
+      listItem.className = 'webmention-item';
+      listItem.style.cssText = 'margin-bottom:0.75rem;';
 
-      const author = mention.author || {};
-      const authorName = author.name || 'Anonymous';
-      const authorUrl = author.url || mention.source;
-      const title = mention.title || 'Untitled';
-      const publishedDate = formatDate(mention.published, webmentionsLang);
-
-      let cardContent = `
-        <div class="webmention-header">
-          <div class="webmention-title">
-            <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-title-link">
-              📝 ${title}
-            </a>
-          </div>
-          <div class="webmention-meta">
-            <span class="webmention-author">
-              ${t.by}
-              ${authorUrl ? `<a href="${authorUrl}" target="_blank" rel="noopener">${authorName}</a>` : authorName}
-            </span>
-            ${publishedDate ? `<span class="webmention-separator">·</span><span class="webmention-date">${publishedDate}</span>` : ''}
-          </div>
-        </div>
-      `;
-
-      // Add content excerpt if enabled and available
-      if (webmentionsShowExcerpt && mention.content) {
-        const excerpt = truncateText(mention.content);
-        cardContent += `
-          <div class="webmention-content">
-            "${excerpt}"
-          </div>
-        `;
+      // Extract domain from source URL
+      let domain = '';
+      try {
+        const url = new URL(mention.source);
+        domain = url.hostname.replace(/^www\./, '');
+      } catch {
+        domain = mention.source;
       }
 
-      // Add read more link
-      cardContent += `
-        <div class="webmention-footer">
-          <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-read-more">
-            → ${t.readMore}
-          </a>
-        </div>
+      const title = mention.title || 'Untitled';
+
+      listItem.innerHTML = `
+        <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-link">
+          <span class="webmention-domain">${domain}</span>
+          <span class="webmention-separator"> — </span>
+          <span class="webmention-link-title">${title}</span>
+        </a>
       `;
 
-      card.innerHTML = cardContent;
-      cardsContainer.appendChild(card);
+      list.appendChild(listItem);
     });
 
-    content.appendChild(cardsContainer);
+    content.appendChild(list);
 
     // Show modal
     webmentionsModal.style.display = 'flex';
@@ -785,9 +737,6 @@
       + (mastodonEngagement?.likes || 0)
       + (bearBlogData?.upvote_count || 0);
 
-    const totalComments = (blueskyEngagement?.replies || 0)
-      + (mastodonEngagement?.replies || 0);
-
     const isLiked = bearBlogData?.upvoted || nativeUpvoteBtn?.disabled;
 
     // Build buttons
@@ -834,22 +783,6 @@
         blueskyEngagement,
         urls.bluesky,
         () => window.open(urls.bluesky, '_blank')
-      ));
-    }
-
-    // Total comments button (show if service enabled and any platform URL exists)
-    if (activeServices.includes('comments') && (urls.mastodon || urls.bluesky)) {
-      const mComments = mastodonEngagement?.replies || 0;
-      const bComments = blueskyEngagement?.replies || 0;
-      const commentsTooltip = `${mComments} Mastodon + ${bComments} Bluesky comments`;
-      const commentsAriaLabel = `${totalComments} total comments across all platforms`;
-
-      buttons.push(createButton(
-        icons.comments,
-        totalComments,
-        null,
-        commentsTooltip,
-        commentsAriaLabel
       ));
     }
 
@@ -1162,154 +1095,62 @@
     }
 
     /* Webmentions Modal */
-    .webmention-modal-card {
-      padding: 1.25rem;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      background: rgba(0,0,0,0.01);
-      transition: all 0.2s ease;
+    .webmentions-list {
+      line-height: 1.8;
     }
 
-    .webmention-modal-card:hover {
-      border-color: #ccc;
-      background: rgba(0,0,0,0.02);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    .webmention-item {
+      line-height: 1.8;
     }
 
-    .webmention-header {
-      margin-bottom: 0.75rem;
-    }
-
-    .webmention-title {
-      margin-bottom: 0.5rem;
-    }
-
-    .webmention-title-link {
-      font-size: 1.1rem;
-      font-weight: 600;
+    .webmention-link {
       text-decoration: none;
-      color: #333;
-      transition: color 0.2s ease;
+      color: inherit;
+      display: inline;
     }
 
-    .webmention-title-link:hover {
-      color: #000;
+    .webmention-link:hover .webmention-link-title {
       text-decoration: underline;
     }
 
-    .webmention-meta {
-      font-size: 0.9rem;
+    .webmention-domain {
       color: #666;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .webmention-meta a {
-      color: #555;
-      text-decoration: none;
-    }
-
-    .webmention-meta a:hover {
-      color: #000;
-      text-decoration: underline;
+      font-size: 0.9rem;
     }
 
     .webmention-separator {
-      color: #ccc;
-    }
-
-    .webmention-content {
-      font-style: italic;
-      color: #555;
-      margin: 0.75rem 0;
-      line-height: 1.6;
-      padding-left: 1rem;
-      border-left: 3px solid #ddd;
-    }
-
-    .webmention-footer {
-      margin-top: 0.75rem;
-    }
-
-    .webmention-read-more {
-      font-size: 0.9rem;
-      color: #666;
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-
-    .webmention-read-more:hover {
-      color: #000;
-      text-decoration: underline;
-    }
-
-    /* Dark mode overrides for webmentions modal */
-    html[data-theme="dark"] .webmention-modal-card {
-      background: rgba(255,255,255,0.03);
-      border-color: #444;
-    }
-
-    html[data-theme="dark"] .webmention-modal-card:hover {
-      background: rgba(255,255,255,0.05);
-      border-color: #666;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    html[data-theme="dark"] .webmention-title-link {
-      color: #e0e0e0;
-    }
-
-    html[data-theme="dark"] .webmention-title-link:hover {
-      color: #fff;
-    }
-
-    html[data-theme="dark"] .webmention-meta {
       color: #999;
     }
 
-    html[data-theme="dark"] .webmention-meta a {
-      color: #aaa;
+    .webmention-link-title {
+      color: #333;
     }
 
-    html[data-theme="dark"] .webmention-meta a:hover {
-      color: #fff;
+    /* Dark mode overrides for webmentions modal */
+    html[data-theme="dark"] .webmention-domain {
+      color: #999;
     }
 
-    html[data-theme="dark"] .webmention-content {
-      color: #bbb;
-      border-left-color: #444;
+    html[data-theme="dark"] .webmention-separator {
+      color: #666;
     }
 
-    html[data-theme="dark"] .webmention-read-more {
-      color: #888;
-    }
-
-    html[data-theme="dark"] .webmention-read-more:hover {
-      color: #fff;
+    html[data-theme="dark"] .webmention-link-title {
+      color: #e0e0e0;
     }
 
     /* Responsive design for webmentions modal */
     @media (max-width: 640px) {
-      .webmention-modal-card {
-        padding: 1rem;
-      }
-
-      .webmention-title-link {
-        font-size: 1rem;
-      }
-
-      .webmention-meta {
-        font-size: 0.85rem;
-      }
-
       .webmentions-modal-dialog {
         max-height: 95vh !important;
       }
 
       .webmentions-modal-content {
         padding: 1rem !important;
+      }
+
+      .webmention-domain {
+        font-size: 0.85rem;
       }
     }
   `;
