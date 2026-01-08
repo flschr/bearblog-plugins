@@ -1569,6 +1569,24 @@
             });
 
             section.appendChild(grid);
+
+            if (category === 'Admonitions') {
+                const admonitionHelp = document.createElement('p');
+                admonitionHelp.style.cssText = `
+                    margin: 8px 0 0;
+                    font-size: 12px;
+                    color: ${isDark ? '#8aa' : '#666'};
+                `;
+                admonitionHelp.innerHTML = `
+                    To style these blocks, install
+                    <a href="https://fischr.org/better-admonitions-for-bear-blog/" target="_blank" rel="noopener noreferrer" style="color:${isDark ? '#7fd7ff' : '#0b6cff'}; text-decoration: none;">
+                        Better Admonitions for Bear Blog
+                    </a>
+                    for the quick setup steps.
+                `;
+                section.appendChild(admonitionHelp);
+            }
+
             panel.appendChild(section);
         });
 
