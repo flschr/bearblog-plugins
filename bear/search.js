@@ -18,11 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const postData = posts.map(li => {
     const linkEl = li.querySelector('a')
     const timeEl = li.querySelector('time')
+    const title = linkEl?.textContent.trim() || ''
 
     return {
       li,
-      title: linkEl?.textContent.trim() || '',
-      searchText: `${linkEl?.textContent.trim() || ''} ${timeEl?.textContent || ''}`.toLowerCase()
+      linkEl,
+      title,
+      searchText: `${title} ${timeEl?.textContent || ''}`.toLowerCase()
     }
   })
 
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== STATE =====
   let isSearchOpen = false
   let searchTimeout = null
+  let lastSearch = ''
 
   // ===== SEARCH TOGGLE FUNKTIONEN =====
   function openSearch() {
@@ -164,14 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===== FILTER & HIGHLIGHTING =====
-  function getFilteredPosts(searchQuery) {
-    if (!searchQuery) return postData
-    const query = searchQuery.toLowerCase().trim()
-    if (!query) return postData
-
-    return postData.filter(p => p.searchText.includes(query))
-  }
-
   function highlightSearchTerm(text, searchTerm) {
     if (!searchTerm) return escapeHtml(text)
 
@@ -185,61 +180,59 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== RENDER FUNKTION =====
   function render(search, updateHistory = false) {
     const searchTrimmed = search.trim()
-    const filtered = getFilteredPosts(searchTrimmed)
+    const normalizedSearch = searchTrimmed.toLowerCase()
+    let matches = 0
 
     // Suchfeld synchronisieren (ohne Event auszulösen)
     if (searchInput.value !== search) {
       searchInput.value = search
     }
 
-    // Liste leeren
-    list.innerHTML = ''
+    postData.forEach(p => {
+      const isMatch = !normalizedSearch || p.searchText.includes(normalizedSearch)
+      if (isMatch) {
+        matches += 1
+        p.li.style.display = ''
+        if (p.linkEl) {
+          if (normalizedSearch && lastSearch !== normalizedSearch) {
+            p.linkEl.innerHTML = highlightSearchTerm(p.title, searchTrimmed)
+          } else if (!normalizedSearch && lastSearch) {
+            p.linkEl.textContent = p.title
+          }
+        }
+      } else {
+        p.li.style.display = 'none'
+      }
+    })
 
     // Keine Ergebnisse gefunden
-    if (filtered.length === 0 && searchTrimmed) {
+    if (matches === 0 && searchTrimmed) {
       noResultsBox.style.display = 'flex'
       list.style.display = 'none'
       srFeedback.textContent = 'Keine Ergebnisse gefunden'
 
       if (updateHistory) {
-        updateURL(search)
+        updateURL(search, true)
       }
+      lastSearch = normalizedSearch
       return
     } else {
       noResultsBox.style.display = 'none'
       list.style.display = ''
     }
 
-    // Fragment für bessere Performance
-    const fragment = document.createDocumentFragment()
-
-    filtered.forEach(p => {
-      const clone = p.li.cloneNode(true)
-
-      // Highlighting anwenden
-      if (searchTrimmed) {
-        const linkEl = clone.querySelector('a')
-        if (linkEl) {
-          linkEl.innerHTML = highlightSearchTerm(p.title, searchTrimmed)
-        }
-      }
-
-      fragment.appendChild(clone)
-    })
-
-    list.appendChild(fragment)
-
     // Screenreader-Feedback
     if (searchTrimmed) {
-      srFeedback.textContent = `${filtered.length} ${filtered.length === 1 ? 'Ergebnis' : 'Ergebnisse'} gefunden`
+      srFeedback.textContent = `${matches} ${matches === 1 ? 'Ergebnis' : 'Ergebnisse'} gefunden`
     } else {
       srFeedback.textContent = ''
     }
 
     // URL aktualisieren
     if (updateHistory) {
-      updateURL(search)
+      updateURL(search, true)
     }
+    lastSearch = normalizedSearch
   }
 
   // ===== SEARCH INPUT MIT DEBOUNCING =====
