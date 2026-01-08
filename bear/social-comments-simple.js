@@ -25,6 +25,8 @@
 
   // Configurable constants
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  const ENGAGEMENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  const NEGATIVE_CACHE_TTL = 60 * 1000; // 1 minute
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
   const FETCH_TIMEOUT = parseInt(scriptTag?.dataset.timeout || '15000', 10); // 15 seconds default
   const VIRAL_THRESHOLD = parseInt(scriptTag?.dataset.viralThreshold || '50', 10);
@@ -179,8 +181,20 @@
 
   // --- Platform-Specific Engagement Fetchers ---
   async function fetchBlueskyEngagement(url) {
+    const normalizedUrl = normalizeUrl(url);
+    const cacheKey = `bsky_engagement_${normalizedUrl}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return cached.negative ? null : cached;
+    }
+
+    const setNegativeCache = () => setCache(cacheKey, { negative: true }, NEGATIVE_CACHE_TTL);
+
     const match = url.match(/bsky\.app\/profile\/([^\/]+)\/post\/([^\/\?]+)/);
-    if (!match) return null;
+    if (!match) {
+      setNegativeCache();
+      return null;
+    }
 
     const [, handle, postId] = match;
 
@@ -192,7 +206,10 @@
           `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
         );
         const didData = await safeJsonParse(didRes);
-        if (!didData?.did) return null;
+        if (!didData?.did) {
+          setNegativeCache();
+          return null;
+        }
         did = didData.did;
         cacheDID(handle, did);
       }
@@ -203,20 +220,35 @@
       );
       const data = await safeJsonParse(res);
       const post = data?.thread?.post;
-      if (!post) return null;
+      if (!post) {
+        setNegativeCache();
+        return null;
+      }
 
-      return {
+      const engagement = {
         likes: post.likeCount || 0,
         reposts: post.repostCount || 0,
         replies: post.replyCount || 0,
         total: (post.likeCount || 0) + (post.repostCount || 0) + (post.replyCount || 0)
       };
+      setCache(cacheKey, engagement, ENGAGEMENT_CACHE_TTL);
+      return engagement;
     } catch {
+      setNegativeCache();
       return null;
     }
   }
 
   async function fetchMastodonEngagement(url) {
+    const normalizedUrl = normalizeUrl(url);
+    const cacheKey = `mastodon_engagement_${normalizedUrl}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return cached.negative ? null : cached;
+    }
+
+    const setNegativeCache = () => setCache(cacheKey, { negative: true }, NEGATIVE_CACHE_TTL);
+
     try {
       const urlObj = new URL(url);
       const statusId = urlObj.pathname.split('/').pop();
@@ -228,17 +260,23 @@
 
       const data = await safeJsonParse(statusRes);
       const context = await safeJsonParse(contextRes);
-      if (!data) return null;
+      if (!data) {
+        setNegativeCache();
+        return null;
+      }
 
       const totalReplies = context?.descendants?.length || 0;
 
-      return {
+      const engagement = {
         likes: data.favourites_count || 0,
         reposts: data.reblogs_count || 0,
         replies: totalReplies,
         total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies
       };
+      setCache(cacheKey, engagement, ENGAGEMENT_CACHE_TTL);
+      return engagement;
     } catch {
+      setNegativeCache();
       return null;
     }
   }
