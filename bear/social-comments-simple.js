@@ -474,11 +474,11 @@
 
     const ui = {
       en: {
-        title: 'Also mentioned in',
+        title: 'Also mentioned in:',
         close: 'Close'
       },
       de: {
-        title: 'Auch erwähnt in',
+        title: 'Auch erwähnt in:',
         close: 'Schließen'
       }
     };
@@ -505,12 +505,12 @@
 
     // Create header
     const header = document.createElement('div');
-    header.style.cssText = `padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
+    header.style.cssText = `padding:1.5rem 1.5rem 0.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
 
     const titleEl = document.createElement('p');
     titleEl.id = 'webmentions-modal-title';
     titleEl.innerHTML = `<strong>${t.title}</strong>`;
-    titleEl.style.cssText = 'margin:0;font-size:1rem;';
+    titleEl.style.cssText = 'margin:0;';
 
     const closeBtn = document.createElement('button');
     closeBtn.setAttribute('aria-label', t.close);
@@ -526,7 +526,7 @@
     // Create content area (scrollable)
     const content = document.createElement('div');
     content.className = 'webmentions-modal-content';
-    content.style.cssText = 'padding:1.5rem;overflow-y:auto;flex:1;';
+    content.style.cssText = 'padding:0.5rem 1.5rem 1.5rem 2rem;overflow-y:auto;flex:1;';
 
     dialog.appendChild(header);
     dialog.appendChild(content);
@@ -589,7 +589,7 @@
       listItem.innerHTML = `
         <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-link">
           <img src="${faviconUrl}" alt="" class="webmention-favicon" width="16" height="16" loading="lazy" onerror="this.style.display='none'">
-          <span class="webmention-domain">${domain}</span><span class="webmention-separator">:</span> <span class="webmention-link-title">${title}</span>
+          <span class="webmention-text"><span class="webmention-domain">${domain}</span><span class="webmention-separator">:</span> <span class="webmention-link-title">${title}</span></span>
         </a>
       `;
 
@@ -1110,13 +1110,17 @@
       gap: 0.5rem;
     }
 
-    .webmention-link:hover {
+    .webmention-link:hover .webmention-text {
       text-decoration: underline;
     }
 
     .webmention-favicon {
       flex-shrink: 0;
       border-radius: 2px;
+    }
+
+    .webmention-text {
+      display: inline;
     }
 
     /* Responsive design for webmentions modal */
