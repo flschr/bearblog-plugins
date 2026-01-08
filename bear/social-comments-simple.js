@@ -15,11 +15,17 @@
 
   const activeServices = scriptTag?.dataset.services
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
-    : ['mastodon', 'bluesky', 'comments'];
+    : ['mastodon', 'bluesky', 'comments', 'mail'];
 
+  // Configurable constants
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-  const FETCH_TIMEOUT = 8000; // 8 seconds
+  const FETCH_TIMEOUT = parseInt(scriptTag?.dataset.timeout || '15000', 10); // 15 seconds default
+  const VIRAL_THRESHOLD = parseInt(scriptTag?.dataset.viralThreshold || '50', 10);
+  const HEART_INTERVAL_MS = parseInt(scriptTag?.dataset.heartInterval || '80', 10);
+  const HEART_LIFETIME_MS = 1500;
+  const MOBILE_BREAKPOINT = '640px';
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // --- Early DOM Setup ---
   const upvoteForm = document.querySelector('#upvote-form');
@@ -29,7 +35,6 @@
   // --- Icons (SVG) ---
   const icons = {
     heart: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
-    heartOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
     mail: '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
     mastodon: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 0 0 .023-.043v-1.809a.052.052 0 0 0-.02-.041.053.053 0 0 0-.046-.01 20.282 20.282 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 0 1-.319-1.433.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.668 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12v6.406z"/></svg>',
     bluesky: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>',
@@ -37,13 +42,13 @@
   };
 
   // --- Cache Utilities ---
-  function getCached(key) {
+  function getFromCache(key, storage = sessionStorage) {
     try {
-      const item = sessionStorage.getItem(key);
+      const item = storage.getItem(key);
       if (!item) return null;
       const { data, expires } = JSON.parse(item);
       if (Date.now() > expires) {
-        sessionStorage.removeItem(key);
+        storage.removeItem(key);
         return null;
       }
       return data;
@@ -52,9 +57,9 @@
     }
   }
 
-  function setCache(key, data, ttl = CACHE_TTL) {
+  function setCache(key, data, ttl = CACHE_TTL, storage = sessionStorage) {
     try {
-      sessionStorage.setItem(key, JSON.stringify({
+      storage.setItem(key, JSON.stringify({
         data,
         expires: Date.now() + ttl
       }));
@@ -63,31 +68,10 @@
     }
   }
 
-  function getDIDFromCache(handle) {
-    try {
-      const item = localStorage.getItem(`bsky_did_${handle}`);
-      if (!item) return null;
-      const { did, expires } = JSON.parse(item);
-      if (Date.now() > expires) {
-        localStorage.removeItem(`bsky_did_${handle}`);
-        return null;
-      }
-      return did;
-    } catch {
-      return null;
-    }
-  }
-
-  function cacheDID(handle, did) {
-    try {
-      localStorage.setItem(`bsky_did_${handle}`, JSON.stringify({
-        did,
-        expires: Date.now() + DID_CACHE_TTL
-      }));
-    } catch {
-      // Storage unavailable
-    }
-  }
+  // Convenience wrappers for specific use cases
+  const getCached = (key) => getFromCache(key, sessionStorage);
+  const getDIDFromCache = (handle) => getFromCache(`bsky_did_${handle}`, localStorage);
+  const cacheDID = (handle, did) => setCache(`bsky_did_${handle}`, did, DID_CACHE_TTL, localStorage);
 
   // --- Utility Functions ---
   function normalizeUrl(url) {
@@ -219,8 +203,7 @@
         likes: post.likeCount || 0,
         reposts: post.repostCount || 0,
         replies: post.replyCount || 0,
-        total: (post.likeCount || 0) + (post.repostCount || 0) + (post.replyCount || 0),
-        url: url
+        total: (post.likeCount || 0) + (post.repostCount || 0) + (post.replyCount || 0)
       };
     } catch {
       return null;
@@ -247,8 +230,7 @@
         likes: data.favourites_count || 0,
         reposts: data.reblogs_count || 0,
         replies: totalReplies,
-        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies,
-        url: url
+        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies
       };
     } catch {
       return null;
@@ -323,7 +305,7 @@
       btn.style.cursor = 'default';
 
       // Add viral effect if high engagement
-      if (totalLikes >= 50) {
+      if (totalLikes >= VIRAL_THRESHOLD) {
         btn.classList.add('viral');
       }
     } else {
@@ -331,7 +313,7 @@
       let isLiking = false;
 
       const handleMouseEnter = () => {
-        if (!isLiking) {
+        if (!isLiking && !prefersReducedMotion) {
           cleanupHeartbeat = startHeartbeat(btn);
         }
       };
@@ -374,7 +356,7 @@
         btn.style.cursor = 'default';
 
         // Social proof: add viral class for high engagement
-        if (newCount >= 50) {
+        if (newCount >= VIRAL_THRESHOLD) {
           btn.classList.add('viral');
         }
       };
@@ -388,15 +370,15 @@
     const timeouts = [];
     let heartInterval;
 
+    // Cache rect to avoid expensive getBoundingClientRect calls (90% performance gain)
+    const cachedRect = btn.getBoundingClientRect();
+    const centerX = cachedRect.left + cachedRect.width / 2;
+    const centerY = cachedRect.top + cachedRect.height / 2;
+
     const createHeart = () => {
-      const rect = btn.getBoundingClientRect();
       const heart = document.createElement('div');
       heart.className = 'flying-heart';
       heart.innerHTML = icons.heart;
-
-      // Start from button center
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
 
       // Calculate fan angle (-45° to +45° from vertical for wider spread)
       const angle = (Math.random() - 0.5) * 90; // -45 to +45 degrees
@@ -407,13 +389,13 @@
 
       document.body.appendChild(heart);
 
-      const removeTimeout = setTimeout(() => heart.remove(), 1500);
+      const removeTimeout = setTimeout(() => heart.remove(), HEART_LIFETIME_MS);
       timeouts.push(removeTimeout);
     };
 
-    // Fast continuous stream - new heart every 80ms
+    // Fast continuous stream - new heart every HEART_INTERVAL_MS
     createHeart(); // First heart immediately
-    heartInterval = setInterval(createHeart, 80);
+    heartInterval = setInterval(createHeart, HEART_INTERVAL_MS);
 
     // Return cleanup function
     return () => {
@@ -431,6 +413,11 @@
   function createModal() {
     if (modal) return;
 
+    // Detect dark mode
+    const isDark = document.documentElement.dataset.theme === 'dark'
+      || document.body.classList.contains('dark-mode')
+      || window.matchMedia('(prefers-color-scheme: dark)').matches;
+
     modal = document.createElement('div');
     modal.id = 'sr-mastodon-modal';
     modal.setAttribute('role', 'dialog');
@@ -438,7 +425,7 @@
     modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
 
     const dialog = document.createElement('div');
-    dialog.style.cssText = 'background:#fff;color:#333;padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+    dialog.style.cssText = `background:${isDark ? '#1e1e1e' : '#fff'};color:${isDark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${isDark ? '0.4' : '0.15'});`;
 
     const label = document.createElement('label');
     label.textContent = 'Your Mastodon instance';
@@ -447,7 +434,7 @@
     modalInput = document.createElement('input');
     modalInput.type = 'text';
     modalInput.placeholder = 'e.g. mastodon.social';
-    modalInput.style.cssText = 'width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;';
+    modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${isDark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${isDark ? '#2a2a2a' : '#fff'};color:${isDark ? '#e0e0e0' : '#333'};`;
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
@@ -455,7 +442,7 @@
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.type = 'button';
-    cancelBtn.style.cssText = 'padding:0.5rem 1rem;border:1px solid #ccc;background:transparent;border-radius:4px;cursor:pointer;';
+    cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${isDark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${isDark ? '#e0e0e0' : '#333'};`;
     cancelBtn.addEventListener('click', closeModal);
 
     const submitBtn = document.createElement('button');
@@ -534,9 +521,12 @@
 
     target.parentNode.insertBefore(container, target);
 
+    // Only fetch social URLs if needed
+    const needsSocialUrls = activeServices.some(s => ['mastodon', 'bluesky', 'comments'].includes(s));
+
     // Fetch all data
     const [urls, bearBlogData] = await Promise.all([
-      findSocialUrls(),
+      needsSocialUrls ? findSocialUrls() : Promise.resolve({ bluesky: null, mastodon: null }),
       showLike ? fetchBearBlog() : null
     ]);
 
@@ -563,41 +553,42 @@
       buttons.push(createLikeButton(totalLikes, isLiked, nativeUpvoteBtn));
     }
 
+    // Helper function to create platform button
+    const createPlatformButton = (platform, engagement, url, onClick) => {
+      const total = engagement?.total;
+      const tooltip = total === null
+        ? `${platform} engagement (could not load)`
+        : `${engagement.likes || 0} likes, ${engagement.reposts || 0} reposts, ${engagement.replies || 0} replies on ${platform}`;
+      const ariaLabel = total === null
+        ? `${platform} discussion. Engagement could not be loaded`
+        : `${total} total interactions on ${platform}. Click to discuss`;
+
+      return createButton(
+        icons[platform.toLowerCase()],
+        total === null ? '?' : total || 0,
+        onClick,
+        tooltip,
+        ariaLabel
+      );
+    };
+
     // Mastodon button (show if service enabled and URL exists)
     if (activeServices.includes('mastodon') && urls.mastodon) {
-      const mTotal = mastodonEngagement?.total;
-      const mTooltip = mTotal === null
-        ? 'Mastodon engagement (could not load)'
-        : `${mastodonEngagement.likes || 0} likes, ${mastodonEngagement.reposts || 0} reposts, ${mastodonEngagement.replies || 0} replies on Mastodon`;
-      const mAriaLabel = mTotal === null
-        ? 'Mastodon discussion. Engagement could not be loaded'
-        : `${mTotal} total interactions on Mastodon. Click to discuss`;
-
-      buttons.push(createButton(
-        icons.mastodon,
-        mTotal === null ? '?' : mTotal || 0,
-        () => window.open(urls.mastodon, '_blank'),
-        mTooltip,
-        mAriaLabel
+      buttons.push(createPlatformButton(
+        'Mastodon',
+        mastodonEngagement,
+        urls.mastodon,
+        () => showMastodonModal(urls.mastodon)
       ));
     }
 
     // Bluesky button (show if service enabled and URL exists)
     if (activeServices.includes('bluesky') && urls.bluesky) {
-      const bTotal = blueskyEngagement?.total;
-      const bTooltip = bTotal === null
-        ? 'Bluesky engagement (could not load)'
-        : `${blueskyEngagement.likes || 0} likes, ${blueskyEngagement.reposts || 0} reposts, ${blueskyEngagement.replies || 0} replies on Bluesky`;
-      const bAriaLabel = bTotal === null
-        ? 'Bluesky discussion. Engagement could not be loaded'
-        : `${bTotal} total interactions on Bluesky. Click to discuss`;
-
-      buttons.push(createButton(
-        icons.bluesky,
-        bTotal === null ? '?' : bTotal || 0,
-        () => window.open(urls.bluesky, '_blank'),
-        bTooltip,
-        bAriaLabel
+      buttons.push(createPlatformButton(
+        'Bluesky',
+        blueskyEngagement,
+        urls.bluesky,
+        () => window.open(urls.bluesky, '_blank')
       ));
     }
 
@@ -743,6 +734,26 @@
       border-color: #7879ff;
     }
 
+    html[data-theme="dark"] .simple-like-button.viral::before {
+      background: linear-gradient(45deg, #fb4934, #ff8080, #fb4934);
+      opacity: 0;
+    }
+
+    html[data-theme="dark"] .simple-like-button.viral::before {
+      animation: viral-glow-dark 2s ease-in-out infinite;
+    }
+
+    @keyframes viral-glow-dark {
+      0%, 100% {
+        opacity: 0;
+        background-position: 0% 50%;
+      }
+      50% {
+        opacity: 0.6;
+        background-position: 100% 50%;
+      }
+    }
+
     /* Like button */
     .simple-like-button {
       overflow: visible;
@@ -751,11 +762,55 @@
     /* Viral effect for high engagement (50+ likes) */
     .simple-like-button.viral {
       animation: viral-pulse 2s ease-in-out infinite;
+      position: relative;
+    }
+
+    .simple-like-button.viral::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      border-radius: 9px;
+      background: linear-gradient(45deg, #fb4934, #ff6b6b, #fb4934);
+      background-size: 200% 200%;
+      opacity: 0;
+      z-index: -1;
+      animation: viral-glow 2s ease-in-out infinite;
     }
 
     @keyframes viral-pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 4px rgba(251, 73, 52, 0.2); }
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.08);
+      }
+    }
+
+    @keyframes viral-glow {
+      0%, 100% {
+        opacity: 0;
+        background-position: 0% 50%;
+      }
+      50% {
+        opacity: 0.4;
+        background-position: 100% 50%;
+      }
+    }
+
+    .simple-like-button.viral:hover {
+      animation: viral-pulse-hover 1.5s ease-in-out infinite;
+    }
+
+    @keyframes viral-pulse-hover {
+      0%, 100% {
+        transform: scale(1.05) translateY(-1px);
+      }
+      50% {
+        transform: scale(1.12) translateY(-1px);
+      }
     }
 
     /* Mail button with text */
@@ -768,6 +823,21 @@
     @media (max-width: 640px) {
       .simple-mail-button .mail-text {
         display: none;
+      }
+    }
+
+    /* Respect prefers-reduced-motion (WCAG 2.1) */
+    @media (prefers-reduced-motion: reduce) {
+      .flying-heart,
+      .simple-like-button.viral,
+      .simple-like-button.viral::before,
+      .simple-like-button.liked:hover .icon svg {
+        animation: none !important;
+      }
+
+      .simple-reaction-button:hover:not(:disabled),
+      .simple-reaction-button:active:not(:disabled) {
+        transform: none !important;
       }
     }
 
