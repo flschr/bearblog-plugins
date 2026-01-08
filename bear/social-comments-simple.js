@@ -256,17 +256,22 @@
   }
 
   // --- Create Buttons ---
-  function createButton(icon, count, onClick, title) {
+  function createButton(icon, count, onClick, title, ariaLabel) {
     const btn = document.createElement('button');
     btn.className = 'simple-reaction-button';
     btn.title = title;
-    btn.innerHTML = `<span class="icon">${icon}</span><span class="count">${count}</span>`;
+    btn.setAttribute('aria-label', ariaLabel || title);
+
+    // Show skeleton loading state if count is not yet loaded
+    const countClass = count === '...' ? 'count skeleton' : 'count';
+    btn.innerHTML = `<span class="icon">${icon}</span><span class="${countClass}">${count}</span>`;
 
     if (onClick) {
       btn.onclick = onClick;
     } else {
       btn.disabled = true;
       btn.style.cursor = 'default';
+      btn.setAttribute('aria-disabled', 'true');
     }
 
     return btn;
@@ -276,7 +281,8 @@
     const btn = document.createElement('button');
     btn.className = 'simple-reaction-button simple-mail-button';
     btn.title = 'Reply by mail';
-    btn.innerHTML = `<span class="icon">${icons.mail}</span>`;
+    btn.setAttribute('aria-label', 'Reply by mail');
+    btn.innerHTML = `<span class="icon">${icons.mail}</span><span class="mail-text">Reply</span>`;
 
     if (onClick) {
       btn.onclick = onClick;
@@ -288,15 +294,25 @@
   function createLikeButton(totalLikes, isLiked, nativeButton) {
     const btn = document.createElement('button');
     btn.className = 'simple-reaction-button simple-like-button';
+
+    const likeText = totalLikes === 1 ? 'like' : 'likes';
+    const ariaLabel = isLiked
+      ? `${totalLikes} ${likeText}. You liked this post`
+      : `${totalLikes} ${likeText} across all platforms. Click to like`;
+
     btn.title = isLiked ? 'You liked this' : 'Like this post';
+    btn.setAttribute('aria-label', ariaLabel);
+    btn.setAttribute('aria-live', 'polite');
 
     const icon = document.createElement('span');
     icon.className = 'icon';
     icon.innerHTML = icons.heart;
+    icon.setAttribute('aria-hidden', 'true');
 
     const count = document.createElement('span');
-    count.className = 'count';
+    count.className = totalLikes === '...' ? 'count skeleton' : 'count';
     count.textContent = totalLikes;
+    count.setAttribute('aria-hidden', 'true');
 
     btn.appendChild(icon);
     btn.appendChild(count);
@@ -305,6 +321,11 @@
       btn.classList.add('liked');
       btn.disabled = true;
       btn.style.cursor = 'default';
+
+      // Add viral effect if high engagement
+      if (totalLikes >= 50) {
+        btn.classList.add('viral');
+      }
     } else {
       let cleanupHeartbeat = null;
       let isLiking = false;
@@ -339,10 +360,23 @@
         btn.removeEventListener('mouseleave', handleMouseLeave);
 
         if (nativeButton) nativeButton.click();
-        count.textContent = totalLikes + 1;
+
+        const newCount = totalLikes + 1;
+        count.textContent = newCount;
+
+        // Update accessibility
+        const likeText = newCount === 1 ? 'like' : 'likes';
+        btn.setAttribute('aria-label', `${newCount} ${likeText}. You liked this post`);
+        btn.title = 'You liked this';
+
         btn.disabled = true;
         btn.classList.add('liked');
         btn.style.cursor = 'default';
+
+        // Social proof: add viral class for high engagement
+        if (newCount >= 50) {
+          btn.classList.add('viral');
+        }
       };
     }
 
@@ -531,31 +565,55 @@
 
     // Mastodon button (show if service enabled and URL exists)
     if (activeServices.includes('mastodon') && urls.mastodon) {
+      const mTotal = mastodonEngagement?.total;
+      const mTooltip = mTotal === null
+        ? 'Mastodon engagement (could not load)'
+        : `${mastodonEngagement.likes || 0} likes, ${mastodonEngagement.reposts || 0} reposts, ${mastodonEngagement.replies || 0} replies on Mastodon`;
+      const mAriaLabel = mTotal === null
+        ? 'Mastodon discussion. Engagement could not be loaded'
+        : `${mTotal} total interactions on Mastodon. Click to discuss`;
+
       buttons.push(createButton(
         icons.mastodon,
-        mastodonEngagement?.total || 0,
-        () => showMastodonModal(urls.mastodon),
-        'Discuss on Mastodon'
+        mTotal === null ? '?' : mTotal || 0,
+        () => window.open(urls.mastodon, '_blank'),
+        mTooltip,
+        mAriaLabel
       ));
     }
 
     // Bluesky button (show if service enabled and URL exists)
     if (activeServices.includes('bluesky') && urls.bluesky) {
+      const bTotal = blueskyEngagement?.total;
+      const bTooltip = bTotal === null
+        ? 'Bluesky engagement (could not load)'
+        : `${blueskyEngagement.likes || 0} likes, ${blueskyEngagement.reposts || 0} reposts, ${blueskyEngagement.replies || 0} replies on Bluesky`;
+      const bAriaLabel = bTotal === null
+        ? 'Bluesky discussion. Engagement could not be loaded'
+        : `${bTotal} total interactions on Bluesky. Click to discuss`;
+
       buttons.push(createButton(
         icons.bluesky,
-        blueskyEngagement?.total || 0,
+        bTotal === null ? '?' : bTotal || 0,
         () => window.open(urls.bluesky, '_blank'),
-        'Discuss on Bluesky'
+        bTooltip,
+        bAriaLabel
       ));
     }
 
     // Total comments button (show if service enabled and any platform URL exists)
     if (activeServices.includes('comments') && (urls.mastodon || urls.bluesky)) {
+      const mComments = mastodonEngagement?.replies || 0;
+      const bComments = blueskyEngagement?.replies || 0;
+      const commentsTooltip = `${mComments} Mastodon + ${bComments} Bluesky comments`;
+      const commentsAriaLabel = `${totalComments} total comments across all platforms`;
+
       buttons.push(createButton(
         icons.comments,
         totalComments,
         null,
-        'Total comments across all platforms'
+        commentsTooltip,
+        commentsAriaLabel
       ));
     }
 
@@ -609,6 +667,17 @@
       transform: translateY(-1px);
     }
 
+    .simple-reaction-button:active:not(:disabled) {
+      transform: translateY(0) scale(0.95);
+      transition: transform 0.1s ease;
+    }
+
+    .simple-reaction-button:focus-visible {
+      outline: 2px solid #6364ff;
+      outline-offset: 2px;
+      border-color: #6364ff;
+    }
+
     .simple-reaction-button.liked {
       background: #fff0f0;
       border-color: #fb4934;
@@ -632,6 +701,20 @@
       line-height: 1;
     }
 
+    .simple-reaction-button .count.skeleton {
+      background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+      background-size: 200% 100%;
+      animation: skeleton-pulse 1.5s ease-in-out infinite;
+      border-radius: 3px;
+      color: transparent;
+      min-width: 16px;
+    }
+
+    @keyframes skeleton-pulse {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
     /* Dark mode */
     html[data-theme="dark"] .simple-reaction-button {
       background: rgba(255,255,255,0.05);
@@ -650,16 +733,42 @@
       color: #fb4934;
     }
 
+    html[data-theme="dark"] .simple-reaction-button .count.skeleton {
+      background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
+      background-size: 200% 100%;
+    }
+
+    html[data-theme="dark"] .simple-reaction-button:focus-visible {
+      outline-color: #7879ff;
+      border-color: #7879ff;
+    }
+
     /* Like button */
     .simple-like-button {
       overflow: visible;
     }
 
+    /* Viral effect for high engagement (50+ likes) */
+    .simple-like-button.viral {
+      animation: viral-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes viral-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 4px rgba(251, 73, 52, 0.2); }
+    }
+
     /* Mail button with text */
     .simple-mail-button .mail-text {
-      margin-left: 0.4rem;
       font-weight: 500;
       white-space: nowrap;
+    }
+
+    /* Hide mail text on mobile */
+    @media (max-width: 640px) {
+      .simple-mail-button .mail-text {
+        display: none;
+      }
     }
 
     /* HeartBeat animation for liked state */
