@@ -507,10 +507,10 @@
     const header = document.createElement('div');
     header.style.cssText = `padding:1.5rem;border-bottom:1px solid ${isDark ? '#333' : '#e0e0e0'};display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
 
-    const titleEl = document.createElement('h2');
+    const titleEl = document.createElement('p');
     titleEl.id = 'webmentions-modal-title';
-    titleEl.textContent = t.title;
-    titleEl.style.cssText = 'margin:0;font-size:1.5rem;font-weight:700;';
+    titleEl.innerHTML = `<strong>${t.title}</strong>`;
+    titleEl.style.cssText = 'margin:0;font-size:1rem;';
 
     const closeBtn = document.createElement('button');
     closeBtn.setAttribute('aria-label', t.close);
@@ -589,7 +589,7 @@
       listItem.innerHTML = `
         <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-link">
           <img src="${faviconUrl}" alt="" class="webmention-favicon" width="16" height="16" loading="lazy" onerror="this.style.display='none'">
-          <span class="webmention-domain">${domain}</span><span class="webmention-separator">: </span><span class="webmention-link-title">${title}</span>
+          <span class="webmention-domain">${domain}</span><span class="webmention-separator">:</span> <span class="webmention-link-title">${title}</span>
         </a>
       `;
 
@@ -1121,29 +1121,7 @@
     }
 
     .webmention-domain {
-      color: #666;
       font-size: 0.9rem;
-    }
-
-    .webmention-separator {
-      color: #999;
-    }
-
-    .webmention-link-title {
-      color: #333;
-    }
-
-    /* Dark mode overrides for webmentions modal */
-    html[data-theme="dark"] .webmention-domain {
-      color: #999;
-    }
-
-    html[data-theme="dark"] .webmention-separator {
-      color: #666;
-    }
-
-    html[data-theme="dark"] .webmention-link-title {
-      color: #e0e0e0;
     }
 
     /* Responsive design for webmentions modal */
