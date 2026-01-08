@@ -31,6 +31,9 @@
   const FETCH_TIMEOUT = parseInt(scriptTag?.dataset.timeout || '15000', 10); // 15 seconds default
   const VIRAL_THRESHOLD = parseInt(scriptTag?.dataset.viralThreshold || '50', 10);
   const HEART_INTERVAL_MS = parseInt(scriptTag?.dataset.heartInterval || '80', 10);
+  const HEART_MIN_INTERVAL_MS = parseInt(scriptTag?.dataset.heartMinInterval || '150', 10);
+  const HEART_MAX_INTERVAL_MS = parseInt(scriptTag?.dataset.heartMaxInterval || '250', 10);
+  const HEART_AUTO_STOP_COUNT = parseInt(scriptTag?.dataset.heartAutoStop || '24', 10);
   const HEART_LIFETIME_MS = 1500;
   const MOBILE_BREAKPOINT = '640px';
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -451,7 +454,10 @@
   // Start smooth continuous heart animation
   function startHeartbeat(btn) {
     const timeouts = [];
-    let heartInterval;
+    let rafId;
+    let mutationObserver;
+    let isRunning = true;
+    let heartCount = 0;
 
     // Cache rect to avoid expensive getBoundingClientRect calls (90% performance gain)
     const cachedRect = btn.getBoundingClientRect();
@@ -459,6 +465,7 @@
     const centerY = cachedRect.top + cachedRect.height / 2;
 
     const createHeart = () => {
+      if (!isRunning || document.hidden) return false;
       const heart = document.createElement('div');
       heart.className = 'flying-heart';
       heart.innerHTML = icons.heart;
@@ -474,18 +481,72 @@
 
       const removeTimeout = setTimeout(() => heart.remove(), HEART_LIFETIME_MS);
       timeouts.push(removeTimeout);
+      return true;
     };
 
-    // Fast continuous stream - new heart every HEART_INTERVAL_MS
-    createHeart(); // First heart immediately
-    heartInterval = setInterval(createHeart, HEART_INTERVAL_MS);
+    const getInterval = () => {
+      const minInterval = Math.max(HEART_INTERVAL_MS, HEART_MIN_INTERVAL_MS);
+      const maxInterval = Math.max(minInterval, HEART_MAX_INTERVAL_MS);
+      return Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
+    };
 
-    // Return cleanup function
-    return () => {
-      clearInterval(heartInterval);
+    let nextInterval = getInterval();
+    let lastTick = performance.now();
+
+    const cleanup = () => {
+      if (!isRunning) return;
+      isRunning = false;
+      if (rafId) cancelAnimationFrame(rafId);
       timeouts.forEach(timeout => clearTimeout(timeout));
       timeouts.length = 0;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (mutationObserver) mutationObserver.disconnect();
     };
+
+    const tick = (now) => {
+      if (!isRunning) return;
+
+      if (!document.hidden && now - lastTick >= nextInterval) {
+        if (createHeart()) {
+          heartCount += 1;
+        }
+        lastTick = now;
+        nextInterval = getInterval();
+        if (heartCount >= HEART_AUTO_STOP_COUNT) {
+          cleanup();
+          return;
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    // Smooth heartbeat using requestAnimationFrame
+    if (createHeart()) {
+      heartCount += 1;
+    }
+    rafId = requestAnimationFrame(tick);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cleanup();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const parentNode = btn.parentNode;
+    if (parentNode) {
+      mutationObserver = new MutationObserver(() => {
+        if (!document.body.contains(btn)) {
+          cleanup();
+        }
+      });
+      mutationObserver.observe(parentNode, { childList: true });
+    }
+
+    // Return cleanup function
+    return cleanup;
   }
 
   // --- Webmentions Modal ---
