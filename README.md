@@ -12,6 +12,40 @@ Adds a formatting toolbar to the Bear Blog post editor with buttons for bold, it
 <script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar.js"></script>
 ```
 
+#### AI Alt-Text Feature (Optional)
+
+The toolbar includes an optional AI-powered alt-text generator for images using OpenAI's Vision API.
+
+**Security note:** Your OpenAI API key is stored in your browser's localStorage. This is convenient but comes with risks:
+
+- **XSS vulnerability**: If Bear Blog or any injected script has a cross-site scripting vulnerability, an attacker could read your API key.
+- **Shared computers**: Anyone with access to your browser can view the key via Developer Tools.
+- **No encryption**: Browser localStorage cannot be securely encrypted (the decryption key would also need to be accessible to JavaScript).
+
+**Recommendations:**
+1. **Set spending limits** in your [OpenAI account settings](https://platform.openai.com/settings/organization/limits) (e.g., $5/month).
+2. **Use a dedicated API key** just for this toolbar (you can revoke it anytime).
+3. **Don't use this feature** on shared or public computers.
+4. The risk is limited: an attacker can only make API calls on your behalf — they cannot access your OpenAI account or other data.
+
+#### Deep Dive: How the AI Integration Works
+
+The AI integration uses the [OpenAI Vision API](https://platform.openai.com/docs/guides/images-vision) (specifically the **gpt-4o-mini** model) to analyze images. It is designed to be fast, privacy-conscious, and extremely cheap.
+
+* **Smart privacy**: Only the URL of the selected image is sent to OpenAI when you actively click the button. No data is sent in the background.
+* **Minimal costs**: Generating an alt-text costs approximately **$0.0012**. You can describe nearly 1,000 images for about $1.00.
+* **No subscription**: You use your own OpenAI API key and only pay for what you actually use.
+
+---
+
+### Markdown Toolbar (Basic)
+Lightweight toolbar for the Bear Blog post editor with core formatting buttons only. Useful if you want a minimal toolbar without AI features or additional UI.
+
+**Installation** (Dashboard → Settings → Custom dashboard):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/markdown-toolbar_basic.js"></script>
+```
+
 ---
 
 ### Blog Search
@@ -82,20 +116,6 @@ Replaces default date formats throughout your blog with customizable formatting.
 
 ---
 
-### Reply and Like
-Adds reply buttons for email and Mastodon at the end of each post, with an optional animated like button. Mastodon replies can be threaded directly under your original toot, making it easy for readers to join the conversation.
-
-**Installation** (Custom footer content):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/reply-and-like.js"
-        data-email="your@email.com"
-        data-mastodon="@yourhandle@instance.social"
-        data-like
-        defer></script>
-```
-
----
-
 ### Social Comments (Simple)
 Unified engagement plugin displaying social reactions and blog webmentions. Shows live counts from Bluesky and Mastodon with an animated like button. Includes support for displaying traditional blog webmentions collected via webmention.io.
 
@@ -141,31 +161,6 @@ Unified engagement plugin displaying social reactions and blog webmentions. Show
 - Mobile responsive
 - Session caching (5 minutes)
 - Graceful error handling
-
----
-
-### Social Comments (Classic)
-Original social comments plugin with modal interactions and detailed engagement metrics.
-
-**Installation** (Custom footer content):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/social-comments.js"
-        data-email="your@email.com"
-        data-like
-        defer></script>
-```
-
----
-
-### Webmention Reactions
-Displays aggregated webmentions from across the web, including likes, reposts, comments, and mentions. Integrates with Webmention.io and Brid.gy to collect reactions from various social platforms and websites that support the Webmention standard.
-
-**Installation** (Custom footer content):
-```html
-<script src="https://flschr.github.io/bearblog-plugins/webmention-reactions.js" defer></script>
-```
-
-**Setup required**: Configure [webmention.io](https://webmention.io/) and [brid.gy](https://brid.gy/) to collect webmentions for your domain.
 
 ---
 
