@@ -510,7 +510,7 @@
     const titleEl = document.createElement('h2');
     titleEl.id = 'webmentions-modal-title';
     titleEl.textContent = t.title;
-    titleEl.style.cssText = 'margin:0;font-size:1.5rem;font-weight:600;';
+    titleEl.style.cssText = 'margin:0;font-size:1.5rem;font-weight:700;';
 
     const closeBtn = document.createElement('button');
     closeBtn.setAttribute('aria-label', t.close);
@@ -584,12 +584,12 @@
       }
 
       const title = mention.title || 'Untitled';
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
 
       listItem.innerHTML = `
         <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-link">
-          <span class="webmention-domain">${domain}</span>
-          <span class="webmention-separator"> — </span>
-          <span class="webmention-link-title">${title}</span>
+          <img src="${faviconUrl}" alt="" class="webmention-favicon" width="16" height="16" loading="lazy" onerror="this.style.display='none'">
+          <span class="webmention-domain">${domain}</span><span class="webmention-separator">: </span><span class="webmention-link-title">${title}</span>
         </a>
       `;
 
@@ -1106,11 +1106,18 @@
     .webmention-link {
       text-decoration: none;
       color: inherit;
-      display: inline;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .webmention-link:hover .webmention-link-title {
       text-decoration: underline;
+    }
+
+    .webmention-favicon {
+      flex-shrink: 0;
+      border-radius: 2px;
     }
 
     .webmention-domain {
