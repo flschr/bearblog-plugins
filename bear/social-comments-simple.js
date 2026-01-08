@@ -576,7 +576,7 @@
       buttons.push(createButton(
         icons.mastodon,
         mTotal === null ? '?' : mTotal || 0,
-        () => window.open(urls.mastodon, '_blank'),
+        () => showMastodonModal(urls.mastodon),
         mTooltip,
         mAriaLabel
       ));
