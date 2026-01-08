@@ -120,6 +120,35 @@
     }
   }
 
+  function isDarkMode() {
+    return document.documentElement.dataset.theme === 'dark'
+      || document.body.classList.contains('dark-mode')
+      || window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  const modalColors = {
+    dark: {
+      background: '#1e1e1e',
+      text: '#e0e0e0',
+      shadowAlpha: '0.5',
+      smallShadowAlpha: '0.4',
+      mutedText: '#999',
+      hoverBackdrop: 'rgba(255,255,255,0.1)',
+      inputBorder: '#444',
+      inputBackground: '#2a2a2a'
+    },
+    light: {
+      background: '#fff',
+      text: '#333',
+      shadowAlpha: '0.2',
+      smallShadowAlpha: '0.15',
+      mutedText: '#666',
+      hoverBackdrop: 'rgba(0,0,0,0.05)',
+      inputBorder: '#ccc',
+      inputBackground: '#fff'
+    }
+  };
+
   // --- BearBlog API ---
   async function fetchBearBlog() {
     const uid = upvoteForm?.querySelector('input[name="uid"]')?.value
@@ -584,10 +613,7 @@
 
     const t = ui[webmentionsLang] || ui.en;
 
-    // Detect dark mode
-    const isDark = document.documentElement.dataset.theme === 'dark'
-      || document.body.classList.contains('dark-mode')
-      || window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = isDarkMode() ? modalColors.dark : modalColors.light;
 
     // Create modal backdrop
     webmentionsModal = document.createElement('div');
@@ -600,7 +626,7 @@
     // Create dialog container
     const dialog = document.createElement('div');
     dialog.className = 'webmentions-modal-dialog';
-    dialog.style.cssText = `background:${isDark ? '#1e1e1e' : '#fff'};color:${isDark ? '#e0e0e0' : '#333'};padding:0;border-radius:12px;max-width:700px;width:100%;max-height:90vh;box-shadow:0 8px 32px rgba(0,0,0,${isDark ? '0.5' : '0.2'});display:flex;flex-direction:column;margin:auto;`;
+    dialog.style.cssText = `background:${theme.background};color:${theme.text};padding:0;border-radius:12px;max-width:700px;width:100%;max-height:90vh;box-shadow:0 8px 32px rgba(0,0,0,${theme.shadowAlpha});display:flex;flex-direction:column;margin:auto;`;
 
     // Create header
     const header = document.createElement('div');
@@ -614,8 +640,8 @@
     const closeBtn = document.createElement('button');
     closeBtn.setAttribute('aria-label', t.close);
     closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `background:none;border:none;font-size:2rem;color:${isDark ? '#999' : '#666'};cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background 0.2s;`;
-    closeBtn.onmouseover = () => closeBtn.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+    closeBtn.style.cssText = `background:none;border:none;font-size:2rem;color:${theme.mutedText};cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background 0.2s;`;
+    closeBtn.onmouseover = () => closeBtn.style.background = theme.hoverBackdrop;
     closeBtn.onmouseout = () => closeBtn.style.background = 'none';
     closeBtn.onclick = closeWebmentionsModal;
 
@@ -745,10 +771,7 @@
   function createModal() {
     if (modal) return;
 
-    // Detect dark mode
-    const isDark = document.documentElement.dataset.theme === 'dark'
-      || document.body.classList.contains('dark-mode')
-      || window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = isDarkMode() ? modalColors.dark : modalColors.light;
 
     modal = document.createElement('div');
     modal.id = 'sr-mastodon-modal';
@@ -757,7 +780,7 @@
     modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
 
     const dialog = document.createElement('div');
-    dialog.style.cssText = `background:${isDark ? '#1e1e1e' : '#fff'};color:${isDark ? '#e0e0e0' : '#333'};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${isDark ? '0.4' : '0.15'});`;
+    dialog.style.cssText = `background:${theme.background};color:${theme.text};padding:1.5rem;border-radius:8px;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,${theme.smallShadowAlpha});`;
 
     const label = document.createElement('label');
     label.textContent = 'Your Mastodon instance';
@@ -766,7 +789,7 @@
     modalInput = document.createElement('input');
     modalInput.type = 'text';
     modalInput.placeholder = 'e.g. mastodon.social';
-    modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${isDark ? '#444' : '#ccc'};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${isDark ? '#2a2a2a' : '#fff'};color:${isDark ? '#e0e0e0' : '#333'};`;
+    modalInput.style.cssText = `width:100%;padding:0.5rem;border:1px solid ${theme.inputBorder};border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:1rem;background:${theme.inputBackground};color:${theme.text};`;
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'display:flex;gap:0.5rem;justify-content:flex-end;';
@@ -774,7 +797,7 @@
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.type = 'button';
-    cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${isDark ? '#444' : '#ccc'};background:transparent;border-radius:4px;cursor:pointer;color:${isDark ? '#e0e0e0' : '#333'};`;
+    cancelBtn.style.cssText = `padding:0.5rem 1rem;border:1px solid ${theme.inputBorder};background:transparent;border-radius:4px;cursor:pointer;color:${theme.text};`;
     cancelBtn.addEventListener('click', closeModal);
 
     const submitBtn = document.createElement('button');
