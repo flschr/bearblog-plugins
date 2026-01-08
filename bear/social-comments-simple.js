@@ -17,6 +17,12 @@
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
     : ['mastodon', 'bluesky', 'comments', 'mail'];
 
+  // Webmentions configuration
+  const webmentionsRepo = scriptTag?.dataset.webmentionsRepo || 'flschr/bearblog-automation';
+  const webmentionsShowExcerpt = scriptTag?.dataset.webmentionsShowExcerpt !== 'false'; // Default true
+  const webmentionsMaxMentions = parseInt(scriptTag?.dataset.webmentionsMaxMentions || '0', 10); // 0 = show all
+  const webmentionsLang = scriptTag?.dataset.webmentionsLang || 'en';
+
   // Configurable constants
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -237,6 +243,45 @@
     }
   }
 
+  // --- Webmentions Fetcher ---
+  async function fetchWebmentions() {
+    if (!activeServices.includes('webmentions')) return null;
+
+    const dataUrl = `https://raw.githubusercontent.com/${webmentionsRepo}/main/webmentions.json`;
+    const cacheKey = `webmentions_${webmentionsRepo.replace(/\//g, '_')}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const res = await fetchWithTimeout(dataUrl);
+      if (!res.ok) return null;
+
+      const data = await safeJsonParse(res);
+      if (data) setCache(cacheKey, data);
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function getMentionsForCurrentUrl(webmentionsData) {
+    if (!webmentionsData) return null;
+
+    const currentUrl = window.location.href.split('#')[0].split('?')[0];
+    const urlVariants = [
+      currentUrl,
+      currentUrl.endsWith('/') ? currentUrl.slice(0, -1) : currentUrl + '/'
+    ];
+
+    for (const url of urlVariants) {
+      if (webmentionsData[url]?.mentions && webmentionsData[url].mentions.length > 0) {
+        return webmentionsData[url].mentions;
+      }
+    }
+
+    return null;
+  }
+
   // --- Create Buttons ---
   function createButton(icon, count, onClick, title, ariaLabel) {
     const btn = document.createElement('button');
@@ -403,6 +448,201 @@
       timeouts.forEach(timeout => clearTimeout(timeout));
       timeouts.length = 0;
     };
+  }
+
+  // --- Webmentions Display ---
+  function formatDate(dateString, lang = 'en') {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  function truncateText(text, maxLength = 200) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + '...';
+  }
+
+  function createWebmentionsSection(mentions) {
+    const ui = {
+      en: {
+        title: 'Blog Mentions',
+        by: 'by',
+        readMore: 'Read full post',
+        showMore: 'Show more mentions',
+        showLess: 'Show less'
+      },
+      de: {
+        title: 'Blog-Erwähnungen',
+        by: 'von',
+        readMore: 'Vollständigen Beitrag lesen',
+        showMore: 'Mehr Erwähnungen anzeigen',
+        showLess: 'Weniger anzeigen'
+      }
+    };
+
+    const t = ui[webmentionsLang] || ui.en;
+
+    const container = document.createElement('div');
+    container.className = 'webmentions-container';
+
+    // Sort mentions by published date (newest first)
+    const sortedMentions = [...mentions].sort((a, b) => {
+      const dateA = new Date(a.published || 0);
+      const dateB = new Date(b.published || 0);
+      return dateB - dateA;
+    });
+
+    // Determine how many to show initially
+    const mentionsToShow = webmentionsMaxMentions > 0 && webmentionsMaxMentions < sortedMentions.length
+      ? sortedMentions.slice(0, webmentionsMaxMentions)
+      : sortedMentions;
+    const remainingMentions = webmentionsMaxMentions > 0
+      ? sortedMentions.slice(webmentionsMaxMentions)
+      : [];
+
+    // Add section title
+    const title = document.createElement('h2');
+    title.className = 'webmentions-title';
+    title.textContent = t.title;
+    container.appendChild(title);
+
+    // Add separator
+    const separator = document.createElement('hr');
+    separator.className = 'webmentions-separator';
+    container.appendChild(separator);
+
+    // Create cards container
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'webmentions-cards';
+
+    // Add visible cards
+    mentionsToShow.forEach(mention => {
+      const card = document.createElement('div');
+      card.className = 'webmention-card';
+
+      const author = mention.author || {};
+      const authorName = author.name || 'Anonymous';
+      const authorUrl = author.url || mention.source;
+      const title = mention.title || 'Untitled';
+      const publishedDate = formatDate(mention.published, webmentionsLang);
+
+      let cardContent = `
+        <div class="webmention-header">
+          <div class="webmention-title">
+            <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-title-link">
+              📝 ${title}
+            </a>
+          </div>
+          <div class="webmention-meta">
+            <span class="webmention-author">
+              ${t.by}
+              ${authorUrl ? `<a href="${authorUrl}" target="_blank" rel="noopener">${authorName}</a>` : authorName}
+            </span>
+            ${publishedDate ? `<span class="webmention-separator">·</span><span class="webmention-date">${publishedDate}</span>` : ''}
+          </div>
+        </div>
+      `;
+
+      // Add content excerpt if enabled and available
+      if (webmentionsShowExcerpt && mention.content) {
+        const excerpt = truncateText(mention.content);
+        cardContent += `
+          <div class="webmention-content">
+            "${excerpt}"
+          </div>
+        `;
+      }
+
+      // Add read more link
+      cardContent += `
+        <div class="webmention-footer">
+          <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-read-more">
+            → ${t.readMore}
+          </a>
+        </div>
+      `;
+
+      card.innerHTML = cardContent;
+      cardsContainer.appendChild(card);
+    });
+
+    container.appendChild(cardsContainer);
+
+    // Add "Show more" functionality if there are remaining mentions
+    if (remainingMentions.length > 0) {
+      const hiddenCardsContainer = document.createElement('div');
+      hiddenCardsContainer.className = 'webmentions-cards webmentions-hidden';
+      hiddenCardsContainer.style.display = 'none';
+
+      remainingMentions.forEach(mention => {
+        const card = document.createElement('div');
+        card.className = 'webmention-card';
+
+        const author = mention.author || {};
+        const authorName = author.name || 'Anonymous';
+        const authorUrl = author.url || mention.source;
+        const title = mention.title || 'Untitled';
+        const publishedDate = formatDate(mention.published, webmentionsLang);
+
+        let cardContent = `
+          <div class="webmention-header">
+            <div class="webmention-title">
+              <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-title-link">
+                📝 ${title}
+              </a>
+            </div>
+            <div class="webmention-meta">
+              <span class="webmention-author">
+                ${t.by}
+                ${authorUrl ? `<a href="${authorUrl}" target="_blank" rel="noopener">${authorName}</a>` : authorName}
+              </span>
+              ${publishedDate ? `<span class="webmention-separator">·</span><span class="webmention-date">${publishedDate}</span>` : ''}
+            </div>
+          </div>
+        `;
+
+        if (webmentionsShowExcerpt && mention.content) {
+          const excerpt = truncateText(mention.content);
+          cardContent += `
+            <div class="webmention-content">
+              "${excerpt}"
+            </div>
+          `;
+        }
+
+        cardContent += `
+          <div class="webmention-footer">
+            <a href="${mention.source}" target="_blank" rel="noopener" class="webmention-read-more">
+              → ${t.readMore}
+            </a>
+          </div>
+        `;
+
+        card.innerHTML = cardContent;
+        hiddenCardsContainer.appendChild(card);
+      });
+
+      container.appendChild(hiddenCardsContainer);
+
+      const showMoreBtn = document.createElement('button');
+      showMoreBtn.className = 'webmentions-show-more';
+      showMoreBtn.textContent = `${t.showMore} (${remainingMentions.length})`;
+      showMoreBtn.onclick = () => {
+        const isHidden = hiddenCardsContainer.style.display === 'none';
+        hiddenCardsContainer.style.display = isHidden ? 'block' : 'none';
+        showMoreBtn.textContent = isHidden
+          ? t.showLess
+          : `${t.showMore} (${remainingMentions.length})`;
+      };
+
+      container.appendChild(showMoreBtn);
+    }
+
+    return container;
   }
 
   // --- Mastodon Modal ---
@@ -621,6 +861,17 @@
     // If no buttons, show nothing
     if (buttons.length === 0) {
       container.style.display = 'none';
+    }
+
+    // Fetch and display webmentions if enabled
+    if (activeServices.includes('webmentions')) {
+      const webmentionsData = await fetchWebmentions();
+      const mentions = getMentionsForCurrentUrl(webmentionsData);
+
+      if (mentions && mentions.length > 0) {
+        const webmentionsSection = createWebmentionsSection(mentions);
+        target.parentNode.insertBefore(webmentionsSection, target);
+      }
     }
   }
 
@@ -893,6 +1144,210 @@
           )
           scale(0.9);
         opacity: 0;
+      }
+    }
+
+    /* Webmentions Section */
+    .webmentions-container {
+      margin: 2rem 0 2rem 0;
+    }
+
+    .webmentions-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .webmentions-separator {
+      border: none;
+      border-top: 2px solid #ddd;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .webmentions-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .webmention-card {
+      padding: 1.25rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.01);
+      transition: all 0.2s ease;
+    }
+
+    .webmention-card:hover {
+      border-color: #ccc;
+      background: rgba(0,0,0,0.02);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .webmention-header {
+      margin-bottom: 0.75rem;
+    }
+
+    .webmention-title {
+      margin-bottom: 0.5rem;
+    }
+
+    .webmention-title-link {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: #333;
+      transition: color 0.2s ease;
+    }
+
+    .webmention-title-link:hover {
+      color: #000;
+      text-decoration: underline;
+    }
+
+    .webmention-meta {
+      font-size: 0.9rem;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .webmention-meta a {
+      color: #555;
+      text-decoration: none;
+    }
+
+    .webmention-meta a:hover {
+      color: #000;
+      text-decoration: underline;
+    }
+
+    .webmention-separator {
+      color: #ccc;
+    }
+
+    .webmention-content {
+      font-style: italic;
+      color: #555;
+      margin: 0.75rem 0;
+      line-height: 1.6;
+      padding-left: 1rem;
+      border-left: 3px solid #ddd;
+    }
+
+    .webmention-footer {
+      margin-top: 0.75rem;
+    }
+
+    .webmention-read-more {
+      font-size: 0.9rem;
+      color: #666;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .webmention-read-more:hover {
+      color: #000;
+      text-decoration: underline;
+    }
+
+    .webmentions-show-more {
+      display: block;
+      margin: 1.5rem auto 0;
+      padding: 0.75rem 1.5rem;
+      background: rgba(0,0,0,0.05);
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      color: #333;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .webmentions-show-more:hover {
+      background: rgba(0,0,0,0.08);
+      border-color: #bbb;
+    }
+
+    /* Dark mode overrides for webmentions */
+    html[data-theme="dark"] .webmentions-separator {
+      border-top-color: #444;
+    }
+
+    html[data-theme="dark"] .webmention-card {
+      background: rgba(255,255,255,0.03);
+      border-color: #444;
+    }
+
+    html[data-theme="dark"] .webmention-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: #666;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    html[data-theme="dark"] .webmention-title-link {
+      color: #e0e0e0;
+    }
+
+    html[data-theme="dark"] .webmention-title-link:hover {
+      color: #fff;
+    }
+
+    html[data-theme="dark"] .webmention-meta {
+      color: #999;
+    }
+
+    html[data-theme="dark"] .webmention-meta a {
+      color: #aaa;
+    }
+
+    html[data-theme="dark"] .webmention-meta a:hover {
+      color: #fff;
+    }
+
+    html[data-theme="dark"] .webmention-content {
+      color: #bbb;
+      border-left-color: #444;
+    }
+
+    html[data-theme="dark"] .webmention-read-more {
+      color: #888;
+    }
+
+    html[data-theme="dark"] .webmention-read-more:hover {
+      color: #fff;
+    }
+
+    html[data-theme="dark"] .webmentions-show-more {
+      background: rgba(255,255,255,0.05);
+      border-color: #444;
+      color: #e0e0e0;
+    }
+
+    html[data-theme="dark"] .webmentions-show-more:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: #666;
+    }
+
+    /* Responsive design for webmentions */
+    @media (max-width: 640px) {
+      .webmentions-container {
+        margin: 1.5rem 0;
+      }
+
+      .webmention-card {
+        padding: 1rem;
+      }
+
+      .webmention-title-link {
+        font-size: 1rem;
+      }
+
+      .webmention-meta {
+        font-size: 0.85rem;
       }
     }
   `;
