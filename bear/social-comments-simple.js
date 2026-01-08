@@ -505,7 +505,7 @@
 
     // Create header
     const header = document.createElement('div');
-    header.style.cssText = `padding:1.5rem;border-bottom:1px solid ${isDark ? '#333' : '#e0e0e0'};display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
+    header.style.cssText = `padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
 
     const titleEl = document.createElement('p');
     titleEl.id = 'webmentions-modal-title';
@@ -1105,23 +1105,18 @@
 
     .webmention-link {
       text-decoration: none;
-      color: inherit;
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
     }
 
-    .webmention-link:hover .webmention-link-title {
+    .webmention-link:hover {
       text-decoration: underline;
     }
 
     .webmention-favicon {
       flex-shrink: 0;
       border-radius: 2px;
-    }
-
-    .webmention-domain {
-      font-size: 0.9rem;
     }
 
     /* Responsive design for webmentions modal */
@@ -1132,10 +1127,6 @@
 
       .webmentions-modal-content {
         padding: 1rem !important;
-      }
-
-      .webmention-domain {
-        font-size: 0.85rem;
       }
     }
   `;
