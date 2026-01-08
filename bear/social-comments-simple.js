@@ -126,6 +126,61 @@
       || window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
 
+  function setBackgroundAriaHidden(modalElement, isHidden, previousState = null) {
+    const siblings = Array.from(document.body.children).filter(child => child !== modalElement);
+    if (isHidden) {
+      return siblings.map((child) => {
+        const previous = child.getAttribute('aria-hidden');
+        child.setAttribute('aria-hidden', 'true');
+        return { element: child, previous };
+      });
+    }
+
+    siblings.forEach((child) => {
+      const state = previousState?.find(item => item.element === child);
+      if (!state || state.previous === null) {
+        child.removeAttribute('aria-hidden');
+      } else {
+        child.setAttribute('aria-hidden', state.previous);
+      }
+    });
+
+    return null;
+  }
+
+  function trapFocus(modalElement) {
+    const selector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+
+    const getFocusable = () => Array.from(modalElement.querySelectorAll(selector))
+      .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+
+    const handleKeydown = (event) => {
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    modalElement.addEventListener('keydown', handleKeydown);
+    return () => modalElement.removeEventListener('keydown', handleKeydown);
+  }
+
   const modalColors = {
     dark: {
       background: '#1e1e1e',
@@ -581,6 +636,9 @@
   // --- Webmentions Modal ---
   let webmentionsModal = null;
   let webmentionsMentions = null;
+  let backgroundAriaState = null;
+  let focusTrapCleanup = null;
+  let previouslyFocusedElement = null;
 
   function createWebmentionsModal() {
     if (webmentionsModal) return;
@@ -619,7 +677,9 @@
 
     const titleEl = document.createElement('p');
     titleEl.id = 'webmentions-modal-title';
-    titleEl.innerHTML = `<strong>${t.title}</strong>`;
+    const titleStrong = document.createElement('strong');
+    titleStrong.textContent = t.title;
+    titleEl.appendChild(titleStrong);
     titleEl.style.cssText = 'margin:0;';
 
     const closeBtn = document.createElement('button');
@@ -660,6 +720,18 @@
   function closeWebmentionsModal() {
     if (webmentionsModal) {
       webmentionsModal.style.display = 'none';
+      if (focusTrapCleanup) {
+        focusTrapCleanup();
+        focusTrapCleanup = null;
+      }
+      if (backgroundAriaState) {
+        setBackgroundAriaHidden(webmentionsModal, false, backgroundAriaState);
+        backgroundAriaState = null;
+      }
+      if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+        previouslyFocusedElement = null;
+      }
     }
   }
 
@@ -746,6 +818,11 @@
 
     // Show modal
     webmentionsModal.style.display = 'flex';
+    previouslyFocusedElement = document.activeElement;
+    backgroundAriaState = setBackgroundAriaHidden(webmentionsModal, true);
+    focusTrapCleanup = trapFocus(webmentionsModal);
+    const closeButton = webmentionsModal.querySelector('button[aria-label]');
+    if (closeButton) closeButton.focus();
   }
 
   // --- Mastodon Modal ---
@@ -816,7 +893,21 @@
   }
 
   function closeModal() {
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      if (focusTrapCleanup) {
+        focusTrapCleanup();
+        focusTrapCleanup = null;
+      }
+      if (backgroundAriaState) {
+        setBackgroundAriaHidden(modal, false, backgroundAriaState);
+        backgroundAriaState = null;
+      }
+      if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+        previouslyFocusedElement = null;
+      }
+    }
   }
 
   function handleMastodonSubmit() {
@@ -847,6 +938,9 @@
     createModal();
     modal.style.display = 'flex';
     modalInput.value = localStorage.getItem('mastodon_instance') || '';
+    previouslyFocusedElement = document.activeElement;
+    backgroundAriaState = setBackgroundAriaHidden(modal, true);
+    focusTrapCleanup = trapFocus(modal);
     modalInput.focus();
     modalInput.select();
   }
@@ -860,6 +954,41 @@
     if (!target) return;
 
     target.parentNode.insertBefore(container, target);
+
+    const skeletonButtons = [];
+
+    const createSkeletonButton = (icon, label) => {
+      const button = createButton(icon, '...', null, label, label);
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      return button;
+    };
+
+    if (showLike) {
+      const likeSkeleton = createLikeButton('...', true, nativeUpvoteBtn);
+      likeSkeleton.classList.add('simple-like-skeleton');
+      skeletonButtons.push(likeSkeleton);
+    }
+
+    if (activeServices.includes('mastodon')) {
+      skeletonButtons.push(createSkeletonButton(icons.mastodon, 'Mastodon engagement'));
+    }
+
+    if (activeServices.includes('bluesky')) {
+      skeletonButtons.push(createSkeletonButton(icons.bluesky, 'Bluesky engagement'));
+    }
+
+    if (activeServices.includes('webmentions')) {
+      skeletonButtons.push(createSkeletonButton(icons.webmentions, 'Webmentions'));
+    }
+
+    if (activeServices.includes('mail') && email) {
+      skeletonButtons.push(createMailButton(
+        () => window.location.href = `mailto:${email}?subject=Re: ${encodeURIComponent(getCleanTitle())}`
+      ));
+    }
+
+    skeletonButtons.forEach(button => container.appendChild(button));
 
     // Only fetch social URLs if needed
     const needsSocialUrls = activeServices.some(s => ['mastodon', 'bluesky'].includes(s));
@@ -893,16 +1022,20 @@
     // Helper function to create platform button
     const createPlatformButton = (platform, engagement, url, onClick) => {
       const total = engagement?.total;
-      const tooltip = total === null
+      const hasError = !engagement;
+      const likes = engagement?.likes || 0;
+      const reposts = engagement?.reposts || 0;
+      const replies = engagement?.replies || 0;
+      const tooltip = hasError
         ? `${platform} engagement (could not load)`
-        : `${engagement.likes || 0} likes, ${engagement.reposts || 0} reposts, ${engagement.replies || 0} replies on ${platform}`;
-      const ariaLabel = total === null
+        : `${likes} likes, ${reposts} reposts, ${replies} replies on ${platform}`;
+      const ariaLabel = hasError
         ? `${platform} discussion. Engagement could not be loaded`
         : `${total} total interactions on ${platform}. Click to discuss`;
 
       return createButton(
         icons[platform.toLowerCase()],
-        total === null ? '?' : total || 0,
+        hasError ? '?' : total || 0,
         onClick,
         tooltip,
         ariaLabel
@@ -957,6 +1090,7 @@
     }
 
     // Add all buttons to container
+    container.innerHTML = '';
     buttons.forEach(btn => container.appendChild(btn));
 
     // If no buttons, show nothing
