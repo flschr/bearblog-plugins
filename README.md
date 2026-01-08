@@ -121,6 +121,67 @@ Displays aggregated webmentions from across the web, including likes, reposts, c
 
 ---
 
+### Webmentions Display
+Displays traditional blog webmentions collected via webmention.io and stored in a GitHub repository. Shows blog mentions for the current article with title, author, published date, and content excerpt. Automatically fetches data from your GitHub repository and caches it for performance.
+
+**Installation** (Custom footer content):
+```html
+<script src="https://flschr.github.io/bearblog-plugins/webmentions.js"
+        data-repo="username/repo-name"
+        defer></script>
+```
+
+**Configuration options**:
+- `data-repo` - GitHub repository in format "username/repo-name" (default: "flschr/bearblog-automation")
+- `data-show-excerpt` - Show content excerpt (default: "true", set to "false" to hide)
+- `data-max-mentions` - Maximum number of mentions to show initially (default: 0 = show all)
+- `data-show-no-mentions` - Show "No mentions yet" message when none exist (omit to hide silently)
+- `data-lang` - Language for UI text: "en" or "de" (default: "en")
+- `data-debug` - Enable console debugging (omit for production)
+
+**Example with all options**:
+```html
+<script src="https://flschr.github.io/bearblog-plugins/webmentions.js"
+        data-repo="flschr/bearblog-automation"
+        data-show-excerpt="true"
+        data-max-mentions="5"
+        data-show-no-mentions
+        data-lang="en"
+        defer></script>
+```
+
+**Data format**: The plugin expects a `webmentions.json` file in your repository root with this structure:
+```json
+{
+  "https://example.com/article-slug/": {
+    "target": "https://example.com/article-slug/",
+    "mentions": [
+      {
+        "source": "https://other-blog.com/post/",
+        "type": "mention",
+        "published": "2026-01-08T12:00:00Z",
+        "author": {
+          "name": "Author Name",
+          "url": "https://author-website.com/"
+        },
+        "title": "Post title that links to your article",
+        "content": "Excerpt or summary of the mention..."
+      }
+    ]
+  }
+}
+```
+
+**Features**:
+- Automatic URL matching (handles trailing slashes)
+- Session caching (5 minutes) to reduce API calls
+- Dark mode support
+- Mobile responsive design
+- Graceful error handling (silent fail if data unavailable)
+- "Show more" button when limiting displayed mentions
+
+---
+
 ## License
 
 [WTFPL](https://www.wtfpl.net/) – Do what you want.
