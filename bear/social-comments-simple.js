@@ -454,21 +454,6 @@
   let webmentionsModal = null;
   let webmentionsMentions = null;
 
-  function formatDate(dateString, lang = 'en') {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  }
-
-  function truncateText(text, maxLength = 200) {
-    if (!text || text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + '...';
-  }
-
   function createWebmentionsModal() {
     if (webmentionsModal) return;
 
