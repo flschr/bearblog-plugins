@@ -696,7 +696,7 @@
       targetUrl = `https://${instance}/share?text=${encodeURIComponent(shareText)}`;
     }
 
-    window.open(targetUrl, '_blank');
+    window.open(targetUrl, '_blank', 'noopener');
   }
 
   function showMastodonModal(mastodonUrl) {
@@ -782,7 +782,7 @@
         'Bluesky',
         blueskyEngagement,
         urls.bluesky,
-        () => window.open(urls.bluesky, '_blank')
+        () => window.open(urls.bluesky, '_blank', 'noopener')
       ));
     }
 
