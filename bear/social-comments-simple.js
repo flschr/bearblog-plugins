@@ -15,7 +15,7 @@
 
   const activeServices = scriptTag?.dataset.services
     ? scriptTag.dataset.services.split(',').map(s => s.trim())
-    : ['mastodon', 'bluesky', 'comments', 'mail'];
+    : ['mastodon', 'bluesky', 'mail'];
 
   // Webmentions configuration
   const webmentionsRepo = scriptTag?.dataset.webmentionsRepo || 'flschr/bearblog-automation';
@@ -719,7 +719,7 @@
     target.parentNode.insertBefore(container, target);
 
     // Only fetch social URLs if needed
-    const needsSocialUrls = activeServices.some(s => ['mastodon', 'bluesky', 'comments'].includes(s));
+    const needsSocialUrls = activeServices.some(s => ['mastodon', 'bluesky'].includes(s));
 
     // Fetch all data
     const [urls, bearBlogData] = await Promise.all([
