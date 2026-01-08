@@ -606,6 +606,33 @@
         return true; // Default: enabled (existing behavior)
     }
 
+    async function canReadClipboardSilently() {
+        if (!navigator.clipboard?.readText) {
+            return false;
+        }
+
+        const userAgent = navigator.userAgent || '';
+        const isFirefox = /firefox/i.test(userAgent);
+        const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+
+        if (!navigator.permissions?.query) {
+            return !isFirefox && !isIOS;
+        }
+
+        try {
+            const status = await navigator.permissions.query({ name: 'clipboard-read' });
+            if (status.state === 'granted') {
+                return true;
+            }
+            if (status.state === 'prompt') {
+                return !isFirefox && !isIOS;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    }
+
     function isAiAltTextEnabled() {
         const userSettings = loadUserSettings();
         if (userSettings && typeof userSettings.enableAiAltText === 'boolean') {
@@ -3211,7 +3238,7 @@
         // Try to get URL from clipboard (with validation)
         // Only if Smart Clipboard is enabled - iOS users can disable this to avoid paste menu
         let url = '';
-        if (isSmartClipboardEnabled()) {
+        if (isSmartClipboardEnabled() && await canReadClipboardSilently()) {
             try {
                 const clip = await navigator.clipboard.readText();
                 if (isValidUrl(clip)) {
@@ -3352,7 +3379,7 @@
 
         // Check clipboard for image URL only if Smart Clipboard is enabled
         // iOS users can disable this to avoid the paste menu popup
-        if (isSmartClipboardEnabled()) {
+        if (isSmartClipboardEnabled() && await canReadClipboardSilently()) {
             try {
                 const clipboardText = await navigator.clipboard.readText();
                 if (isImageUrl(clipboardText)) {
