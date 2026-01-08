@@ -640,8 +640,10 @@
     .simple-reaction-button {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.4rem;
       padding: 0.5rem 0.9rem;
+      min-width: 70px;
       border: 1px solid #ddd;
       border-radius: 8px;
       background: #fff;
