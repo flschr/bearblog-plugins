@@ -616,13 +616,20 @@
     }
 
     .simple-reaction-button .icon {
-      font-size: 1.1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       line-height: 1;
+    }
+
+    .simple-reaction-button .icon svg {
+      display: block;
     }
 
     .simple-reaction-button .count {
       font-weight: 600;
       font-variant-numeric: tabular-nums;
+      line-height: 1;
     }
 
     /* Dark mode */
