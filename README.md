@@ -15,7 +15,7 @@ Adds a formatting toolbar to the Bear Blog post editor with buttons for bold, it
 #### AI Alt-Text Feature (Optional)
 
 - The toolbar includes an **optional** AI-powered alt-text generator for images using OpenAI's Vision API.
-- Your OpenAI API key is stored in your browser's localStorage. Do not use this on shared computers and set spending limits in your OpenAI account settings](https://platform.openai.com/settings/organization/limits).
+- Your OpenAI API key is stored in your browser's localStorage. Do not use this on shared computers and set spending limits in [your OpenAI account settings](https://platform.openai.com/settings/organization/limits).
 
 #### How the AI Integration Works
 
