@@ -1582,14 +1582,16 @@
                     line-height: 1.4;
                     color: ${isDark ? '#ffc107' : '#664d03'};
                 `;
-                admonitionHelp.innerHTML = `
-                    <strong>Note:</strong>
-                    To style these blocks, install
-                    <a href="https://fischr.org/better-admonitions-for-bear-blog/" target="_blank" rel="noopener noreferrer" style="color:${isDark ? '#7fd7ff' : '#0b6cff'}; text-decoration: none;">
-                        Better Admonitions for Bear Blog
-                    </a>
-                    for the quick setup steps.
-                `;
+                const noteStrong = document.createElement('strong');
+                noteStrong.textContent = 'Note:';
+                admonitionHelp.appendChild(noteStrong);
+                admonitionHelp.appendChild(document.createTextNode(' To style these blocks, install '));
+                admonitionHelp.appendChild(createExternalLink(
+                    'https://fischr.org/better-admonitions-for-bear-blog/',
+                    'Better Admonitions for Bear Blog',
+                    'color: inherit; text-decoration: underline;'
+                ));
+                admonitionHelp.appendChild(document.createTextNode(' for the quick setup steps.'));
                 section.appendChild(admonitionHelp);
             }
 
