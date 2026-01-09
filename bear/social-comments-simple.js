@@ -29,7 +29,6 @@
   const NEGATIVE_CACHE_TTL = 60 * 1000; // 1 minute
   const DID_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
   const FETCH_TIMEOUT = parseInt(scriptTag?.dataset.timeout || '15000', 10); // 15 seconds default
-  const VIRAL_THRESHOLD = parseInt(scriptTag?.dataset.viralThreshold || '50', 10);
   const HEART_INTERVAL_MS = parseInt(scriptTag?.dataset.heartInterval || '80', 10);
   const HEART_MIN_INTERVAL_MS = parseInt(scriptTag?.dataset.heartMinInterval || '150', 10);
   const HEART_MAX_INTERVAL_MS = parseInt(scriptTag?.dataset.heartMaxInterval || '250', 10);
@@ -492,10 +491,6 @@
       btn.disabled = true;
       btn.style.cursor = 'default';
     } else {
-      if (totalLikes >= VIRAL_THRESHOLD) {
-        btn.classList.add('hype');
-      }
-
       let cleanupHeartbeat = null;
       let isLiking = false;
 
@@ -540,7 +535,6 @@
 
         btn.disabled = true;
         btn.classList.add('liked');
-        btn.classList.remove('hype');
         btn.style.cursor = 'default';
       };
     }
@@ -1237,49 +1231,6 @@
       overflow: visible;
     }
 
-    @property --sr-hype-angle {
-      syntax: '<angle>';
-      initial-value: 0deg;
-      inherits: false;
-    }
-
-    /* Hype effect for high engagement (50+ likes) */
-    .simple-like-button.hype {
-      position: relative;
-    }
-
-    .simple-like-button.hype::before {
-      content: '';
-      position: absolute;
-      inset: -2px;
-      border-radius: 10px;
-      background: conic-gradient(from var(--sr-hype-angle, 0deg), #fb4934, #121212, #fb4934);
-      animation: sr-hype-spin 3.2s linear infinite;
-      z-index: -1;
-      padding: 2px;
-      -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-      mask-composite: exclude;
-    }
-
-    html[data-theme="dark"] .simple-like-button.hype::before {
-      background: conic-gradient(from var(--sr-hype-angle, 0deg), #fb4934, #000, #fb4934);
-    }
-
-    @keyframes sr-hype-spin {
-      from {
-        --sr-hype-angle: 0deg;
-      }
-      to {
-        --sr-hype-angle: 360deg;
-      }
-    }
-
     /* Mail button with text */
     .simple-mail-button .mail-text {
       font-weight: 500;
@@ -1296,7 +1247,6 @@
     /* Respect prefers-reduced-motion (WCAG 2.1) */
     @media (prefers-reduced-motion: reduce) {
       .flying-heart,
-      .simple-like-button.hype::before,
       .simple-like-button.liked:hover .icon svg {
         animation: none !important;
       }
