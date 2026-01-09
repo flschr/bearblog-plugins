@@ -1571,13 +1571,19 @@
             section.appendChild(grid);
 
             if (category === 'Admonitions') {
-                const admonitionHelp = document.createElement('p');
+                const admonitionHelp = document.createElement('div');
                 admonitionHelp.style.cssText = `
-                    margin: 8px 0 0;
-                    font-size: 12px;
-                    color: ${isDark ? '#8aa' : '#666'};
+                    margin-top: 8px;
+                    padding: 8px 10px;
+                    background: ${isDark ? '#3d2a1a' : '#fff3cd'};
+                    border: 1px solid ${isDark ? '#664d03' : '#ffc107'};
+                    border-radius: 4px;
+                    font-size: 11px;
+                    line-height: 1.4;
+                    color: ${isDark ? '#ffc107' : '#664d03'};
                 `;
                 admonitionHelp.innerHTML = `
+                    <strong>Note:</strong>
                     To style these blocks, install
                     <a href="https://fischr.org/better-admonitions-for-bear-blog/" target="_blank" rel="noopener noreferrer" style="color:${isDark ? '#7fd7ff' : '#0b6cff'}; text-decoration: none;">
                         Better Admonitions for Bear Blog
