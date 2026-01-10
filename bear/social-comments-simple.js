@@ -705,6 +705,7 @@
 
       const domain = sourceUrl.hostname.replace(/^www\./, '');
       const title = mention.title || 'Untitled';
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
 
       const listItem = document.createElement('li');
       listItem.className = 'webmention-item-inline';
@@ -714,8 +715,24 @@
       link.target = '_blank';
       link.rel = 'noopener';
       link.href = sourceUrl.href;
-      link.textContent = `${domain}: ${title}`;
 
+      const favicon = document.createElement('img');
+      favicon.className = 'webmention-favicon';
+      favicon.width = 16;
+      favicon.height = 16;
+      favicon.loading = 'lazy';
+      favicon.alt = '';
+      favicon.src = faviconUrl;
+      favicon.onerror = () => {
+        favicon.style.display = 'none';
+      };
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'webmention-text';
+      textSpan.textContent = `${domain}: ${title}`;
+
+      link.appendChild(favicon);
+      link.appendChild(textSpan);
       listItem.appendChild(link);
       list.appendChild(listItem);
     });
@@ -1272,14 +1289,19 @@
     .webmention-link-inline {
       color: #6364ff;
       text-decoration: none;
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
       padding: 0.375rem 0;
       transition: color 0.2s;
       line-height: 1.5;
     }
 
-    .webmention-link-inline:hover {
+    .webmention-link-inline:hover .webmention-text {
       text-decoration: underline;
+    }
+
+    .webmention-link-inline:hover {
       color: #3273dc;
     }
 
@@ -1291,11 +1313,15 @@
       color: #a5b4fc;
     }
 
-    .webmention-link-inline::before {
-      content: '•';
-      margin-right: 0.75rem;
-      color: #999;
-      font-weight: bold;
+    .webmention-favicon {
+      flex-shrink: 0;
+      border-radius: 2px;
+      display: block;
+    }
+
+    .webmention-text {
+      flex: 1;
+      line-height: 1.4;
     }
 
     /* Responsive design for webmentions inline */
