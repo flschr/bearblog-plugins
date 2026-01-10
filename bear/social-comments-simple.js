@@ -664,7 +664,6 @@
     webmentionsExpansion.className = 'webmentions-inline';
     webmentionsExpansion.setAttribute('role', 'region');
     webmentionsExpansion.setAttribute('aria-labelledby', 'webmentions-title');
-    webmentionsExpansion.style.cssText = 'display:none;overflow:hidden;max-height:0;';
 
     const inner = document.createElement('div');
     inner.className = 'webmentions-inline-inner';
@@ -728,33 +727,21 @@
     isWebmentionsOpen = !isWebmentionsOpen;
 
     if (isWebmentionsOpen) {
-      // Open
-      webmentionsExpansion.style.display = 'block';
-      // Trigger reflow
-      webmentionsExpansion.offsetHeight;
+      // Open - trigger animation
       webmentionsExpansion.classList.add('open');
 
-      // Update button icon
+      // Update button aria
       if (webmentionsButton) {
-        webmentionsButton.classList.add('expanded');
         webmentionsButton.setAttribute('aria-expanded', 'true');
       }
     } else {
       // Close
       webmentionsExpansion.classList.remove('open');
 
-      // Update button icon
+      // Update button aria
       if (webmentionsButton) {
-        webmentionsButton.classList.remove('expanded');
         webmentionsButton.setAttribute('aria-expanded', 'false');
       }
-
-      // Wait for animation to complete before hiding
-      setTimeout(() => {
-        if (!isWebmentionsOpen) {
-          webmentionsExpansion.style.display = 'none';
-        }
-      }, 300);
     }
   }
 
@@ -1248,12 +1235,16 @@
     .webmentions-inline {
       width: 100%;
       max-width: 700px;
-      margin: 0 auto 2rem auto;
-      transition: max-height 0.3s ease-out;
+      margin: 1rem auto 2rem auto;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.4s ease-out, opacity 0.4s ease-out;
     }
 
     .webmentions-inline.open {
-      max-height: 1000px;
+      max-height: 2000px;
+      opacity: 1;
     }
 
     .webmentions-inline-inner {
@@ -1279,44 +1270,32 @@
     }
 
     .webmention-link-inline {
-      color: inherit;
+      color: #6364ff;
       text-decoration: none;
       display: block;
-      padding: 0.25rem 0;
+      padding: 0.375rem 0;
       transition: color 0.2s;
+      line-height: 1.5;
     }
 
     .webmention-link-inline:hover {
       text-decoration: underline;
-      color: #6364ff;
+      color: #3273dc;
+    }
+
+    html[data-theme="dark"] .webmention-link-inline {
+      color: #7879ff;
     }
 
     html[data-theme="dark"] .webmention-link-inline:hover {
-      color: #7879ff;
+      color: #a5b4fc;
     }
 
     .webmention-link-inline::before {
       content: '•';
-      margin-right: 0.5rem;
+      margin-right: 0.75rem;
       color: #999;
-    }
-
-    /* Webmentions button with arrow indicator */
-    .simple-reaction-button[aria-expanded]::after {
-      content: '';
-      display: inline-block;
-      width: 0;
-      height: 0;
-      margin-left: 0.3rem;
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 4px solid currentColor;
-      transition: transform 0.2s ease;
-      transform: rotate(0deg);
-    }
-
-    .simple-reaction-button[aria-expanded="true"]::after {
-      transform: rotate(180deg);
+      font-weight: bold;
     }
 
     /* Responsive design for webmentions inline */
