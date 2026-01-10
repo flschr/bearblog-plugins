@@ -664,7 +664,6 @@
     webmentionsExpansion.className = 'webmentions-inline';
     webmentionsExpansion.setAttribute('role', 'region');
     webmentionsExpansion.setAttribute('aria-labelledby', 'webmentions-title');
-    webmentionsExpansion.style.cssText = 'display:none;overflow:hidden;max-height:0;';
 
     const inner = document.createElement('div');
     inner.className = 'webmentions-inline-inner';
@@ -728,10 +727,7 @@
     isWebmentionsOpen = !isWebmentionsOpen;
 
     if (isWebmentionsOpen) {
-      // Open
-      webmentionsExpansion.style.display = 'block';
-      // Trigger reflow
-      webmentionsExpansion.offsetHeight;
+      // Open - trigger animation
       webmentionsExpansion.classList.add('open');
 
       // Update button aria
@@ -746,13 +742,6 @@
       if (webmentionsButton) {
         webmentionsButton.setAttribute('aria-expanded', 'false');
       }
-
-      // Wait for animation to complete before hiding
-      setTimeout(() => {
-        if (!isWebmentionsOpen) {
-          webmentionsExpansion.style.display = 'none';
-        }
-      }, 300);
     }
   }
 
@@ -1247,8 +1236,10 @@
       width: 100%;
       max-width: 700px;
       margin: 1rem auto 2rem auto;
-      transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+      max-height: 0;
+      overflow: hidden;
       opacity: 0;
+      transition: max-height 0.4s ease-out, opacity 0.4s ease-out;
     }
 
     .webmentions-inline.open {
