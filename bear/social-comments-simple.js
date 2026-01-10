@@ -1322,18 +1322,23 @@
     }
 
     .webmentions-list {
-      line-height: 1.8;
+      line-height: 1;
     }
 
     .webmention-item {
-      line-height: 1.8;
+      margin-bottom: 1rem;
+      line-height: 1;
+    }
+
+    .webmention-item:last-child {
+      margin-bottom: 0;
     }
 
     .webmention-link {
       text-decoration: none;
       display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
+      align-items: flex-start;
+      gap: 0.625rem;
     }
 
     .webmention-link:hover .webmention-text {
@@ -1343,10 +1348,12 @@
     .webmention-favicon {
       flex-shrink: 0;
       border-radius: 2px;
+      margin-top: 0.125rem;
     }
 
     .webmention-text {
       display: inline;
+      line-height: 1.4;
     }
 
     /* Responsive design for webmentions modal */
