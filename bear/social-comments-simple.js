@@ -855,7 +855,6 @@
     if (!instance) return;
 
     localStorage.setItem('mastodon_instance', instance);
-    closeModal();
 
     let targetUrl;
     if (storedMastoUrl) {
@@ -868,6 +867,7 @@
     }
 
     window.open(targetUrl, '_blank', 'noopener');
+    closeModal();
   }
 
   function showMastodonModal(mastodonUrl) {
