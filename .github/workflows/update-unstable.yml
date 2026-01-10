@@ -1,6 +1,9 @@
 name: Update Unstable Release
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 3 * * 1"
   workflow_dispatch:
@@ -26,6 +29,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare deployment directory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          mkdir -p _site/unstable
+
+          # Copy current HEAD (will become unstable) to /unstable/
+          cp -r bear/* _site/unstable/
+
+          # Copy stable tag files to root
+          git checkout stable
+          cp -r bear/* _site/
+
+          # Return to original branch
+          git checkout -
+
       - name: Update Unstable Tag
         run: |
           git config user.name "github-actions[bot]"
@@ -36,18 +56,6 @@ jobs:
 
           git tag unstable
           git push origin unstable
-
-      - name: Prepare deployment directory
-        run: |
-          mkdir -p _site/unstable
-
-          # Copy stable tag files to root
-          git checkout stable
-          cp -r bear/* _site/
-
-          # Copy unstable tag files to /unstable/
-          git checkout unstable
-          cp -r bear/* _site/unstable/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
