@@ -640,123 +640,57 @@
     return cleanup;
   }
 
-  // --- Webmentions Modal ---
-  let webmentionsModal = null;
+  // --- Webmentions Inline Expansion ---
+  let webmentionsExpansion = null;
   let webmentionsMentions = null;
-  let backgroundAriaState = null;
-  let focusTrapCleanup = null;
-  let previouslyFocusedElement = null;
+  let webmentionsButton = null;
+  let isWebmentionsOpen = false;
 
-  function createWebmentionsModal() {
-    if (webmentionsModal) return;
+  function createWebmentionsExpansion(container) {
+    if (webmentionsExpansion) return;
 
     const ui = {
       en: {
-        title: 'Also mentioned in:',
-        close: 'Close'
+        title: 'Also mentioned in:'
       },
       de: {
-        title: 'Auch erwähnt in:',
-        close: 'Schließen'
+        title: 'Auch erwähnt in:'
       }
     };
 
     const t = ui[webmentionsLang] || ui.en;
 
-    const theme = isDarkMode() ? modalColors.dark : modalColors.light;
+    webmentionsExpansion = document.createElement('div');
+    webmentionsExpansion.className = 'webmentions-inline';
+    webmentionsExpansion.setAttribute('role', 'region');
+    webmentionsExpansion.setAttribute('aria-labelledby', 'webmentions-title');
+    webmentionsExpansion.style.cssText = 'display:none;overflow:hidden;max-height:0;';
 
-    // Create modal backdrop
-    webmentionsModal = document.createElement('div');
-    webmentionsModal.id = 'sr-webmentions-modal';
-    webmentionsModal.setAttribute('role', 'dialog');
-    webmentionsModal.setAttribute('aria-modal', 'true');
-    webmentionsModal.setAttribute('aria-labelledby', 'webmentions-modal-title');
-    webmentionsModal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;padding:1rem;overflow-y:auto;';
+    const inner = document.createElement('div');
+    inner.className = 'webmentions-inline-inner';
 
-    // Create dialog container
-    const dialog = document.createElement('div');
-    dialog.className = 'webmentions-modal-dialog';
-    dialog.style.cssText = `background:${theme.background};color:${theme.text};padding:0;border-radius:12px;max-width:700px;width:100%;max-height:90vh;box-shadow:0 8px 32px rgba(0,0,0,${theme.shadowAlpha});display:flex;flex-direction:column;margin:auto;position:relative;`;
+    const title = document.createElement('h4');
+    title.id = 'webmentions-title';
+    title.textContent = t.title;
+    title.style.cssText = 'margin:0 0 0.75rem 0;font-size:1rem;font-weight:600;';
 
-    // Create header
-    const header = document.createElement('div');
-    header.style.cssText = `padding:1.5rem 1.5rem 0.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;`;
-
-    const titleEl = document.createElement('p');
-    titleEl.id = 'webmentions-modal-title';
-    const titleStrong = document.createElement('strong');
-    titleStrong.textContent = t.title;
-    titleEl.appendChild(titleStrong);
-    titleEl.style.cssText = 'margin:0;';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.setAttribute('aria-label', t.close);
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `background:none;border:none;font-size:2rem;color:${theme.mutedText};cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background 0.2s;`;
-    closeBtn.onmouseover = () => closeBtn.style.background = theme.hoverBackdrop;
-    closeBtn.onmouseout = () => closeBtn.style.background = 'none';
-    closeBtn.onclick = closeWebmentionsModal;
-
-    header.appendChild(titleEl);
-    header.appendChild(closeBtn);
-
-    // Create content area (scrollable)
-    const content = document.createElement('div');
-    content.className = 'webmentions-modal-content';
-    content.style.cssText = 'padding:0.5rem 1.5rem 1.5rem 2rem;overflow-y:auto;flex:1;';
-
-    dialog.appendChild(header);
-    dialog.appendChild(content);
-    webmentionsModal.appendChild(dialog);
-
-    // Close on backdrop click
-    webmentionsModal.addEventListener('click', (e) => {
-      if (e.target === webmentionsModal) closeWebmentionsModal();
-    });
-
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && webmentionsModal.style.display === 'flex') {
-        closeWebmentionsModal();
-      }
-    });
-
-    document.body.appendChild(webmentionsModal);
-  }
-
-  function closeWebmentionsModal() {
-    if (webmentionsModal) {
-      webmentionsModal.style.display = 'none';
-      if (focusTrapCleanup) {
-        focusTrapCleanup();
-        focusTrapCleanup = null;
-      }
-      if (backgroundAriaState) {
-        setBackgroundAriaHidden(webmentionsModal, false, backgroundAriaState);
-        backgroundAriaState = null;
-      }
-      if (previouslyFocusedElement) {
-        previouslyFocusedElement.focus();
-        previouslyFocusedElement = null;
-      }
-    }
-  }
-
-  function showWebmentionsModal() {
-    createWebmentionsModal();
-
-    if (!webmentionsMentions || webmentionsMentions.length === 0) {
-      return;
-    }
-
-    // Get content area
-    const content = webmentionsModal.querySelector('.webmentions-modal-content');
-    content.innerHTML = '';
-
-    // Create simple list
     const list = document.createElement('ul');
-    list.className = 'webmentions-list';
+    list.className = 'webmentions-list-inline';
     list.style.cssText = 'list-style:none;padding:0;margin:0;';
+
+    inner.appendChild(title);
+    inner.appendChild(list);
+    webmentionsExpansion.appendChild(inner);
+
+    // Insert after the reactions container
+    container.parentNode.insertBefore(webmentionsExpansion, container.nextSibling);
+  }
+
+  function populateWebmentionsExpansion() {
+    if (!webmentionsExpansion || !webmentionsMentions) return;
+
+    const list = webmentionsExpansion.querySelector('.webmentions-list-inline');
+    list.innerHTML = '';
 
     webmentionsMentions.forEach(mention => {
       let sourceUrl;
@@ -772,64 +706,56 @@
 
       const domain = sourceUrl.hostname.replace(/^www\./, '');
       const title = mention.title || 'Untitled';
-      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
 
       const listItem = document.createElement('li');
-      listItem.className = 'webmention-item';
-      listItem.style.cssText = 'margin-bottom:0.75rem;';
+      listItem.className = 'webmention-item-inline';
 
       const link = document.createElement('a');
-      link.className = 'webmention-link';
+      link.className = 'webmention-link-inline';
       link.target = '_blank';
       link.rel = 'noopener';
       link.href = sourceUrl.href;
+      link.textContent = `${domain}: ${title}`;
 
-      const favicon = document.createElement('img');
-      favicon.className = 'webmention-favicon';
-      favicon.width = 16;
-      favicon.height = 16;
-      favicon.loading = 'lazy';
-      favicon.alt = '';
-      favicon.src = faviconUrl;
-      favicon.onerror = () => {
-        favicon.style.display = 'none';
-      };
-
-      const textWrapper = document.createElement('span');
-      textWrapper.className = 'webmention-text';
-
-      const domainSpan = document.createElement('span');
-      domainSpan.className = 'webmention-domain';
-      domainSpan.textContent = domain;
-
-      const separatorSpan = document.createElement('span');
-      separatorSpan.className = 'webmention-separator';
-      separatorSpan.textContent = ':';
-
-      const titleSpan = document.createElement('span');
-      titleSpan.className = 'webmention-link-title';
-      titleSpan.textContent = title;
-
-      textWrapper.appendChild(domainSpan);
-      textWrapper.appendChild(separatorSpan);
-      textWrapper.append(' ');
-      textWrapper.appendChild(titleSpan);
-
-      link.appendChild(favicon);
-      link.appendChild(textWrapper);
       listItem.appendChild(link);
       list.appendChild(listItem);
     });
+  }
 
-    content.appendChild(list);
+  function toggleWebmentionsExpansion() {
+    if (!webmentionsExpansion) return;
 
-    // Show modal
-    webmentionsModal.style.display = 'flex';
-    previouslyFocusedElement = document.activeElement;
-    backgroundAriaState = setBackgroundAriaHidden(webmentionsModal, true);
-    focusTrapCleanup = trapFocus(webmentionsModal);
-    const closeButton = webmentionsModal.querySelector('button[aria-label]');
-    if (closeButton) closeButton.focus();
+    isWebmentionsOpen = !isWebmentionsOpen;
+
+    if (isWebmentionsOpen) {
+      // Open
+      webmentionsExpansion.style.display = 'block';
+      // Trigger reflow
+      webmentionsExpansion.offsetHeight;
+      webmentionsExpansion.classList.add('open');
+
+      // Update button icon
+      if (webmentionsButton) {
+        webmentionsButton.classList.add('expanded');
+        webmentionsButton.setAttribute('aria-expanded', 'true');
+      }
+    } else {
+      // Close
+      webmentionsExpansion.classList.remove('open');
+
+      // Update button icon
+      if (webmentionsButton) {
+        webmentionsButton.classList.remove('expanded');
+        webmentionsButton.setAttribute('aria-expanded', 'false');
+      }
+
+      // Wait for animation to complete before hiding
+      setTimeout(() => {
+        if (!isWebmentionsOpen) {
+          webmentionsExpansion.style.display = 'none';
+        }
+      }, 300);
+    }
   }
 
   // --- Mastodon Modal ---
@@ -1077,15 +1003,17 @@
       if (mentions && mentions.length > 0) {
         webmentionsMentions = mentions;
         const webmentionsTooltip = `${mentions.length} blog ${mentions.length === 1 ? 'mention' : 'mentions'}`;
-        const webmentionsAriaLabel = `${mentions.length} blog mentions. Click to view`;
+        const webmentionsAriaLabel = `${mentions.length} blog mentions. Click to toggle`;
 
-        buttons.push(createButton(
+        webmentionsButton = createButton(
           icons.webmentions,
           mentions.length,
-          showWebmentionsModal,
+          toggleWebmentionsExpansion,
           webmentionsTooltip,
           webmentionsAriaLabel
-        ));
+        );
+        webmentionsButton.setAttribute('aria-expanded', 'false');
+        buttons.push(webmentionsButton);
       }
     }
 
@@ -1099,6 +1027,12 @@
     // Add all buttons to container
     container.innerHTML = '';
     buttons.forEach(btn => container.appendChild(btn));
+
+    // Create and populate webmentions expansion if we have mentions
+    if (webmentionsMentions && webmentionsMentions.length > 0) {
+      createWebmentionsExpansion(container);
+      populateWebmentionsExpansion();
+    }
 
     // If no buttons, show nothing
     if (buttons.length === 0) {
@@ -1310,67 +1244,85 @@
       }
     }
 
-    /* Webmentions Modal */
-    #sr-webmentions-modal {
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
+    /* Webmentions Inline Expansion */
+    .webmentions-inline {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto 2rem auto;
+      transition: max-height 0.3s ease-out;
     }
 
-    .webmentions-modal-dialog {
-      margin: auto;
+    .webmentions-inline.open {
+      max-height: 1000px;
     }
 
-    .webmentions-list {
-      line-height: 1;
+    .webmentions-inline-inner {
+      padding: 1rem 1.5rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
     }
 
-    .webmention-item {
-      margin-bottom: 1rem;
-      line-height: 1;
+    html[data-theme="dark"] .webmentions-inline-inner {
+      background: rgba(255,255,255,0.05);
+      border-color: #444;
     }
 
-    .webmention-item:last-child {
-      margin-bottom: 0;
+    .webmentions-list-inline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
-    .webmention-link {
-      text-decoration: none;
-      display: inline-flex;
-      align-items: flex-start;
-      gap: 0.625rem;
-    }
-
-    .webmention-link:hover .webmention-text {
-      text-decoration: underline;
-    }
-
-    .webmention-favicon {
-      flex-shrink: 0;
-      border-radius: 2px;
-      margin-top: 0.25rem;
-    }
-
-    .webmention-text {
-      display: inline;
+    .webmention-item-inline {
       line-height: 1.4;
     }
 
-    /* Responsive design for webmentions modal */
+    .webmention-link-inline {
+      color: inherit;
+      text-decoration: none;
+      display: block;
+      padding: 0.25rem 0;
+      transition: color 0.2s;
+    }
+
+    .webmention-link-inline:hover {
+      text-decoration: underline;
+      color: #6364ff;
+    }
+
+    html[data-theme="dark"] .webmention-link-inline:hover {
+      color: #7879ff;
+    }
+
+    .webmention-link-inline::before {
+      content: '•';
+      margin-right: 0.5rem;
+      color: #999;
+    }
+
+    /* Webmentions button with arrow indicator */
+    .simple-reaction-button[aria-expanded]::after {
+      content: '';
+      display: inline-block;
+      width: 0;
+      height: 0;
+      margin-left: 0.3rem;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid currentColor;
+      transition: transform 0.2s ease;
+      transform: rotate(0deg);
+    }
+
+    .simple-reaction-button[aria-expanded="true"]::after {
+      transform: rotate(180deg);
+    }
+
+    /* Responsive design for webmentions inline */
     @media (max-width: 640px) {
-      #sr-webmentions-modal {
-        padding: 1rem;
-      }
-
-      .webmentions-modal-dialog {
-        max-width: 100%;
-        width: 100%;
-        max-height: 95vh !important;
-        margin: 0;
-      }
-
-      .webmentions-modal-content {
-        padding: 0.5rem 1.5rem 1.5rem 2rem !important;
+      .webmentions-inline-inner {
+        padding: 0.75rem 1rem;
       }
     }
   `;
