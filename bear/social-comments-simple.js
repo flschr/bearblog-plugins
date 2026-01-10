@@ -1265,15 +1265,17 @@
     }
 
     .webmentions-inline-inner {
-      padding: 1rem 1.5rem;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #f9f9f9;
+      padding: 1.5rem;
+      border: 1px solid var(--color-border-light, #eee);
+      border-radius: 12px;
+      background: var(--color-box-bg, #f8fafb);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     html[data-theme="dark"] .webmentions-inline-inner {
-      background: rgba(255,255,255,0.05);
-      border-color: #444;
+      background: var(--color-box-bg, rgba(255,255,255,0.03));
+      border-color: var(--color-border-light, #3d4952);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
 
     .webmentions-list-inline {
@@ -1287,10 +1289,10 @@
     }
 
     .webmention-link-inline {
-      color: #6364ff;
+      color: var(--color-accent, #3273dc);
       text-decoration: none;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.625rem;
       padding: 0.375rem 0;
       transition: color 0.2s;
@@ -1301,16 +1303,8 @@
       text-decoration: underline;
     }
 
-    .webmention-link-inline:hover {
-      color: #3273dc;
-    }
-
-    html[data-theme="dark"] .webmention-link-inline {
-      color: #7879ff;
-    }
-
     html[data-theme="dark"] .webmention-link-inline:hover {
-      color: #a5b4fc;
+      color: var(--color-accent, #6291de);
     }
 
     .webmention-favicon {
@@ -1320,6 +1314,7 @@
       width: 16px;
       height: 16px;
       object-fit: contain;
+      margin-top: 0.125rem;
     }
 
     .webmention-text {
@@ -1332,8 +1327,12 @@
 
     /* Responsive design for webmentions inline */
     @media (max-width: 640px) {
+      .webmentions-inline {
+        max-width: 100%;
+      }
+
       .webmentions-inline-inner {
-        padding: 0.75rem 1rem;
+        padding: 1rem;
       }
     }
   `;
