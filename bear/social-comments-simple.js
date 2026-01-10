@@ -1317,11 +1317,17 @@
       flex-shrink: 0;
       border-radius: 2px;
       display: block;
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
     }
 
     .webmention-text {
       flex: 1;
       line-height: 1.4;
+      word-break: break-word;
+      display: inline;
+      white-space: normal;
     }
 
     /* Responsive design for webmentions inline */
