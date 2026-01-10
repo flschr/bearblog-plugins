@@ -1348,7 +1348,7 @@
     .webmention-favicon {
       flex-shrink: 0;
       border-radius: 2px;
-      margin-top: 0.125rem;
+      margin-top: 0.25rem;
     }
 
     .webmention-text {
@@ -1359,18 +1359,18 @@
     /* Responsive design for webmentions modal */
     @media (max-width: 640px) {
       #sr-webmentions-modal {
-        padding: 0.5rem;
+        padding: 1rem;
       }
 
       .webmentions-modal-dialog {
         max-width: 100%;
-        width: calc(100% - 1rem);
+        width: 100%;
         max-height: 95vh !important;
-        margin: 0 auto;
+        margin: 0;
       }
 
       .webmentions-modal-content {
-        padding: 1rem !important;
+        padding: 0.5rem 1.5rem 1.5rem 2rem !important;
       }
     }
   `;
