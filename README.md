@@ -61,30 +61,6 @@ Implements a dark/light mode toggle that remembers the user's preference in loca
 
 ---
 
-### Privacy Embeds
-Replaces external iframes (YouTube, Google Maps, Vimeo, Dailymotion, Spotify, SoundCloud, Arte) with privacy-friendly consent placeholders. Videos and maps only load after user consent, preventing tracking before interaction.
-
-**Standard Installation** (Custom <head> content):
-```html
-<script>
-(function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
-</script>
-<script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
-```
-
-**Perfect Privacy Installation** (100% guarantee via CSP):
-```html
-<meta http-equiv="Content-Security-Policy" content="frame-src 'self' data: blob:">
-<script>
-(function(){function n(e){const t=e.getAttribute('src');t&&t.startsWith('http')&&!e.hasAttribute('data-src')&&(e.setAttribute('data-src',t),e.removeAttribute('src'))}function i(){document.querySelectorAll('iframe[src]').forEach(n)}const o=new MutationObserver(function(e){for(let t=0;t<e.length;t++){const r=e[t].addedNodes;for(let e=0;e<r.length;e++){const t=r[e];if(t.nodeType===1){if(t.tagName==='IFRAME'){n(t)}const a=t.querySelectorAll&&t.querySelectorAll('iframe[src]');if(a){for(let e=0;e<a.length;e++){n(a[e])}}}}}});o.observe(document.documentElement,{childList:true,subtree:true});i();window._privacyEmbedsObserver=o})();
-</script>
-<script src="https://flschr.github.io/bearblog-plugins/privacy-embeds.js"></script>
-```
-
-The CSP meta tag blocks all external iframe connections at browser level, preventing even the preload scanner from initiating connections before user consent. Console warnings are normal and indicate successful blocking.
-
----
-
 ### Image Lazy Loading
 Automatically adds native `loading="lazy"` attribute to all images in your blog posts. Images load only when they're about to enter the viewport, improving page load performance and reducing bandwidth usage.
 
@@ -105,7 +81,7 @@ Replaces default date formats throughout your blog with customizable formatting.
 
 ---
 
-### Social Comments (Simple)
+### Unified and simple Engagements
 Unified engagement plugin displaying social reactions and blog webmentions. Shows live counts from Bluesky and Mastodon with an animated like button. Includes support for displaying traditional blog webmentions collected via webmention.io.
 
 **Installation** (Custom footer content):
