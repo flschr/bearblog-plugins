@@ -369,12 +369,15 @@
       }
 
       const totalReplies = context?.descendants?.length || 0;
+      const quoteCount = data.quotes_count ?? data.quote_count ?? 0;
+      const totalReposts = (data.reblogs_count || 0) + quoteCount;
 
       const engagement = {
         likes: data.favourites_count || 0,
-        reposts: data.reblogs_count || 0,
+        reposts: totalReposts,
+        quotes: quoteCount,
         replies: totalReplies,
-        total: (data.favourites_count || 0) + (data.reblogs_count || 0) + totalReplies
+        total: (data.favourites_count || 0) + totalReposts + totalReplies
       };
       setCache(cacheKey, engagement, ENGAGEMENT_CACHE_TTL);
       return engagement;
