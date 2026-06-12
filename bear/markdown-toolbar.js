@@ -1374,12 +1374,15 @@
         const helptextBar = document.querySelector('.helptext.sticky');
         if (!helptextBar) return;
 
-        // Collect non-native links not yet migrated (skip #upload-image)
+        // Only migrate links added by external plugins, not Bear Blog's own.
+        // Native Bear Blog links have real URLs; plugin-injected links
+        // typically use href="#" with a JS click handler (e.g. OG image).
         const links = helptextBar.querySelectorAll('a');
         const externalLinks = [];
         links.forEach(link => {
-            if (link.id === 'upload-image') return;
             if (link.dataset.mdMigrated) return;
+            const href = (link.getAttribute('href') || '').trim();
+            if (href !== '#') return;
             externalLinks.push(link);
         });
 
