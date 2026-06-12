@@ -1405,13 +1405,16 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = getBtnClass();
-            btn.title = link.textContent.trim();
-            btn.setAttribute('aria-label', link.textContent.trim());
+            const label = link.textContent.trim();
+            const shortLabel = label.length > 4 ? label.replace(/\s*image$/i, '').trim() : label;
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
             btn.style.fontSize = '11px';
+            btn.style.fontWeight = '700';
             btn.style.width = 'auto';
             btn.style.padding = '0 8px';
             btn.style.whiteSpace = 'nowrap';
-            btn.textContent = link.textContent.trim();
+            btn.textContent = shortLabel;
 
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
