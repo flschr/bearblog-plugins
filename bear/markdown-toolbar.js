@@ -1123,6 +1123,13 @@
             el.style.display = 'none';
         });
 
+        // Migrate links added by external plugins (e.g. OG image) from the
+        // now-hidden .helptext.sticky bar into the markdown toolbar.
+        // Run immediately for plugins that loaded before us, and observe
+        // for plugins that load after.
+        migrateExternalPluginLinks();
+        observeHelptextForPlugins();
+
         // Hide sticky controls if action buttons are shown in toolbar
         if (isActionButtonsEnabled()) {
             const stickyControls = document.querySelector('.sticky-controls');
@@ -1357,6 +1364,75 @@
         // No individual event listener - using event delegation via handleToolbarClick
 
         return btn;
+    }
+
+    // Migrate links injected by external plugins into the hidden .helptext.sticky
+    // bar so they appear as toolbar buttons. Runs once after toolbar creation.
+    function migrateExternalPluginLinks() {
+        if (!$toolbar) return;
+
+        const helptextBar = document.querySelector('.helptext.sticky');
+        if (!helptextBar) return;
+
+        // Collect non-native links not yet migrated (skip #upload-image)
+        const links = helptextBar.querySelectorAll('a');
+        const externalLinks = [];
+        links.forEach(link => {
+            if (link.id === 'upload-image') return;
+            if (link.dataset.mdMigrated) return;
+            externalLinks.push(link);
+        });
+
+        if (externalLinks.length === 0) return;
+
+        // Find the spacer in the toolbar to insert before it
+        const spacer = Array.from($toolbar.children).find(el =>
+            el.style && el.style.flex === '1'
+        );
+
+        // Add a separator before external plugin buttons
+        if (spacer) {
+            const sep = document.createElement('div');
+            sep.className = getSeparatorClass();
+            $toolbar.insertBefore(sep, spacer);
+        }
+
+        externalLinks.forEach(link => {
+            link.dataset.mdMigrated = '1';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = getBtnClass();
+            btn.title = link.textContent.trim();
+            btn.setAttribute('aria-label', link.textContent.trim());
+            btn.style.fontSize = '11px';
+            btn.style.width = 'auto';
+            btn.style.padding = '0 8px';
+            btn.style.whiteSpace = 'nowrap';
+            btn.textContent = link.textContent.trim();
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                link.click();
+            });
+
+            if (spacer) {
+                $toolbar.insertBefore(btn, spacer);
+            } else {
+                $toolbar.appendChild(btn);
+            }
+        });
+    }
+
+    // Watch .helptext.sticky for links added by plugins that load after us
+    function observeHelptextForPlugins() {
+        const helptextBar = document.querySelector('.helptext.sticky');
+        if (!helptextBar || !$toolbar) return;
+
+        const observer = new MutationObserver(() => {
+            migrateExternalPluginLinks();
+        });
+
+        observer.observe(helptextBar, { childList: true, subtree: true });
     }
 
     function createMenuButton() {
